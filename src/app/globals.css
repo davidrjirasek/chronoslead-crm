@@ -377,3 +377,71 @@
     animation-duration: 0.01ms !important;
   }
 }
+
+/* ============================================================
+ * 107 — La envoltura de ChronosLead
+ *
+ * Portada del CRM anterior (ver el recorrido en móvil del dueño): el patrón
+ * geométrico de marca de fondo en TODA la app y la barra clara encima, no el
+ * azul marino de Vocero.
+ *
+ * Va como clase en el contenedor raíz y no tocando cada componente: así el
+ * día que upstream cambie la barra, el cambio entra solo y esto sigue encima.
+ * Solo se aplica a la marca de la plataforma — una organización white-label
+ * conserva el aspecto sobrio de Vocero.
+ * ============================================================ */
+@layer components {
+  .cl-marca {
+    background-image: url("/brand/bg-light.jpg");
+    background-size: cover;
+    background-position: top center;
+    /*
+     * `fixed` NO: obliga al navegador a repintar el fondo en cada scroll y en
+     * un teléfono se nota como tirones. El patrón ya cubre la pantalla, así que
+     * dejarlo quieto no aporta nada que justifique el costo.
+     */
+    background-attachment: scroll;
+  }
+
+  /* Las superficies se vuelven translúcidas para que el patrón se vea a través,
+     que es lo que da la profundidad del diseño original. */
+  .cl-marca > :where(aside, header),
+  .cl-marca .cl-superficie {
+    background-color: rgb(255 255 255 / 0.72);
+    backdrop-filter: blur(14px);
+  }
+
+  /*
+   * Anula `.nav-dark` dentro de la marca: el isotipo tiene caras blancas
+   * translúcidas y sobre azul marino se lee como un manchón. El sistema visual
+   * pide una variante negativa para fondos oscuros, y esa no existe como
+   * archivo — así que la barra se aclara y el isotipo de color queda donde
+   * funciona. Es la solución sin inventarse el logo de nadie.
+   */
+  .cl-marca .nav-dark {
+    color-scheme: light;
+    --bg: #ffffff;
+    --bg-subtle: rgb(255 255 255 / 0.72);
+    --bg-panel: rgb(255 255 255 / 0.9);
+    --bg-raised: #ffffff;
+    --bg-hover: rgb(255 106 0 / 0.08);
+    --text: #0b0b0b;
+    --text-2: #42506b;
+    --text-3: #6b6b6b;
+    --text-4: #aab4c8;
+    --border: rgb(11 11 11 / 0.08);
+    --border-strong: rgb(11 11 11 / 0.16);
+    --chip-bg: rgb(255 106 0 / 0.1);
+    --row-hover: rgb(255 106 0 / 0.06);
+    --accent: #e05d00;
+    --accent-hover: #bc4e00;
+    --accent-soft: #f9e2d1;
+    --accent-tint: #fdf5f0;
+    --accent-text: #a24300;
+    --accent-fg: #ffffff;
+    --accent-ink: var(--accent);
+    --ring: var(--accent);
+    --shadow-pop: 0 30px 80px -20px rgb(11 11 11 / 0.18),
+      0 8px 24px -12px rgb(11 11 11 / 0.12);
+  }
+}

@@ -431,7 +431,7 @@ export function LandingPublica() {
       </header>
 
       {/* ---- Hero: claro, convence sin necesidad de scroll ---- */}
-      <section className="relative overflow-hidden border-black/5 border-b bg-[#FFFCF8] bg-[url('/brand/bg-light.png')] bg-cover bg-top px-5 py-12 sm:px-10 sm:py-16">
+      <section className="relative overflow-hidden border-black/5 border-b bg-[#FFFCF8] bg-[url('/brand/bg-light.jpg')] bg-cover bg-top px-5 py-12 sm:px-10 sm:py-16">
         <div className="mx-auto max-w-[1200px]">
           <div className="relative grid grid-cols-1 items-center gap-10 lg:grid-cols-[1fr_600px]">
             <div className="min-w-0">

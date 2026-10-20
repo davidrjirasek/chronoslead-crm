@@ -19,7 +19,11 @@ export function EscenografiaChronosLead({
 }) {
   return (
     <main className="flex min-h-screen bg-background font-sans text-foreground">
-      <div className="flex w-full shrink-0 flex-col justify-between bg-[url('/brand/bg-light.png')] bg-cover bg-top px-6 py-8 sm:w-[560px] sm:px-14 lg:w-[640px]">
+      {/* `gap` + `overflow-y-auto` y no solo `justify-between`: en una pantalla
+          corta (375×667) el bloque central se comía el pie y los dos textos se
+          superponían. Con hueco mínimo garantizado, en pantallas altas se
+          reparte igual y en las bajas se desplaza. */}
+      <div className="flex w-full shrink-0 flex-col justify-between gap-8 overflow-y-auto bg-[url('/brand/bg-light.jpg')] bg-cover bg-top px-6 py-8 sm:w-[560px] sm:px-14 lg:w-[640px]">
         <div className="flex items-center gap-1.5">
           {/* unoptimized: es un archivo propio y pequeño; pasarlo por el
               optimizador sería trabajo para no ahorrar. */}
@@ -39,17 +43,17 @@ export function EscenografiaChronosLead({
           </div>
         </div>
 
-        <div className="py-10">{children}</div>
+        <div className="py-2 sm:py-6">{children}</div>
 
-        <p className="text-[11px] text-text-4">
+        <p className="shrink-0 text-[11px] text-text-4">
           © 2026 ChronosLead · Un producto de Creativo 4D Group
         </p>
       </div>
 
-      <div className="relative hidden flex-1 overflow-hidden bg-[url('/brand/bg-dark.png')] bg-cover bg-center md:block">
+      <div className="relative hidden flex-1 overflow-hidden bg-[url('/brand/bg-dark.jpg')] bg-cover bg-center md:block">
         <div className="absolute inset-5 overflow-hidden rounded-3xl ring-1 ring-white/15">
           <Image
-            src="/brand/login-hero.png"
+            src="/brand/login-hero.jpg"
             alt="Dos personas del equipo comercial revisando el CRM de ChronosLead en una laptop"
             fill
             sizes="(min-width: 768px) 50vw, 0px"

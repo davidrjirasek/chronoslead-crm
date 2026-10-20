@@ -119,3 +119,39 @@ corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack 
 La contraseña no se escribe aquí: vive en ese archivo (modo 600, fuera del repo). Es una
 cuenta de desarrollo contra una base local. Las de producción las fija el dueño en el
 runtime de Coolify.
+
+## Modo producción en esta Mac (y dos trampas para el despliegue)
+
+Para medir rendimiento de verdad o reproducir un fallo que solo pasa en producción:
+
+```bash
+corepack pnpm build
+cp -R public .next/standalone/public
+mkdir -p .next/standalone/.next && cp -R .next/static .next/standalone/.next/static
+node .next/standalone/server.js
+```
+
+Dos cosas que cuestan una tarde si no se saben, y que hay que verificar en Coolify:
+
+1. **`pnpm start` NO sirve.** `next.config.ts` compila en `output: standalone`, y `next start`
+   avisa y no arranca. El servidor es `.next/standalone/server.js`.
+2. **El empaquetado no se lleva `public/` ni `.next/static/`.** Hay que copiarlos al lado del
+   servidor. Si falta, el sitio responde pero **sin imágenes y sin estilos**: parece un fallo
+   de diseño y es un fallo de copia.
+
+El `Dockerfile` del repo ya hace las dos cosas; esto es para cuando se corre a mano.
+
+## Por qué el modo desarrollo se siente lento
+
+Next compila cada pantalla la **primera** vez que se visita. Medido en esta Mac:
+
+| Sección | Desarrollo | Producción |
+|---|---|---|
+| Bandeja | 0,71 s | 0,047 s |
+| Pipeline | 0,28 s | 0,071 s |
+| Contactos | **8,47 s** | **0,083 s** |
+| Citas | 1,66 s | 0,041 s |
+| Resultados | 3,86 s | 0,042 s |
+
+No es un problema del producto: es el modo de trabajo. Antes de concluir que algo va lento,
+medirlo en producción.
