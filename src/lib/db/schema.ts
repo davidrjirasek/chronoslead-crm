@@ -1327,3 +1327,47 @@ export const accessLink = pgTable(
     index("access_link_user_motivo_idx").on(t.userId, t.motivo),
   ]
 );
+
+/* ============================================================
+ * 109 — Histórico de pagos de la plataforma
+ * ============================================================ */
+
+/**
+ * Cada cobro que el operador registra, como hecho propio.
+ *
+ * `organization.paid_through` es un ESTADO —hasta cuándo está al día— y se
+ * sobrescribe. Esto es su historia: cuándo se cobró, qué periodo cubrió,
+ * cuánto y quién lo anotó. Sin esta tabla, marcar un pago borraba el anterior
+ * y no había extracto que mandarle a nadie.
+ *
+ * El importe en CENTAVOS ENTEROS, como todo el dinero de este repo
+ * (`src/lib/money.ts`): sumar pesos en coma flotante da totales que el dueño
+ * no puede cuadrar contra sus propias tarjetas.
+ */
+export const payment = pgTable(
+  "payment",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    /** Cuándo entró el dinero. Puede no ser hoy: se registra lo que pasó. */
+    cobradoEn: timestamp("cobrado_en").notNull(),
+    /** Periodo que cubre este pago. */
+    cubreDesde: timestamp("cubre_desde").notNull(),
+    cubreHasta: timestamp("cubre_hasta").notNull(),
+    /** Centavos enteros. Nunca un decimal. */
+    importeCentavos: integer("importe_centavos").notNull(),
+    /** ISO-4217, del catálogo de `lib/money.ts`. */
+    moneda: text("moneda").notNull(),
+    /** «transferencia», «Mercado Pago», «efectivo»… Lo que el operador quiera. */
+    nota: text("nota"),
+    /** Correo del superadmin que lo anotó: un extracto sin autor no se audita. */
+    registradoPor: text("registrado_por").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    // El extracto de un cliente, del más reciente al más viejo.
+    index("payment_org_cobrado_idx").on(t.organizationId, t.cobradoEn),
+  ]
+);

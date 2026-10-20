@@ -15,6 +15,7 @@ const prefixes = {
   credentials: "cred",
   agentProfile: "agp",
   accessLink: "alk",
+  payment: "pay",
   kbEntry: "kb",
   template: "tpl",
   testRun: "run",

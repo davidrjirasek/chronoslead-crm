@@ -16,6 +16,7 @@ import {
 import { accesoAlPanel } from "@/server/platform/superadmin";
 import { SEED_STAGES } from "@/server/auth/on-signup";
 import { baseDomain } from "@/server/tenant/edition";
+import { formatMoneyCents, isCurrency, parseMoneyToCents } from "@/lib/money";
 
 export type ResultadoAccion = { error: string | null; aviso: string | null };
 
@@ -165,6 +166,10 @@ export async function altaDeCliente(
 
 const idSchema = z.object({ organizationId: z.string().trim().min(1) });
 
+/**
+ * 109 — Registrar un cobro. Guarda el hecho (para el extracto) y mueve la
+ * fecha de «pagado hasta» (para el acceso), en una transacción.
+ */
 export async function marcarPago(
   _prev: ResultadoAccion,
   formData: FormData
@@ -181,10 +186,38 @@ export async function marcarPago(
     return { error: "La fecha no es válida.", aviso: null };
   }
 
-  await registrarPago(datos.data.organizationId, hasta);
-  registrar(guardia.autor, "pago", datos.data.organizationId, hastaTexto || "+1 mes");
+  const importeCentavos = parseMoneyToCents(String(formData.get("importe") ?? ""));
+  if (importeCentavos === null || importeCentavos <= 0) {
+    return {
+      error: "Escribí cuánto cobraste (por ejemplo 1500 o 1.500,00).",
+      aviso: null,
+    };
+  }
+
+  const moneda = String(formData.get("moneda") ?? "").trim().toUpperCase();
+  if (!isCurrency(moneda)) {
+    return { error: "Elegí la moneda del cobro.", aviso: null };
+  }
+
+  const periodo = await registrarPago(datos.data.organizationId, {
+    hasta,
+    importeCentavos,
+    moneda,
+    nota: String(formData.get("nota") ?? ""),
+    registradoPor: guardia.autor,
+  });
+
+  registrar(
+    guardia.autor,
+    "pago",
+    datos.data.organizationId,
+    `${formatMoneyCents(importeCentavos, moneda)} · hasta ${periodo.hasta.toISOString().slice(0, 10)}`
+  );
   revalidatePath("/admin");
-  return VACIO;
+  return {
+    error: null,
+    aviso: `Cobro de ${formatMoneyCents(importeCentavos, moneda)} registrado. Cubre hasta el ${periodo.hasta.toLocaleDateString("es")}.`,
+  };
 }
 
 export async function suspenderCliente(

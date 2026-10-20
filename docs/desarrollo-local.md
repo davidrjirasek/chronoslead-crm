@@ -141,6 +141,16 @@ Dos cosas que cuestan una tarde si no se saben, y que hay que verificar en Cooli
 
 El `Dockerfile` del repo ya hace las dos cosas; esto es para cuando se corre a mano.
 
+## No corras `build` con `dev` encendido
+
+Las dos escriben en la MISMA carpeta `.next`. Lanzar `corepack pnpm build` mientras alguien
+está usando la app por `pnpm dev` le deja el servidor en un estado roto: las pantallas se
+quedan cargando para siempre o dan `__webpack_modules__ is not a function`. Pasó, y parecía
+un fallo de la pantalla nueva.
+
+Para comprobar un build sin molestar: parar `dev`, construir, y volver a arrancar `dev`
+(o limpiar `.next` antes de reanudar).
+
 ## Por qué el modo desarrollo se siente lento
 
 Next compila cada pantalla la **primera** vez que se visita. Medido en esta Mac:

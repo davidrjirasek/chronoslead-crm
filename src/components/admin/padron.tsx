@@ -1,12 +1,17 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { Check, ChevronDown, Copy, Link2, Plus } from "lucide-react";
+import { Check, ChevronDown, Copy, FileText, Link2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { EstadoOrganizacion } from "@/lib/tenant/estado";
 import type { FilaDelPadron } from "@/server/platform/padron";
+import {
+  CURRENCY_OPTIONS,
+  DEFAULT_CURRENCY,
+  formatMoneyCents,
+} from "@/lib/money";
 import {
   altaDeCliente,
   enlaceDeAcceso,
@@ -181,6 +186,21 @@ function Aviso({
 }
 
 /**
+ * Suma por moneda. Nunca una sola cifra con monedas mezcladas: sumar pesos y
+ * dólares da un número que no existe en ninguna contabilidad.
+ */
+function totalPorMoneda(pagos: FilaDelPadron["pagos"]): string {
+  if (pagos.length === 0) return "—";
+  const totales = new Map<string, number>();
+  for (const p of pagos) {
+    totales.set(p.moneda, (totales.get(p.moneda) ?? 0) + p.importeCentavos);
+  }
+  return [...totales.entries()]
+    .map(([moneda, centavos]) => formatMoneyCents(centavos, moneda))
+    .join(" · ");
+}
+
+/**
  * Una fila: lo que hay que saber de un vistazo y UN botón para actuar. En un
  * teléfono los datos se apilan en vez de salirse por la derecha.
  */
@@ -209,6 +229,14 @@ function Cliente({
           <p className="text-[11px] uppercase tracking-wide text-text-4">Pagado hasta</p>
           <p className={cliente.pagadoHasta ? "text-text-2" : "text-text-4"}>
             {cliente.pagadoHasta ? fecha.format(cliente.pagadoHasta) : "sin fecha"}
+          </p>
+        </div>
+
+        <div className="basis-36 text-sm">
+          <p className="text-[11px] uppercase tracking-wide text-text-4">Cobrado</p>
+          {/* De un vistazo, sin abrir nada: lo que más se mira de un cliente. */}
+          <p className={cliente.pagos.length ? "text-text-2" : "text-text-4"}>
+            {totalPorMoneda(cliente.pagos)}
           </p>
         </div>
 
@@ -255,33 +283,85 @@ function Acciones({ cliente }: { cliente: FilaDelPadron }) {
     <div className="space-y-4 border-t border-line bg-brand-tint/50 px-4 py-4">
       <div className="grid gap-4 lg:grid-cols-2">
         <Bloque
-          titulo="Registrar un pago"
-          ayuda="Sin fecha suma un mes desde hoy; con fecha, la deja hasta ese día."
+          titulo="Registrar un cobro"
+          ayuda="Queda en el histórico con su importe. El periodo arranca donde terminaba el anterior, así que un cliente que paga tarde no pierde esos días."
         >
-          <form action={accionPago} className="flex flex-wrap items-end gap-2">
+          <form action={accionPago} className="space-y-2">
             <input type="hidden" name="organizationId" value={cliente.id} />
-            <div className="space-y-1">
-              <Label htmlFor={`hasta-${cliente.id}`} className="text-[11px]">
-                Hasta (opcional)
-              </Label>
-              <Input
-                id={`hasta-${cliente.id}`}
-                name="hasta"
-                type="date"
-                className="h-9 w-40"
-              />
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1">
+                <Label htmlFor={`importe-${cliente.id}`} className="text-[11px]">
+                  Importe
+                </Label>
+                <Input
+                  id={`importe-${cliente.id}`}
+                  name="importe"
+                  required
+                  inputMode="decimal"
+                  placeholder="1500"
+                  className="h-9 w-28"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor={`moneda-${cliente.id}`} className="text-[11px]">
+                  Moneda
+                </Label>
+                <select
+                  id={`moneda-${cliente.id}`}
+                  name="moneda"
+                  defaultValue={cliente.pagos[0]?.moneda ?? DEFAULT_CURRENCY}
+                  className="h-9 rounded-md border border-border bg-raised px-2 text-sm"
+                >
+                  {CURRENCY_OPTIONS.map((m) => (
+                    <option key={m.code} value={m.code}>
+                      {m.code} — {m.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor={`hasta-${cliente.id}`} className="text-[11px]">
+                  Cubre hasta (opcional)
+                </Label>
+                <Input
+                  id={`hasta-${cliente.id}`}
+                  name="hasta"
+                  type="date"
+                  className="h-9 w-40"
+                />
+              </div>
             </div>
-            <Button type="submit" size="sm" disabled={pagoEnCurso}>
-              {pagoEnCurso ? "Guardando…" : "Marcar pago"}
-            </Button>
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1">
+                <Label htmlFor={`nota-${cliente.id}`} className="text-[11px]">
+                  Nota (opcional)
+                </Label>
+                <Input
+                  id={`nota-${cliente.id}`}
+                  name="nota"
+                  placeholder="transferencia, Mercado Pago…"
+                  className="h-9 w-60"
+                />
+              </div>
+              <Button type="submit" size="sm" disabled={pagoEnCurso}>
+                {pagoEnCurso ? "Guardando…" : "Registrar cobro"}
+              </Button>
+            </div>
           </form>
           {/* Lo que pasó, no solo que el botón dejó de girar. */}
-          <p className="flex items-center gap-1.5 text-xs text-text-3">
-            <Check className="h-3.5 w-3.5 shrink-0 text-success-text" strokeWidth={2.4} />
-            {cliente.pagadoHasta
-              ? `Ahora está pagado hasta el ${fecha.format(cliente.pagadoHasta)}.`
-              : "Todavía sin fecha de pago."}
-          </p>
+          {pago.aviso ? (
+            <Aviso tono="ok">{pago.aviso}</Aviso>
+          ) : (
+            <p className="flex items-center gap-1.5 text-xs text-text-3">
+              <Check
+                className="h-3.5 w-3.5 shrink-0 text-success-text"
+                strokeWidth={2.4}
+              />
+              {cliente.pagadoHasta
+                ? `Ahora está pagado hasta el ${fecha.format(cliente.pagadoHasta)}.`
+                : "Todavía sin ningún cobro registrado."}
+            </p>
+          )}
         </Bloque>
 
         <Bloque
@@ -341,8 +421,85 @@ function Acciones({ cliente }: { cliente: FilaDelPadron }) {
         {enlace.aviso && <EnlaceDeAcceso url={enlace.aviso} motivo="recuperacion" />}
       </Bloque>
 
+      <Historico cliente={cliente} />
+
       {error && <Aviso tono="error">{error}</Aviso>}
     </div>
+  );
+}
+
+/** 109 — Los cobros de este cliente, y el enlace al extracto imprimible. */
+function Historico({ cliente }: { cliente: FilaDelPadron }) {
+  if (cliente.pagos.length === 0) {
+    return (
+      <Bloque
+        titulo="Histórico de cobros"
+        ayuda="Todavía no hay ninguno. El primero que registres aparece acá."
+      >
+        <span />
+      </Bloque>
+    );
+  }
+
+  // Un total por moneda: sumar pesos y dólares daría un número que no existe.
+  const totales = new Map<string, number>();
+  for (const p of cliente.pagos) {
+    totales.set(p.moneda, (totales.get(p.moneda) ?? 0) + p.importeCentavos);
+  }
+
+  return (
+    <Bloque
+      titulo={`Histórico de cobros (${cliente.pagos.length})`}
+      ayuda="Todo lo cobrado a este cliente, con el periodo que cubrió cada pago."
+    >
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="text-left text-[11px] uppercase tracking-wide text-text-4">
+            <tr>
+              <th className="py-1 pr-3 font-medium">Cobrado</th>
+              <th className="py-1 pr-3 font-medium">Cubre</th>
+              <th className="py-1 pr-3 font-medium">Importe</th>
+              <th className="py-1 font-medium">Nota</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {cliente.pagos.map((p) => (
+              <tr key={p.id}>
+                <td className="py-1.5 pr-3 text-text-2">{fecha.format(p.cobradoEn)}</td>
+                <td className="py-1.5 pr-3 text-text-3">
+                  {fecha.format(p.cubreDesde)} — {fecha.format(p.cubreHasta)}
+                </td>
+                <td className="py-1.5 pr-3 font-medium tabular-nums">
+                  {formatMoneyCents(p.importeCentavos, p.moneda)}
+                </td>
+                <td className="py-1.5 text-text-3">{p.nota ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2.5">
+        <p className="text-sm">
+          <span className="text-text-3">Total cobrado: </span>
+          {[...totales.entries()].map(([moneda, centavos], i) => (
+            <span key={moneda} className="font-semibold tabular-nums">
+              {i > 0 && " · "}
+              {formatMoneyCents(centavos, moneda)}
+            </span>
+          ))}
+        </p>
+        <a
+          href={`/admin/extracto/${cliente.id}`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-sm hover:bg-hover"
+        >
+          <FileText className="h-4 w-4" strokeWidth={2} />
+          Ver extracto para imprimir
+        </a>
+      </div>
+    </Bloque>
   );
 }
 
