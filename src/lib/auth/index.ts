@@ -11,6 +11,7 @@ import {
   resolveActiveOrganizationId,
 } from "@/server/auth/on-signup";
 import { isPublicSignupAllowed } from "@/server/auth/registration";
+import { baseDomain, isCloud } from "@/server/tenant/edition";
 
 /**
  * Contexto interno del proceso: permite que el alta de cuentas de equipo
@@ -40,11 +41,54 @@ function isInternalSignup(): boolean {
 
 const RATE_LIMITED_PATHS = new Set(["/sign-in/email", "/sign-up/email"]);
 
+/**
+ * 101 — Orígenes de confianza con un subdominio por organización.
+ *
+ * Sin esto el CSRF de Better Auth rechaza TODOS los logins: el `Origin` de
+ * `https://cliente.chronoslead.com` nunca coincide con el `baseURL`, y el CRM
+ * se ve pero nadie entra.
+ *
+ * El apex va aparte (`*.dominio` no cubre `dominio`) y el puerto va aparte (el
+ * navegador manda `http://demo.lvh.me:3000` y `http://*.lvh.me` no lo cubre).
+ * Este fallo no lo encuentra un test unitario: lo encuentra un login real.
+ */
+export function buildTrustedOrigins(
+  base: string,
+  port?: string | null
+): string[] {
+  if (!base) return [];
+  const sufijos = port ? ["", `:${port}`] : [""];
+  const out: string[] = [];
+  for (const s of sufijos) {
+    out.push(`https://${base}${s}`, `https://*.${base}${s}`);
+    out.push(`http://${base}${s}`, `http://*.${base}${s}`);
+  }
+  return out;
+}
+
+/** El puerto de `APP_BASE_URL`, cuando lo lleva explícito (desarrollo local). */
+function puertoDeBaseUrl(appBaseUrl: string): string | null {
+  try {
+    return new URL(appBaseUrl).port || null;
+  } catch {
+    return null;
+  }
+}
+
 function createAuth() {
   const env = getEnv();
+  const cloud = isCloud();
   return betterAuth({
     baseURL: env.APP_BASE_URL,
     secret: env.BETTER_AUTH_SECRET,
+    ...(cloud
+      ? {
+          trustedOrigins: buildTrustedOrigins(
+            baseDomain(),
+            puertoDeBaseUrl(env.APP_BASE_URL)
+          ),
+        }
+      : {}),
     database: drizzleAdapter(getDb(), {
       provider: "pg",
       schema: {
@@ -62,7 +106,14 @@ function createAuth() {
       requireEmailVerification: false,
       minPasswordLength: 8,
     },
-    plugins: [organization({ creatorRole: "owner" })],
+    // 101 — En plataforma, el plugin NO puede dejar crear organizaciones a
+    // cualquier usuario autenticado: sería un alta sin pasar por el operador.
+    plugins: [
+      organization({
+        creatorRole: "owner",
+        ...(cloud ? { allowUserToCreateOrganization: false } : {}),
+      }),
+    ],
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
         // Rate limit por IP en login/registro (FR-062): 10 / 10 min → 429.
@@ -79,8 +130,9 @@ function createAuth() {
         if (ctx.path === "/sign-up/email") {
           if (!isInternalSignup() && !(await isPublicSignupAllowed())) {
             throw new APIError("FORBIDDEN", {
-              message:
-                "El registro está cerrado: esta instancia ya tiene su organización",
+              message: cloud
+                ? "El registro no está abierto: las cuentas las crea el operador"
+                : "El registro está cerrado: esta instancia ya tiene su organización",
             });
           }
         }

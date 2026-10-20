@@ -26,6 +26,14 @@ export const envSchema = z.object({
   OPENROUTER_BASE_URL: z.string().url().default("https://openrouter.ai/api"),
   OPENROUTER_MODEL: z.string().optional(),
   OPENROUTER_JUDGE_MODEL: z.string().optional(),
+  // 101: edición. Sin ella, una instancia = un negocio (el Vocero original).
+  // Con EDITION=cloud, una instancia sirve a muchas organizaciones y la actual
+  // se resuelve por el Host, nunca por la membresía del usuario.
+  EDITION: z.string().optional(),
+  // 101: dominio base del que cuelgan los subdominios de cada organización
+  // ({slug}.BASE_DOMAIN). En local, `lvh.me` (resuelve a 127.0.0.1). Solo se
+  // usa con EDITION=cloud; sin ella es inerte.
+  BASE_DOMAIN: z.string().optional(),
   // 014/017: canales encendidos, separados por coma. WhatsApp siempre esta on.
   // Ej.: CHANNELS=whatsapp,instagram,messenger. Sin ella, la instancia es solo
   // WhatsApp y las superficies de los demas canales responden 404.

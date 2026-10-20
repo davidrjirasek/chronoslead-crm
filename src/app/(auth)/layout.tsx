@@ -4,6 +4,9 @@ import { getBranding } from "@/server/branding";
 import { enabledChannels } from "@/server/channels/enabled";
 import { productName } from "@/lib/channels";
 import { BrandLogo } from "@/components/brand-mark";
+import { InstanciaInexistente } from "@/components/instancia-inexistente";
+import { currentTenantOrg } from "@/server/tenant/current";
+import { isCloud } from "@/server/tenant/edition";
 
 /**
  * Pantalla de entrada con la escenografía del hero de vocerocrm.com: papel
@@ -14,6 +17,12 @@ import { BrandLogo } from "@/components/brand-mark";
 export default async function AuthLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // 101 — En plataforma, un Host que no es de nadie no enseña un formulario de
+  // acceso: no hay a qué entrar, y pintarlo con la marca por defecto invitaría
+  // a probar contraseñas contra una organización que no existe.
+  if (isCloud() && !(await currentTenantOrg())) {
+    return <InstanciaInexistente />;
+  }
   const branding = await getBranding().catch(() => DEFAULT_BRANDING);
   const vocero = isVoceroName(branding.name);
   return (
