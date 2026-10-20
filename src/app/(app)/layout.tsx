@@ -11,6 +11,7 @@ import { enabledChannels } from "@/server/channels/enabled";
 import { navKicker } from "@/lib/channels";
 import { avisoIaDe } from "@/server/ai/aviso";
 import { AvisoIaBanner } from "@/components/avisos/aviso-ia";
+import { AvisoDeGraciaBanner } from "@/components/avisos/aviso-de-gracia";
 
 export default async function AppLayout({
   children,
@@ -44,7 +45,12 @@ export default async function AppLayout({
       // cliente: no puede —ni debe— leer variables de entorno.
       agenda={agendaEnabled()}
       kicker={navKicker([...enabledChannels()])}
-      aviso={<AvisoIaBanner aviso={aviso} />}
+      aviso={
+        <>
+          <AvisoDeGraciaBanner estado={session.estado} />
+          <AvisoIaBanner aviso={aviso} />
+        </>
+      }
     >
       {children}
     </AppShell>

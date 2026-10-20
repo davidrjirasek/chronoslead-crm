@@ -3,6 +3,11 @@ import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { getDb, schema } from "@/lib/db";
 import { resolveMembership } from "@/server/auth/on-signup";
+import {
+  mensajeDeSuspension,
+  puedeEntrar,
+  type EstadoOrganizacion,
+} from "@/lib/tenant/estado";
 import { currentTenantOrg } from "@/server/tenant/current";
 import { isCloud } from "@/server/tenant/edition";
 
@@ -10,6 +15,8 @@ export type SessionContext = {
   userId: string;
   organizationId: string;
   role: string;
+  /** 104 — Estado de la organización; `undefined` sin EDITION=cloud. */
+  estado?: EstadoOrganizacion;
 };
 
 export class UnauthorizedError extends Error {
@@ -68,12 +75,18 @@ export async function requireSession(): Promise<SessionContext> {
     // Prohibido caer a la organización del usuario: `loquesea.chronoslead.com`
     // abriría sesión sobre la organización que ese usuario tenga.
     if (!tenant) throw new UnauthorizedError("Host sin organización");
+    // 104 — Suspendida: no entra nadie, ni el dueño. Los webhooks siguen
+    // guardando mensajes; lo que se corta es el servicio, no los datos.
+    if (!puedeEntrar(tenant.estado)) {
+      throw new UnauthorizedError(mensajeDeSuspension(tenant.estado));
+    }
     const acceso = await membresiaEn(session.user.id, tenant.id);
     if (!acceso) throw new UnauthorizedError("Sin acceso a esta organización");
     return {
       userId: session.user.id,
       organizationId: acceso.organizationId,
       role: acceso.role,
+      estado: tenant.estado,
     };
   }
 

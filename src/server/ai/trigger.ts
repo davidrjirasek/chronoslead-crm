@@ -2,6 +2,7 @@ import { scheduleAgentTurn } from "@/server/ai/pipeline";
 import { isAiConfiguredFor } from "@/lib/ai/provider";
 import { despachoActivo } from "@/server/brains/config";
 import { despacharAlCerebro } from "@/server/dispatch/encolar";
+import { organizacionConServicio } from "@/server/tenant/servicio";
 
 /**
  * Punto de enganche del turno tras la ingesta de un mensaje entrante REAL (las
@@ -25,6 +26,11 @@ export async function maybeRunAgentTurn(
   organizationId: string,
   messageId: string
 ): Promise<void> {
+  // 104 — Una organización suspendida no contesta en automático, ni por el
+  // agente incluido ni por un cerebro externo. El mensaje entrante YA está
+  // guardado cuando se llega aquí: se corta el servicio, no los datos.
+  if (!(await organizacionConServicio(organizationId))) return;
+
   if (despachoActivo()) {
     await despacharAlCerebro(conversationId, organizationId, messageId);
     return;

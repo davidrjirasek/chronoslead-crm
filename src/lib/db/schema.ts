@@ -85,6 +85,18 @@ export const organization = pgTable("organization", {
   // 102: permite rotar la URL del webhook de UNA organización sin tocar las
   // demás. Subirlo invalida la URL anterior de esa organización.
   webhookTokenVersion: integer("webhook_token_version").notNull().default(1),
+  /**
+   * 104: hasta cuándo está pagada. NULL = activa (cliente nuevo o cortesía):
+   * nadie se queda fuera por un campo vacío. De esta fecha se derivan la gracia
+   * y la suspensión por impago; no se guarda ningún estado calculado.
+   */
+  paidThrough: timestamp("paid_through"),
+  /**
+   * 104: suspensión MANUAL, por un motivo que no es el dinero. Gana sobre la
+   * fecha de pago y pagar no la levanta: la quita el operador.
+   */
+  suspendedAt: timestamp("suspended_at"),
+  suspendedReason: text("suspended_reason"),
 });
 
 export const member = pgTable("member", {

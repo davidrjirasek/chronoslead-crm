@@ -2,8 +2,8 @@ import { count, eq, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 
-/** Etapas sembradas del pipeline (US2). */
-const SEED_STAGES: { name: string; kind: "open" | "won" | "lost" }[] = [
+/** Etapas sembradas del pipeline (US2). Exportadas: 104 las reutiliza al dar de alta. */
+export const SEED_STAGES: { name: string; kind: "open" | "won" | "lost" }[] = [
   { name: "Nuevo", kind: "open" },
   { name: "En conversación", kind: "open" },
   { name: "Interesado", kind: "open" },
