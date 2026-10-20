@@ -281,7 +281,7 @@ function Acciones({ cliente }: { cliente: FilaDelPadron }) {
 
   return (
     <div className="space-y-4 border-t border-line bg-brand-tint/50 px-4 py-4">
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         <Bloque
           titulo="Registrar un cobro"
           ayuda="Queda en el histórico con su importe. El periodo arranca donde terminaba el anterior, así que un cliente que paga tarde no pierde esos días."
@@ -405,21 +405,29 @@ function Acciones({ cliente }: { cliente: FilaDelPadron }) {
               <p className="text-xs text-text-3">Motivo registrado: {cliente.estado.razon}</p>
             )}
         </Bloque>
-      </div>
 
-      <Bloque
-        titulo="Enlace de acceso"
-        ayuda="Para que el dueño elija una contraseña nueva. Sirve una vez, caduca a los 7 días e invalida el anterior."
-      >
-        <form action={accionEnlace}>
-          <input type="hidden" name="organizationId" value={cliente.id} />
-          <Button type="submit" size="sm" variant="outline" disabled={enlaceEnCurso}>
-            <Link2 className="mr-1.5 h-4 w-4" strokeWidth={2} />
-            {enlaceEnCurso ? "Generando…" : "Generar enlace"}
-          </Button>
-        </form>
-        {enlace.aviso && <EnlaceDeAcceso url={enlace.aviso} motivo="recuperacion" />}
-      </Bloque>
+        {/* En la misma columna que suspender: ahí sobraba sitio y esto solo
+            necesita un botón. Antes ocupaba una fila entera él solo. */}
+        <Bloque
+          titulo="Enlace de acceso"
+          ayuda="Para que el dueño elija una contraseña nueva. Sirve una vez, caduca a los 7 días e invalida el anterior."
+          accion={
+            <form action={accionEnlace}>
+              <input type="hidden" name="organizationId" value={cliente.id} />
+              <Button type="submit" size="sm" variant="outline" disabled={enlaceEnCurso}>
+                <Link2 className="mr-1.5 h-4 w-4" strokeWidth={2} />
+                {enlaceEnCurso ? "Generando…" : "Generar enlace"}
+              </Button>
+            </form>
+          }
+        >
+          {enlace.aviso ? (
+            <EnlaceDeAcceso url={enlace.aviso} motivo="recuperacion" />
+          ) : (
+            <span />
+          )}
+        </Bloque>
+      </div>
 
       <Historico cliente={cliente} />
 
@@ -451,6 +459,28 @@ function Historico({ cliente }: { cliente: FilaDelPadron }) {
     <Bloque
       titulo={`Histórico de cobros (${cliente.pagos.length})`}
       ayuda="Todo lo cobrado a este cliente, con el periodo que cubrió cada pago."
+      accion={
+        <div className="flex items-center gap-3">
+          <p className="text-sm">
+            <span className="text-text-3">Total: </span>
+            {[...totales.entries()].map(([moneda, centavos], i) => (
+              <span key={moneda} className="font-semibold tabular-nums">
+                {i > 0 && " · "}
+                {formatMoneyCents(centavos, moneda)}
+              </span>
+            ))}
+          </p>
+          <a
+            href={`/admin/extracto/${cliente.id}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-sm hover:bg-hover"
+          >
+            <FileText className="h-4 w-4" strokeWidth={2} />
+            Extracto
+          </a>
+        </div>
+      }
     >
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -479,26 +509,6 @@ function Historico({ cliente }: { cliente: FilaDelPadron }) {
         </table>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2.5">
-        <p className="text-sm">
-          <span className="text-text-3">Total cobrado: </span>
-          {[...totales.entries()].map(([moneda, centavos], i) => (
-            <span key={moneda} className="font-semibold tabular-nums">
-              {i > 0 && " · "}
-              {formatMoneyCents(centavos, moneda)}
-            </span>
-          ))}
-        </p>
-        <a
-          href={`/admin/extracto/${cliente.id}`}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-sm hover:bg-hover"
-        >
-          <FileText className="h-4 w-4" strokeWidth={2} />
-          Ver extracto para imprimir
-        </a>
-      </div>
     </Bloque>
   );
 }
@@ -506,17 +516,23 @@ function Historico({ cliente }: { cliente: FilaDelPadron }) {
 function Bloque({
   titulo,
   ayuda,
+  accion,
   children,
 }: {
   titulo: string;
   ayuda: string;
+  /** Va arriba a la derecha: lo que se busca no debería estar al final. */
+  accion?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="cl-superficie space-y-2.5 rounded-lg border border-line p-3.5">
-      <div>
-        <h3 className="text-sm font-semibold">{titulo}</h3>
-        <p className="mt-0.5 text-xs leading-snug text-text-3">{ayuda}</p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold">{titulo}</h3>
+          <p className="mt-0.5 text-xs leading-snug text-text-3">{ayuda}</p>
+        </div>
+        {accion}
       </div>
       {children}
     </section>
