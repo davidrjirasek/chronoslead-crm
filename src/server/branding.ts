@@ -5,6 +5,8 @@ import {
   normalizeBranding,
   type Branding,
 } from "@/lib/branding";
+import { currentTenantOrg } from "@/server/tenant/current";
+import { isCloud } from "@/server/tenant/edition";
 
 /** Marca guardada en organization.metadata (JSON de Better Auth). */
 
@@ -31,21 +33,34 @@ export async function getBrandingContext(
   organizationId?: string | null
 ): Promise<{ organizationId: string | null; branding: Branding }> {
   const db = getDb();
-  const rows = organizationId
-    ? await db
-        .select({ id: schema.organization.id, metadata: schema.organization.metadata })
-        .from(schema.organization)
-        .where(eq(schema.organization.id, organizationId))
-        .limit(1)
-    : // Sin sesión (login, layout raíz): la única organización de la instancia.
-      await db
-        .select({ id: schema.organization.id, metadata: schema.organization.metadata })
-        .from(schema.organization)
-        .limit(1);
-  if (!rows[0]) return { organizationId: null, branding: DEFAULT_BRANDING };
-  const meta = parseMetadata(rows[0].metadata);
+  let fila: { id: string; metadata: string | null } | undefined;
+
+  if (organizationId) {
+    const rows = await db
+      .select({ id: schema.organization.id, metadata: schema.organization.metadata })
+      .from(schema.organization)
+      .where(eq(schema.organization.id, organizationId))
+      .limit(1);
+    fila = rows[0];
+  } else if (isCloud()) {
+    // 101 — Sin sesión y en plataforma, la marca sale del Host. Si el Host no
+    // es de nadie, la marca por defecto: jamás el logo de otra organización,
+    // que es lo que se vería con un `limit(1)` sin `where`.
+    const tenant = await currentTenantOrg();
+    fila = tenant ? { id: tenant.id, metadata: tenant.metadata } : undefined;
+  } else {
+    // Edición de un solo negocio: la única organización de la instancia.
+    const rows = await db
+      .select({ id: schema.organization.id, metadata: schema.organization.metadata })
+      .from(schema.organization)
+      .limit(1);
+    fila = rows[0];
+  }
+
+  if (!fila) return { organizationId: null, branding: DEFAULT_BRANDING };
+  const meta = parseMetadata(fila.metadata);
   return {
-    organizationId: rows[0].id,
+    organizationId: fila.id,
     branding: normalizeBranding(
       (meta.branding as Partial<Branding> | undefined) ?? null
     ),

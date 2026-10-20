@@ -72,6 +72,31 @@ corepack pnpm dev             # http://localhost:3000
 `pnpm init-env` deja `APP_BASE_URL=https://localhost` y un `DATABASE_URL` que apunta al
 servicio `postgres` de Docker: los dos hay que cambiarlos a mano para `pnpm dev`.
 
+## Modo plataforma (`EDITION=cloud`)
+
+Desde la spec 101, el `.env` local corre en modo plataforma:
+
+```bash
+EDITION=cloud
+BASE_DOMAIN=lvh.me            # lvh.me y todos sus subdominios resuelven a 127.0.0.1
+APP_BASE_URL=http://lvh.me:3000
+```
+
+Con eso, **`http://localhost:3000` ya no sirve**: `localhost` no cuelga de `lvh.me` y la app
+responde «esta instancia no existe», que es justo lo correcto. Se entra por el subdominio de
+cada organización:
+
+| Dirección | Organización |
+|---|---|
+| http://alfa.lvh.me:3000 | Ferretería El Martillo (la del seed, con la cuenta de desarrollo) |
+| http://beta.lvh.me:3000 | Clínica Beta (vacía, solo para probar el aislamiento) |
+| http://cualquierotra.lvh.me:3000 | «esta instancia no existe» |
+
+`lvh.me` es un dominio público que resuelve a `127.0.0.1`: no hay que tocar `/etc/hosts`.
+
+Para volver al comportamiento del Vocero original, deja `EDITION=` vacía y
+`APP_BASE_URL=http://localhost:3000`. Los tests corren siempre en ese modo.
+
 ## El gate completo
 
 ```bash
