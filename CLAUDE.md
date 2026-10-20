@@ -41,6 +41,34 @@ conflicto futuro.** Lo multitenant va detrás de `EDITION=cloud`: sin esa variab
 se comporta como el Vocero original. No reconstruyas bandeja, pipeline, agenda, contactos
 ni agente: ya existen y reinventarlos es justo el error que este fork corrige.
 
+## Antes de escribir un procedimiento, buscá si ya existe
+
+Este repo **viene con sus propias instrucciones**, y más de una está escrita
+para que la siga una IA. Antes de redactar una guía, unos pasos o un documento
+de proceso: buscalo primero. Siempre.
+
+```bash
+ls *.md docs/                      # qué documenta ya el repo
+grep -ril "<el tema>" . --include=*.md --exclude-dir=node_modules
+```
+
+| Si vas a… | Leé PRIMERO |
+|---|---|
+| Desplegar (Coolify, compose, Render/Fly/Railway) | [`INSTALL-IA.md`](INSTALL-IA.md) — **es un guion escrito para la IA**. En ChronosLead: Ruta A, **variante «construir desde el código»** (es un fork). El delta de plataforma, en [docs/despliegue-coolify.md](docs/despliegue-coolify.md) |
+| Levantar el entorno local | [docs/desarrollo-local.md](docs/desarrollo-local.md) |
+| Actualizar de versión | `CHANGELOG.md` → «Actualizar desde…» |
+| Entender una decisión de arquitectura | `docs/adr-*.md` |
+| Tocar el código | [AGENTS.md](AGENTS.md) |
+
+**Por qué está escrito aquí y no en una nota suelta:** ya ocurrió dos veces —
+un logo redibujado existiendo el archivo, y una guía de despliegue redactada
+a mano existiendo `INSTALL-IA.md`. Las dos se detectaron porque el dueño
+preguntó. El dueño no es el mecanismo de control.
+
+Un documento que *describe* algo no es ese algo ya hecho — pero un documento
+que *instruye* cómo hacer algo manda sobre tu criterio. Distinguilos: el
+primero es especificación, el segundo es procedimiento.
+
 ## Mapa de lo que toca la conversión
 
 | Quieres cambiar… | Toca… |

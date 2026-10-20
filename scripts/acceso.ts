@@ -16,8 +16,9 @@ import { join } from "node:path";
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { crearEnlace, urlDeEnlace } from "@/server/platform/access-link";
+import { directorioDeEntregas } from "@/server/platform/entregas";
 
-const DIRECTORIO = ".provision";
+const DIRECTORIO = directorioDeEntregas();
 
 function fallar(mensaje: string): never {
   console.error(`\n✗ ${mensaje}\n`);
