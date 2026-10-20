@@ -141,6 +141,16 @@ Dos cosas que cuestan una tarde si no se saben, y que hay que verificar en Cooli
 
 El `Dockerfile` del repo ya hace las dos cosas; esto es para cuando se corre a mano.
 
+## No corras `build` con `dev` encendido
+
+Las dos escriben en la MISMA carpeta `.next`. Lanzar `corepack pnpm build` mientras alguien
+está usando la app por `pnpm dev` le deja el servidor en un estado roto: las pantallas se
+quedan cargando para siempre o dan `__webpack_modules__ is not a function`. Pasó, y parecía
+un fallo de la pantalla nueva.
+
+Para comprobar un build sin molestar: parar `dev`, construir, y volver a arrancar `dev`
+(o limpiar `.next` antes de reanudar).
+
 ## Por qué el modo desarrollo se siente lento
 
 Next compila cada pantalla la **primera** vez que se visita. Medido en esta Mac:
@@ -155,3 +165,16 @@ Next compila cada pantalla la **primera** vez que se visita. Medido en esta Mac:
 
 No es un problema del producto: es el modo de trabajo. Antes de concluir que algo va lento,
 medirlo en producción.
+
+## El panel del operador (`admin.*`)
+
+```bash
+PLATFORM_SUPERADMIN_EMAILS=tu-correo@dominio.com   # separados por coma
+```
+
+Se entra en **http://admin.lvh.me:3000/admin** con una cuenta cuyo correo esté en esa
+lista. En cualquier otro subdominio el panel responde 404.
+
+Sin la variable **nadie** es superadmin, a propósito: una lista vacía no abre la puerta.
+Cambiar quién manda exige tocar el servidor y volver a desplegar, que es la barrera que se
+quiere para eso.

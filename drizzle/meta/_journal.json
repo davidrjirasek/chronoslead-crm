@@ -169,6 +169,13 @@
       "when": 1792503422050,
       "tag": "0023_enlaces_de_acceso",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792521756103,
+      "tag": "0024_historico_de_pagos",
+      "breakpoints": true
     }
   ]
 }
