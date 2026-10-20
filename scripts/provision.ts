@@ -27,8 +27,9 @@ import { newId } from "@/lib/db/ids";
 import { SEED_STAGES } from "@/server/auth/on-signup";
 import { resolveTenantFromHost } from "@/lib/tenant/host";
 import { crearEnlace, urlDeEnlace } from "@/server/platform/access-link";
+import { directorioDeEntregas } from "@/server/platform/entregas";
 
-const DIRECTORIO = ".provision";
+const DIRECTORIO = directorioDeEntregas();
 
 function fallar(mensaje: string): never {
   console.error(`\n✗ ${mensaje}\n`);
@@ -61,7 +62,11 @@ async function main(): Promise<void> {
     fallar(
       "Faltan datos. Uso:\n" +
         '  ORG_SLUG=suclinica ORG_NAME="Clínica Sonrisa" \\\n' +
-        "  ORG_ADMIN_EMAIL=dueno@suclinica.com pnpm provision"
+        "  ORG_ADMIN_EMAIL=dueno@suclinica.com pnpm provision\n" +
+        "\n" +
+        "  En la terminal del contenedor, lo mismo sin pnpm:\n" +
+        '  ORG_SLUG=suclinica ORG_NAME="Clínica Sonrisa" \\\n' +
+        "  ORG_ADMIN_EMAIL=dueno@suclinica.com node provision.mjs"
     );
   }
   validarSlug(slug);

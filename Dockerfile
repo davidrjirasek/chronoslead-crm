@@ -30,6 +30,17 @@ RUN pnpm exec esbuild scripts/migrate.mjs --bundle --platform=node \
 RUN pnpm exec esbuild scripts/seed/demo.ts --bundle --platform=node \
     --format=esm --outfile=seed-demo.bundle.mjs --alias:@=./src \
     --banner:js="import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
+# 110: las herramientas del operador (alta de un cliente y enlace de acceso).
+# Sin ellas la imagen sirve el CRM pero no deja crear la primera cuenta: en
+# plataforma no hay registro público, así que una instancia recién desplegada
+# no tendría por dónde entrar. Van bundleadas por lo mismo que seed-demo: en el
+# runner no hay código fuente ni esbuild.
+RUN pnpm exec esbuild scripts/provision.ts --bundle --platform=node \
+    --format=esm --outfile=provision.bundle.mjs --alias:@=./src \
+    --banner:js="import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
+RUN pnpm exec esbuild scripts/acceso.ts --bundle --platform=node \
+    --format=esm --outfile=acceso.bundle.mjs --alias:@=./src \
+    --banner:js="import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
 
 FROM node:22-alpine AS runner
 WORKDIR /app
@@ -39,6 +50,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # en /app, que es de root: el default de la app (./.dev-media) es solo para
 # desarrollo local. No se define en la plataforma: basta montar /data.
 ENV MEDIA_DIR=/data/media
+# 110: los enlaces de primer acceso que escriben provision.mjs y acceso.mjs,
+# en el volumen por lo mismo: /app se rehace en cada despliegue y es de root.
+ENV PROVISION_DIR=/data/.provision
 # su-exec: el entrypoint arranca como root SOLO para dejar /data escribible y
 # baja a `vocero` antes de correr la app (idea de #40).
 RUN apk add --no-cache su-exec
@@ -53,6 +67,8 @@ COPY --from=builder --chown=vocero:vocero /app/.next/static ./.next/static
 COPY --from=builder --chown=vocero:vocero /app/public ./public
 COPY --from=builder --chown=vocero:vocero /app/migrate.bundle.mjs ./migrate.mjs
 COPY --from=builder --chown=vocero:vocero /app/seed-demo.bundle.mjs ./seed-demo.mjs
+COPY --from=builder --chown=vocero:vocero /app/provision.bundle.mjs ./provision.mjs
+COPY --from=builder --chown=vocero:vocero /app/acceso.bundle.mjs ./acceso.mjs
 COPY --from=builder --chown=vocero:vocero /app/drizzle ./drizzle
 # Nombre propio a propósito: la imagen de node ya trae su docker-entrypoint.sh
 # (antepone `node` si el primer argumento no es un comando) y el nuestro le
