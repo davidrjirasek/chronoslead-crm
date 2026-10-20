@@ -116,16 +116,25 @@ sola vez** y caduca a los 7 días.
 3. `/login` carga con la identidad de ChronosLead
 4. `admin.chronoslead.com` da el panel del operador
 5. Un subdominio que no existe da «esta instancia no existe», no un error
-6. El guion de aislamiento contra el dominio real
+6. Los dos recorridos completos: entrar al CRM de un cliente, y entrar al panel
+   con el mismo usuario
+
+**El guion de aislamiento NO se corre contra producción.** Siembra sus propias
+organizaciones —quedarían en la base real— y da por encendidos los
+simuladores, que en producción están prohibidos. Es un gate del código y vive
+en local; lo que valida producción es el recorrido en vivo.
 
 ## El orden del corte
 
 1. Aplicación nueva en `nuevo.chronoslead.com`, **sin tocar la anterior**
 2. Alta de una organización de prueba con `provision.mjs`
 3. **Un WhatsApp real**: respuesta del agente y cita agendada
-4. El guion de aislamiento contra el dominio real
-5. Solo entonces: mover `chronoslead.com` a la aplicación nueva
-6. La anterior queda **detenida, no borrada**, una semana
+4. Solo entonces: mover `chronoslead.com` a la aplicación nueva
+5. La anterior queda **detenida, no borrada**, una semana
+
+Al mover el apex cambian dos cosas: `APP_BASE_URL` pasa a
+`https://chronoslead.com` y hay que **volver a registrar el webhook en Meta**,
+porque su URL sale de esa variable.
 
 Mismo App ID de Meta. Las rutas legales (`/privacidad`,
 `/condiciones-servicio`, `/eliminacion-datos`) no cambian: la Business
