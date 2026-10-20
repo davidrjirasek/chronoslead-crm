@@ -1,0 +1,4 @@
+interface:
+  display_name: "WhatsApp Tech Provider · Panel de Meta"
+  short_description: "Guía el trámite completo y deja los campos listos para copiar y pegar"
+  default_prompt: "Usa $whatsapp-meta-app-review para guiarme por el panel de Meta y dejar mi app lista para enviar a revisión."

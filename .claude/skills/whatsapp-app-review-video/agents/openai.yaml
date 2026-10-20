@@ -1,0 +1,4 @@
+interface:
+  display_name: "WhatsApp App Review · Videos"
+  short_description: "Monta los dos screencasts de App Review: sin audio y con rótulos en inglés"
+  default_prompt: "Usa $whatsapp-app-review-video para planear, montar y revisar mis dos screencasts de Meta App Review a partir de mis clips."

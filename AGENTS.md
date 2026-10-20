@@ -1,4 +1,24 @@
-# AGENTS.md — Guía de Vocero CRM para agentes y personas
+# AGENTS.md — ChronosLead (fork multitenant de Vocero CRM)
+
+> **Antes de leer nada de abajo:** este repo es un fork de Vocero convertido en SaaS
+> multitenant. Una sola instancia sirve a muchas organizaciones, cada una en
+> `{slug}.chronoslead.com`. Todo lo multitenant va detrás de `EDITION=cloud`; sin esa
+> variable el repo se comporta exactamente como el Vocero original, y por eso el texto
+> de abajo sigue siendo cierto y útil.
+>
+> Lo que cambia: la organización actual se resuelve **por el Host**, nunca con
+> `limit(1)` sobre `organization` ni con «la primera membresía». La autoridad es
+> `.specify/memory/constitution.md` (la de plataforma, que reemplazó la de Vocero).
+> El resumen operativo y la Definición de Hecho están en [CLAUDE.md](CLAUDE.md);
+> las recetas, en la skill `saas-multitenant`.
+>
+> **Fork delgado:** banderas antes que borrar código. `upstream` es
+> `kevinrivm/vocero-crm` y se sigue trayendo; cada borrado es un conflicto futuro.
+> Nunca reconstruyas bandeja, pipeline, agenda, contactos o agente: ya existen.
+
+---
+
+# Guía de Vocero CRM para agentes y personas (original del upstream)
 
 Vocero es un CRM de WhatsApp open source (MIT) y self-hosted: bandeja en tiempo
 real, pipeline kanban, agente de IA con el conocimiento del negocio y un
@@ -8,7 +28,7 @@ de skills, scripts ni plugins de ningún asistente.
 
 ## Principios inviolables
 
-- **Una instancia = un negocio.** Self-hosted; aun así, toda tabla de dominio lleva `organization_id` y toda consulta pasa por `scoped()`.
+- ~~**Una instancia = un negocio.**~~ **Derogado en este fork con `EDITION=cloud`:** una instancia sirve a muchas organizaciones y la actual se resuelve por el Host. Lo que sigue en pie, y ahora es crítico: toda tabla de dominio lleva `organization_id` y toda consulta pasa por `scoped()`.
 - **Solo WhatsApp Cloud API oficial.** Nada de Baileys ni sesiones web. Todo tráfico a Meta pasa por `src/lib/meta/client.ts`.
 - **Secretos cifrados en reposo** (AES-256-GCM, `src/lib/crypto/`); jamás al cliente ni a logs. Los tokens de WhatsApp y del proveedor de IA solo enseñan sus últimos 4.
 - **El token de WhatsApp nunca sale del CRM.** Un bot externo conversa a través de `/api/bot/*`, no con Meta.

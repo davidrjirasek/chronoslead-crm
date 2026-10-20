@@ -1,0 +1,4 @@
+interface:
+  display_name: "WhatsApp SaaS · Infraestructura Meta"
+  short_description: "Embedded Signup, webhooks, plantillas y envío para un SaaS multi-tenant"
+  default_prompt: "Usa $whatsapp-saas-meta-infra para implementar o depurar la conexión de WhatsApp de mi SaaS (Embedded Signup, webhooks y envío)."
