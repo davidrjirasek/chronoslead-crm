@@ -3,7 +3,10 @@ import { getEnv } from "@/lib/env";
 import { isChannelEnabled } from "@/server/channels/enabled";
 import { registerWebhookForNumber } from "@/server/whatsapp/connect";
 import { getCredentialsByOrg } from "@/server/whatsapp/credentials";
-import { webhookUrl, webhookVerifyToken } from "@/server/whatsapp/webhook-url";
+import {
+  webhookDeSesion,
+  webhookUrl,
+} from "@/server/whatsapp/webhook-url";
 
 export const dynamic = "force-dynamic";
 
@@ -18,16 +21,19 @@ export const dynamic = "force-dynamic";
  * viajan las tres URLs y la pantalla de cada canal enseña la suya. Las de un
  * canal apagado van en null: no existen en esta instancia (ADR-001).
  */
-export const GET = withAuth(async () => {
+export const GET = withAuth(async (session) => {
   const env = getEnv();
-  const url = webhookUrl("wa");
+  // 102 — En plataforma, cada organización ve SU puerta. Los canales
+  // opcionales siguen con la compartida: entran en su propia spec.
+  const wa = await webhookDeSesion(session.organizationId, "wa");
+  const url = wa.url;
   return Response.json({
     url,
     instagramUrl: isChannelEnabled("instagram") ? webhookUrl("ig") : null,
     messengerUrl: isChannelEnabled("messenger") ? webhookUrl("messenger") : null,
     // 022: la URL que se da de alta en Zernio para los mensajes de TikTok.
     tiktokUrl: isChannelEnabled("tiktok") ? webhookUrl("tiktok") : null,
-    verifyToken: env.META_WEBHOOK_VERIFY_TOKEN,
+    verifyToken: wa.verifyToken,
     isHttps: url.startsWith("https://"),
     signatureLayer: Boolean(env.META_APP_SECRET),
   });
@@ -49,12 +55,13 @@ export const POST = withAuth(async (session) => {
     );
   }
 
+  const wa = await webhookDeSesion(session.organizationId, "wa");
   const resultado = await registerWebhookForNumber({
     wabaId: creds.wabaId,
     phoneNumberId: creds.phoneNumberId,
     token: creds.token,
-    webhookUrl: webhookUrl("wa"),
-    verifyToken: webhookVerifyToken(),
+    webhookUrl: wa.url,
+    verifyToken: wa.verifyToken,
   });
   if (!resultado.ok) {
     const status = resultado.code === "meta_unavailable" ? 503 : 422;
