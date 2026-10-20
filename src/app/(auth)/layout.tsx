@@ -6,6 +6,8 @@ import { productName } from "@/lib/channels";
 import { BrandLogo } from "@/components/brand-mark";
 import { InstanciaInexistente } from "@/components/instancia-inexistente";
 import { EdicionProvider } from "@/components/auth/edicion";
+import { EscenografiaChronosLead } from "@/components/auth/escenografia-chronoslead";
+import { isChronosLeadName } from "@/lib/brand-chronoslead";
 import { currentTenantOrg } from "@/server/tenant/current";
 import { isCloud } from "@/server/tenant/edition";
 
@@ -25,6 +27,20 @@ export default async function AuthLayout({
     return <InstanciaInexistente />;
   }
   const branding = await getBranding().catch(() => DEFAULT_BRANDING);
+
+  // 107 — La organización que no cambió su marca ve la escenografía de
+  // ChronosLead: dos columnas, con el logo, el slogan y la imagen del equipo.
+  // Es el porte de la pantalla que el dueño ya tenía, no un diseño nuevo.
+  // Una organización white-label conserva la de Vocero, sobria y neutra: no
+  // tiene por qué ver la marca de la plataforma al entrar a su propio CRM.
+  if (isChronosLeadName(branding.name)) {
+    return (
+      <EscenografiaChronosLead>
+        <EdicionProvider cloud={isCloud()}>{children}</EdicionProvider>
+      </EscenografiaChronosLead>
+    );
+  }
+
   const vocero = isVoceroName(branding.name);
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-subtle p-4">

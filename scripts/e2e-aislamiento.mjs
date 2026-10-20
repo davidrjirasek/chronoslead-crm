@@ -33,8 +33,16 @@ const CLAVE = process.env.ENCRYPTION_KEY ?? "";
  */
 const RUN = Date.now();
 
-const A = { slug: "e2ealfa", nombre: "E2E Alfa", correo: "duenoa@e2e.test", pnid: "900000000000001" };
-const B = { slug: "e2ebeta", nombre: "E2E Beta", correo: "duenob@e2e.test", pnid: "900000000000002" };
+/**
+ * La contraseña de las organizaciones del guion es ESTABLE, no depende de la
+ * corrida: así una corrida que ya puede entrar no gasta una activación, y el
+ * límite de intentos del producto (10 cada 10 minutos, que está bien que
+ * exista) no convierte tres corridas seguidas en un rojo falso.
+ */
+const CLAVE_E2E = "aislamiento-e2e-2026";
+
+const A = { slug: "e2ealfa", nombre: "E2E Alfa", correo: "duenoa@e2e.test", pnid: "900000000000001", contrasena: CLAVE_E2E };
+const B = { slug: "e2ebeta", nombre: "E2E Beta", correo: "duenob@e2e.test", pnid: "900000000000002", contrasena: CLAVE_E2E };
 
 let fallos = 0;
 let comprobaciones = 0;
@@ -101,7 +109,17 @@ function recogerIds(valor, destino = new Set()) {
   return destino;
 }
 
-function sembrar(org) {
+/**
+ * Siembra la organización y **fija su contraseña con un enlace de acceso**
+ * (spec 106), en vez de leer la que escribió el alta.
+ *
+ * Es lo que hace el guion repetible: la sección 12 consume un enlace y con eso
+ * cambia la contraseña del dueño. Leerla de `.provision/` funcionaba la primera
+ * vez y dejaba la segunda corrida sin poder entrar — un gate intermitente
+ * enseña a ignorar el rojo. De paso, la preparación ejercita el alta real y el
+ * flujo de activación, que es más de lo que probaba antes.
+ */
+async function sembrar(org) {
   execFileSync("node", [".tmp-provision.mjs"], {
     env: {
       ...process.env,
@@ -111,8 +129,21 @@ function sembrar(org) {
     },
     stdio: "pipe",
   });
-  const txt = readFileSync(join(".provision", `${org.slug}.txt`), "utf8");
-  org.contrasena = /contrasena: (.+)/.exec(txt)?.[1]?.trim();
+  // Si ya puede entrar, no se gasta una activación.
+  const intento = await entrar(org);
+  if (intento === 200) return true;
+  if (intento === 429) abortarPorLimite();
+
+  const enlace = generarEnlaceAcceso(org);
+  if (!enlace) return false;
+  const token = enlace.split("/activar/")[1];
+  const r = await fetch(`${origen(org)}/api/activar`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: origen(org) },
+    body: JSON.stringify({ token, contrasena: org.contrasena }),
+  });
+  if (r.status === 429) abortarPorLimite();
+  return r.status === 200;
 }
 
 /** Genera un enlace de acceso con el mismo comando que usa el operador. */
@@ -137,6 +168,22 @@ async function entrar(org) {
   const cookies = r.headers.getSetCookie ? r.headers.getSetCookie() : [];
   org.cookie = cookies.map((c) => c.split(";")[0]).join("; ");
   return r.status;
+}
+
+/**
+ * Un 429 no es un fallo de aislamiento: es que no se pudo medir.
+ *
+ * El producto limita los intentos de login a 10 cada 10 minutos por IP, y eso
+ * está bien que exista. Encadenar corridas lo agota. Confundir «no pude medir»
+ * con «el aislamiento está roto» es el mismo error que dar verde sin probar
+ * nada, al revés: enseña a ignorar el rojo.
+ */
+function abortarPorLimite() {
+  console.log("\n⏳ Límite de intentos alcanzado (429).");
+  console.log("   Esto NO es un fallo de aislamiento: el guion no pudo medir.");
+  console.log("   El producto permite 10 inicios de sesión cada 10 minutos por IP.");
+  console.log("   Esperá unos minutos y volvé a correrlo.\n");
+  process.exit(2);
 }
 
 async function conectarWhatsApp(org) {
@@ -227,17 +274,19 @@ async function main() {
   }
 
   seccion("Preparación");
-  sembrar(A);
-  sembrar(B);
-  ok("las dos organizaciones existen", Boolean(A.contrasena && B.contrasena));
+  // Calienta las rutas ANTES de usarlas: en desarrollo la primera petición
+  // compila y puede devolver un estado intermedio que no es el que se mide.
+  await fetch(`${origen(A)}/api/health`).catch(() => {});
+  await fetch(`${origen(B)}/api/health`).catch(() => {});
 
-  // Calienta las rutas: en desarrollo la primera petición compila y puede
-  // devolver un estado intermedio que no es el que se quiere medir.
-  await pedir(A, "/api/health");
-  await pedir(B, "/api/health");
+  ok("A se da de alta y fija su contraseña por enlace", await sembrar(A));
+  ok("B se da de alta y fija su contraseña por enlace", await sembrar(B));
 
-  ok("A inicia sesión en su host", (await entrar(A)) === 200);
-  ok("B inicia sesión en su host", (await entrar(B)) === 200);
+  const entradaA = await entrar(A);
+  const entradaB = await entrar(B);
+  if (entradaA === 429 || entradaB === 429) abortarPorLimite();
+  ok("A inicia sesión en su host", entradaA === 200);
+  ok("B inicia sesión en su host", entradaB === 200);
   if (!A.cookie || !B.cookie) {
     console.error("\nSin sesión no se puede seguir.");
     process.exit(1);
@@ -412,7 +461,9 @@ async function main() {
     ok("el enlace de A NO vale en el subdominio de B", cruzado.status >= 400, `recibido ${cruzado.status}`);
     const inventado = await activar(origen(A), `inventado-${RUN}`, `e2e-${RUN}-x`);
     ok("un enlace inventado da la misma respuesta", inventado.status >= 400);
-    const propio = await activar(origen(A), token, `e2e-${RUN}-propio`);
+    // Consumirlo cambia la contraseña de A: se vuelve a poner la estable para
+    // que la corrida siguiente entre sin gastar otra activación.
+    const propio = await activar(origen(A), token, A.contrasena);
     ok("el enlace de A SÍ vale en su subdominio", propio.status === 200, `recibido ${propio.status}`);
     const repetido = await activar(origen(A), token, `e2e-${RUN}-otra`);
     ok("y no vale una segunda vez", repetido.status >= 400);

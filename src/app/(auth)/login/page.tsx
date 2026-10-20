@@ -38,6 +38,56 @@ export default function LoginPage() {
     router.refresh();
   }
 
+  if (esPlataforma) {
+    return (
+      <div className="w-full max-w-md">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand">
+          Bienvenida de nuevo
+        </p>
+        <h1 className="mt-2 text-[34px] font-extrabold leading-tight tracking-tight">
+          Ingresá a tu CRM
+        </h1>
+        <p className="mt-2 text-sm text-text-3">
+          Tus conversaciones, citas y oportunidades te esperan.
+        </p>
+        <form onSubmit={onSubmit} className="mt-7 space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="email-pl">Correo electrónico</Label>
+            <Input
+              id="email-pl"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="password-pl">Contraseña</Label>
+            <Input
+              id="password-pl"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Entrando…" : "Ingresar →"}
+          </Button>
+          <p className="text-center text-xs text-text-3">
+            El acceso lo da el equipo de ChronosLead. No hay registro abierto.
+            <br />
+            ¿Olvidaste tu contraseña? Escribile a quien te dio de alta y te
+            manda un enlace para elegir una nueva.
+          </p>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <Card className="shadow-md">
       <CardHeader>

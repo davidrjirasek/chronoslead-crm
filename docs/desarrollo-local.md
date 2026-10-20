@@ -86,11 +86,18 @@ Con eso, **`http://localhost:3000` ya no sirve**: `localhost` no cuelga de `lvh.
 responde «esta instancia no existe», que es justo lo correcto. Se entra por el subdominio de
 cada organización:
 
-| Dirección | Organización |
+| Dirección | Qué hay |
 |---|---|
-| http://alfa.lvh.me:3000 | Ferretería El Martillo (la del seed, con la cuenta de desarrollo) |
-| http://beta.lvh.me:3000 | Clínica Beta (vacía, solo para probar el aislamiento) |
+| http://lvh.me:3000 | la **landing** comercial de ChronosLead (el apex) |
+| http://lvh.me:3000/privacidad · `/condiciones-servicio` · `/eliminacion-datos` | las páginas legales |
+| http://alfa.lvh.me:3000 | CRM de Ferretería El Martillo (la del seed, con la cuenta de desarrollo) |
+| http://beta.lvh.me:3000 | CRM de Clínica Beta (vacía, para probar el aislamiento) |
 | http://cualquierotra.lvh.me:3000 | «esta instancia no existe» |
+
+El formulario de la landing crea el lead en la organización cuyo slug diga
+`LANDING_ORG_SLUG` (por defecto `creativo-4d-group`). Si esa organización no existe, el
+lead no se guarda y queda un aviso en el log del servidor — el visitante solo ve un mensaje
+genérico.
 
 `lvh.me` es un dominio público que resuelve a `127.0.0.1`: no hay que tocar `/etc/hosts`.
 

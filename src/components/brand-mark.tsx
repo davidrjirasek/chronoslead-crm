@@ -7,6 +7,7 @@ import {
   BRAND_MARK_TAIL,
   isVoceroName,
 } from "@/lib/brand";
+import { isChronosLeadName } from "@/lib/brand-chronoslead";
 import { faviconHref, faviconInitial } from "@/lib/favicon";
 import { cn } from "@/lib/utils";
 
@@ -78,12 +79,36 @@ export function BrandTile({
           alt=""
           className="h-full w-full object-contain"
         />
+      ) : isChronosLeadName(branding.name) ? (
+        <ChronosLeadMark className="h-[78%] w-[78%]" />
       ) : isVoceroName(branding.name) ? (
         <BrandMark className="h-[64%] w-[64%]" cyan={BRAND_CYAN_ON_TILE} />
       ) : (
         <span className="font-bold leading-none">{faviconInitial(branding.name)}</span>
       )}
     </span>
+  );
+}
+
+/**
+ * 107 — El isotipo de ChronosLead: la C isométrica en capas, tal cual la
+ * diseñó el dueño (`public/isotipo.png`).
+ *
+ * Es el archivo original, no una reinterpretación. Redibujarlo en SVG fue el
+ * primer intento y fue un error: el logo ya existía y un logo redibujado deja
+ * de ser el logo. Sin `next/image` a propósito, igual que el favicon subido:
+ * es un archivo propio y pequeño, y pasarlo por el optimizador sería trabajo
+ * para no ahorrar.
+ */
+export function ChronosLeadMark({ className }: { className?: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/isotipo.png"
+      alt=""
+      aria-hidden="true"
+      className={cn("object-contain", className)}
+    />
   );
 }
 
@@ -117,6 +142,21 @@ export function BrandLogo({
   size?: keyof typeof WORDMARK_SIZE;
   className?: string;
 }) {
+  if (isChronosLeadName(branding.name) && !branding.favicon) {
+    return (
+      <span className={cn("flex items-center gap-2.5 text-foreground", className)}>
+        <ChronosLeadMark className={cn("shrink-0", MARK_SIZE[size])} />
+        <span
+          className={cn(
+            "font-[800] leading-none tracking-[-0.03em]",
+            WORDMARK_SIZE[size]
+          )}
+        >
+          Chronos<span className="text-brand">Lead</span>
+        </span>
+      </span>
+    );
+  }
   if (isVoceroName(branding.name) && !branding.favicon) {
     return (
       <span className={cn("flex items-center gap-2 text-foreground", className)}>

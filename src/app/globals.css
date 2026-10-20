@@ -47,13 +47,15 @@
     --bubble-out-border: var(--accent-soft);
     --bubble-out-text: var(--text);
 
-    /* Acento (default: azul Vocero; el white-label lo sobreescribe) */
-    --accent: #0d5bff;
-    --accent-hover: #0a4de6;
-    --accent-soft: #d3e2ff;
-    --accent-tint: #ebf1ff;
-    --accent-text: #0038d8;
-    --accent-fg: #ffffff;
+    /* Acento (default: el naranja de ChronosLead; el white-label lo
+       sobreescribe). Es #ff6a00 oscurecido por resolveAccentSet para que el
+       texto encima pase AA: el naranja puro no alcanza como relleno en claro. */
+    --accent: #e05d00;
+    --accent-hover: #bc4e00;
+    --accent-soft: #f9e2d1;
+    --accent-tint: #fdf5f0;
+    --accent-text: #a24300;
+    --accent-fg: #0f1419;
     /* El acento como TINTA (una hora, un enlace) y como anillo de foco. En
        claro son el acento mismo; en oscuro, sus variantes aclaradas: el
        acento sólido es para rellenos y ahí no alcanza AA como texto. */
@@ -140,14 +142,15 @@
     --bubble-in: #173d2c;
     --bubble-in-border: #2a5e45;
 
-    /* Acento: respaldo con el azul Vocero calculado para este fondo; el
-       white-label lo recalcula (ver resolveAccentSet en lib/branding). */
-    --accent: #256bff;
-    --accent-hover: #4883ff;
-    --accent-soft: #1f3f82;
-    --accent-tint: #1e3567;
-    --accent-text: #6f9eff;
-    --accent-fg: #ffffff;
+    /* Acento: respaldo con el naranja de ChronosLead calculado para este
+       fondo; el white-label lo recalcula (ver resolveAccentSet en
+       lib/branding). Sobre oscuro el naranja puro ya contrasta. */
+    --accent: #ff6a00;
+    --accent-hover: #ff8229;
+    --accent-soft: #6e3e26;
+    --accent-tint: #4e352f;
+    --accent-text: #ff9d57;
+    --accent-fg: #0f1419;
     --accent-ink: var(--accent-text);
     --ring: var(--accent-hover);
     --accent-veil: rgba(0, 0, 0, 0.22);

@@ -5,15 +5,23 @@ import { resolveTenantFromHost, type TenantHost } from "@/lib/tenant/host";
 import { estadoDeOrganizacion, type EstadoOrganizacion } from "@/lib/tenant/estado";
 import { baseDomain, isCloud } from "@/server/tenant/edition";
 
-const COLUMNAS = {
-  id: schema.organization.id,
-  slug: schema.organization.slug,
-  name: schema.organization.name,
-  metadata: schema.organization.metadata,
-  paidThrough: schema.organization.paidThrough,
-  suspendedAt: schema.organization.suspendedAt,
-  suspendedReason: schema.organization.suspendedReason,
-} as const;
+/**
+ * Perezosa a propósito: evaluarla al importar el módulo ata la carga del
+ * archivo a que `schema` esté completo, y un test que importa la raíz con un
+ * schema parcial revienta antes de correr. Lo encontró
+ * `tests/unit/onboarding-page.test.ts`.
+ */
+function columnas() {
+  return {
+    id: schema.organization.id,
+    slug: schema.organization.slug,
+    name: schema.organization.name,
+    metadata: schema.organization.metadata,
+    paidThrough: schema.organization.paidThrough,
+    suspendedAt: schema.organization.suspendedAt,
+    suspendedReason: schema.organization.suspendedReason,
+  } as const;
+}
 
 type Fila = {
   id: string;
@@ -76,7 +84,7 @@ export async function currentTenantHost(): Promise<TenantHost> {
 async function orgBySlug(slug: string): Promise<TenantOrg | null> {
   const db = getDb();
   const rows = await db
-    .select(COLUMNAS)
+    .select(columnas())
     .from(schema.organization)
     .where(eq(schema.organization.slug, slug))
     .limit(1);
@@ -90,7 +98,7 @@ async function orgBySlug(slug: string): Promise<TenantOrg | null> {
 async function laUnicaOrganizacion(): Promise<TenantOrg | null> {
   const db = getDb();
   const rows = await db
-    .select(COLUMNAS)
+    .select(columnas())
     .from(schema.organization)
     .limit(1);
   return conEstado(rows[0]);

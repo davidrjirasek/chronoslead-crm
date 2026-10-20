@@ -45,20 +45,29 @@ export type Branding = {
 };
 
 export const DEFAULT_BRANDING: Branding = {
-  name: "Vocero",
-  // El azul eléctrico de vocerocrm.com: la instancia recién instalada se ve
-  // igual que la landing. Una agencia lo cambia en Configuración → Marca.
-  accent: "#0d5bff",
+  name: "ChronosLead",
+  // 107 — El naranja de ChronosLead (docs/brand/sistema-visual.md). Toda la
+  // escala de acento se deriva de aquí: no hay un solo componente pintado a
+  // mano, así que el próximo merge de upstream no rompe el diseño.
+  accent: "#ff6a00",
   currency: DEFAULT_CURRENCY,
   favicon: null,
 };
 
 /**
- * Presets. El primero es la marca Vocero (valores exactos de la landing); los
- * demás son los tonos sobrios del handoff Atlas, que siguen disponibles para
- * quien quiera un CRM más discreto.
+ * Presets. El primero es la marca ChronosLead; le sigue el azul de Vocero
+ * (valores exactos de su landing) y los tonos sobrios del handoff Atlas, que
+ * siguen disponibles para quien quiera un CRM más discreto.
  */
 export const ACCENT_PRESETS: Record<string, { label: string; set: AccentSet }> = {
+  // 107 — El naranja de ChronosLead, ya oscurecido: el puro no alcanza AA
+  // como relleno sobre blanco. Los valores son los que calcula la escala; el
+  // preset existe para que salga en el selector de Ajustes → Marca y para que
+  // el respaldo de un hex inválido lo encuentre sin recalcularlo.
+  "#ff6a00": {
+    label: "Naranja ChronosLead",
+    set: { accent: "#e05d00", hover: "#bc4e00", soft: "#f9e2d1", tint: "#fdf5f0", text: "#a24300", fg: "#0f1419" },
+  },
   "#0d5bff": {
     label: "Azul Vocero",
     set: { accent: "#0d5bff", hover: "#0a4de6", soft: "#d3e2ff", tint: "#ebf1ff", text: "#0038d8", fg: "#ffffff" },
@@ -218,7 +227,14 @@ export function resolveAccentSet(
 
   const preset = ACCENT_PRESETS[accentHex.toLowerCase()];
   if (preset) return preset.set;
-  if (!isValidHex(accentHex)) return ACCENT_PRESETS[DEFAULT_BRANDING.accent]!.set;
+  // Sin `?.` esto reventaba al cambiar el acento por defecto a uno que no
+  // tuviera preset: un hex inválido dejaba de degradar y tumbaba la marca
+  // entera. El respaldo del respaldo es el azul de upstream, que siempre está.
+  if (!isValidHex(accentHex)) {
+    return (
+      ACCENT_PRESETS[DEFAULT_BRANDING.accent]?.set ?? ACCENT_PRESETS["#0d5bff"]!.set
+    );
+  }
 
   let base = hexToRgb(accentHex.toLowerCase());
   // contraste con blanco = (1.05) / (L + 0.05); exigir ≥ 3
