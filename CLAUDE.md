@@ -1,4 +1,104 @@
-# Vocero CRM — Guía para Claude
+# ChronosLead — Guía para Claude
+
+> **Este repo es un fork de Vocero CRM convertido en SaaS multitenant.** Lo de abajo
+> (desde «Lee primero AGENTS.md») es la guía original de Vocero y describe su código:
+> sigue siendo válida. Lo de aquí arriba es lo que cambia por ser plataforma, y manda
+> sobre ella cuando se contradigan.
+
+ChronosLead es un SaaS multitenant: **una sola instancia sirve a muchas organizaciones**,
+cada una en su subdominio `{slug}.chronoslead.com`, con sus propios canales, su propia
+llave de IA y su propio agente. La landing pública vive en el apex `chronoslead.com`.
+
+> **Lo primero que cambia respecto a una instancia de un solo negocio:**
+> `select … from organization limit 1` ya no significa «mi organización»; es el cruce de
+> datos entre clientes. La organización actual se resuelve SIEMPRE por el Host.
+> La ruta de resolución **todavía no existe**: la crea el paso 1 de la skill
+> `saas-multitenant`. Hasta entonces, cada `limit(1)` sobre `organization` es deuda
+> anotada en el inventario del paso 0.
+
+## Reglas (resumen de la constitución)
+
+Ver `.specify/memory/constitution.md` — la de plataforma, que **reemplazó** la de Vocero
+(«una instancia = un negocio»). Las que más se rompen sin querer:
+
+- **Aislamiento**: `organization_id` NOT NULL en toda tabla de dominio; toda consulta pasa
+  por `scoped()` (`src/lib/db/tenant.ts`). La organización sale del Host, nunca de «la
+  única» ni de «la primera membresía».
+- **Webhook**: cada organización tiene su URL firmada; la ingesta comprueba que la
+  organización del cuerpo es la de la puerta. Ese guardián no es opcional.
+- **Secretos**: cifrados en reposo (`src/lib/crypto/`); jamás al cliente ni a logs; solo
+  últimos 4.
+- **Idempotencia**: webhooks dedup por `wa_message_id` UNIQUE.
+- **Persistencia**: suspender retira el servicio, nunca los datos.
+
+Recetas: skill `saas-multitenant`. Conexión con Meta: skills `whatsapp-saas-meta-infra` y
+`whatsapp-meta-app-review`.
+
+## Fork delgado: banderas antes que borrar
+
+`upstream` es `kevinrivm/vocero-crm` y se sigue trayendo. **Cada línea que borres es un
+conflicto futuro.** Lo multitenant va detrás de `EDITION=cloud`: sin esa variable, el repo
+se comporta como el Vocero original. No reconstruyas bandeja, pipeline, agenda, contactos
+ni agente: ya existen y reinventarlos es justo el error que este fork corrige.
+
+## Mapa de lo que toca la conversión
+
+| Quieres cambiar… | Toca… |
+|---|---|
+| Qué organización es «esta» | *(no existe aún — paso 1 de `saas-multitenant`)* |
+| El acceso a datos con tenant | `src/lib/db/tenant.ts` (`scoped()`) |
+| Los webhooks públicos | `src/app/api/webhooks/{wa,ig,messenger,tiktok}/[webhookToken]/` |
+| La plataforma (alta, suspensión, superadmin, cuotas) | *(no existe aún — paso 7)* |
+| El canal WhatsApp | `src/server/whatsapp/` |
+| El agente / cerebro | `src/server/ai/`, `src/server/brains/` |
+| Esquema y migraciones | `src/lib/db/schema.ts` → `pnpm db:generate` → `drizzle/` |
+
+## Variables de entorno
+
+Ver `.env.example`. Las propias del modo multitenant:
+
+```bash
+EDITION=cloud                   # sin ella corre como un solo negocio
+BASE_DOMAIN=chronoslead.com     # lvh.me en local (resuelve a 127.0.0.1)
+APP_BASE_URL=https://chronoslead.com
+```
+
+## Definición de Hecho REFORZADA
+
+En esta Mac los comandos van por `corepack pnpm`, no `pnpm` a secas
+(ver [docs/desarrollo-local.md](docs/desarrollo-local.md)):
+
+```bash
+corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build
+```
+
+Y el gate que manda, con dos organizaciones sembradas en `*.lvh.me` y la app viva:
+
+```bash
+corepack pnpm test:e2e:aislamiento    # (lo crea el paso 9 de saas-multitenant)
+```
+
+**El de aislamiento manda**: mientras no esté verde, nada está Hecho. Sus comprobaciones de
+ESCRITURA (un evento por la puerta de A no entra en B) importan más que las de lectura.
+Detalle en la skill `loop-sdd` (`references/contrato.md`).
+
+«Hecho» significa probado en vivo. Lo que no se pueda probar se marca explícitamente
+«pendiente de verificación humana».
+
+## Manejo de credenciales
+
+Credencial nueva → `.env` como `REEMPLAZA_…` con guía `#` → `.env.example` sin valor →
+aviso en el chat. En Coolify las variables solo se inyectan en un *deploy*, no en un
+restart. Nunca secretos en el chat, en argv ni en commits: solo los últimos 4.
+
+## Modo Objetivo — Loop SDD
+
+Cuando el dueño da una META: skill `loop-sdd`. Bitácora operativa (dominios, UUIDs, qué se
+probó) en `docs/bitacora.md`, **sin secretos**.
+
+---
+
+# Vocero CRM — Guía para Claude (original del upstream)
 
 Lee primero [AGENTS.md](AGENTS.md): el mapa del código y las reglas de
 modificación viven ahí; este archivo solo añade lo específico de Claude Code.
