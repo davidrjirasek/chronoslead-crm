@@ -6,7 +6,12 @@ import {
   type WebhookPayload,
 } from "@/server/inbox/webhook";
 import { processEchoesValue, processMessagesValue } from "@/server/inbox/ingest";
+import type { Procedencia } from "@/server/inbox/procedencia";
 import { processTemplateStatusValue } from "@/server/whatsapp/template-events";
+import { isCloud } from "@/server/tenant/edition";
+
+/** Esta puerta solo existe sin EDITION=cloud, donde hay una sola organización. */
+const PROCEDENCIA_LEGACY: Procedencia = { via: "legacy" };
 
 /**
  * Webhook público de WhatsApp (contrato webhook.md).
@@ -21,6 +26,10 @@ type Params = { params: Promise<{ webhookToken: string }> };
 export async function GET(req: Request, { params }: Params) {
   const { webhookToken } = await params;
   const env = getEnv();
+  // 102 — En plataforma esta puerta compartida no existe: cada organización
+  // tiene la suya en /api/webhooks/wa/{organizationId}/{firma}. No se borra
+  // porque es el camino de upstream y con EDITION apagada sigue siendo el bueno.
+  if (isCloud()) return new Response(null, { status: 404 });
   if (!isValidWebhookToken(webhookToken, env.META_WEBHOOK_VERIFY_TOKEN)) {
     return new Response(null, { status: 404 });
   }
@@ -39,6 +48,10 @@ export async function GET(req: Request, { params }: Params) {
 export async function POST(req: Request, { params }: Params) {
   const { webhookToken } = await params;
   const env = getEnv();
+  // 102 — En plataforma esta puerta compartida no existe: cada organización
+  // tiene la suya en /api/webhooks/wa/{organizationId}/{firma}. No se borra
+  // porque es el camino de upstream y con EDITION apagada sigue siendo el bueno.
+  if (isCloud()) return new Response(null, { status: 404 });
   if (!isValidWebhookToken(webhookToken, env.META_WEBHOOK_VERIFY_TOKEN)) {
     return new Response(null, { status: 404 });
   }
@@ -73,10 +86,10 @@ async function processPayload(payload: WebhookPayload): Promise<void> {
     for (const change of entry.changes ?? []) {
       if (!change.value) continue;
       if (change.field === "messages") {
-        await processMessagesValue(change.value);
+        await processMessagesValue(change.value, PROCEDENCIA_LEGACY);
       } else if (change.field === "smb_message_echoes") {
         // 008: mensajes enviados a mano desde la app del teléfono (coexistence)
-        await processEchoesValue(change.value);
+        await processEchoesValue(change.value, PROCEDENCIA_LEGACY);
       } else if (change.field === "message_template_status_update") {
         await processTemplateStatusValue(entry.id ?? null, change.value);
       }

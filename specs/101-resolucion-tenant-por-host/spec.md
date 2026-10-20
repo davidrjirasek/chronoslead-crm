@@ -138,8 +138,8 @@ sesión: el CRM se vería y nadie entraría. El apex va aparte (`*.dominio` no c
 
 Van en specs propias, y hasta entonces los atajos siguen anotados en el inventario:
 
-- **`BOT_API_KEY` por organización** (atajo #3) — spec 102.
-- **Webhook con segmento por organización y firma** (atajo #4) — spec 103.
+- **Webhook con segmento por organización y guardián de procedencia** (atajo #4) — spec 102.
+- **`BOT_API_KEY` por organización** (atajo #3) — spec 103.
 - **Capa de plataforma**: padrón de organizaciones, superadmin, suspensión,
   aprovisionamiento — spec 104.
 - **El guion de aislamiento A/B** completo (paso 9 de la skill) — entra con la 104,

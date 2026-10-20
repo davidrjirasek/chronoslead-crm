@@ -1,0 +1,1 @@
+ALTER TABLE "organization" ADD COLUMN "webhook_token_version" integer DEFAULT 1 NOT NULL;

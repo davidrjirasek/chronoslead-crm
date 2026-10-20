@@ -12,9 +12,7 @@ import {
   unregisterWebhookForNumber,
 } from "@/server/whatsapp/connect";
 import {
-  webhookPath,
-  webhookUrl,
-  webhookVerifyToken,
+  webhookDeSesion,
 } from "@/server/whatsapp/webhook-url";
 
 export const dynamic = "force-dynamic";
@@ -68,12 +66,13 @@ export const PUT = withAuth(async (session, req: Request) => {
     verifiedName: check.verifiedName,
   });
 
+  const webhook102 = await webhookDeSesion(session.organizationId, "wa");
   const webhook = await registerWebhookForNumber({
     wabaId: body.data.wabaId,
     phoneNumberId: body.data.phoneNumberId,
     token: body.data.token,
-    webhookUrl: webhookUrl("wa"),
-    verifyToken: webhookVerifyToken(),
+    webhookUrl: webhook102.url,
+    verifyToken: webhook102.verifyToken,
   });
 
   return Response.json({
@@ -99,7 +98,7 @@ export const DELETE = withAuth(async (session) => {
     await unregisterWebhookForNumber({
       phoneNumberId: creds.phoneNumberId,
       token: creds.token,
-      webhookPath: webhookPath("wa"),
+      webhookPath: (await webhookDeSesion(session.organizationId, "wa")).path,
     });
   }
   await desconectarCanal(session.organizationId);

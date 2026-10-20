@@ -82,6 +82,9 @@ export const organization = pgTable("organization", {
   logo: text("logo"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   metadata: text("metadata"),
+  // 102: permite rotar la URL del webhook de UNA organización sin tocar las
+  // demás. Subirlo invalida la URL anterior de esa organización.
+  webhookTokenVersion: integer("webhook_token_version").notNull().default(1),
 });
 
 export const member = pgTable("member", {
