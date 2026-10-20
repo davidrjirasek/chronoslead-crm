@@ -41,10 +41,25 @@ async function exigirSuperadmin(): Promise<
   return { ok: true, autor: acceso.sesion.correo };
 }
 
+/**
+ * 108 — Cada campo con su mensaje.
+ *
+ * La primera versión devolvía «Revisá el nombre, el identificador y el correo»
+ * para cualquier fallo, y el operador tenía que adivinar cuál de los tres. Un
+ * error que no dice qué arreglar obliga a probar a ciegas.
+ */
 const altaSchema = z.object({
-  slug: z.string().trim().min(1),
-  nombre: z.string().trim().min(1).max(120),
-  correo: z.string().trim().email(),
+  slug: z.string().trim().min(1, "Falta el identificador."),
+  nombre: z
+    .string()
+    .trim()
+    .min(1, "Falta el nombre del negocio.")
+    .max(120, "El nombre no puede pasar de 120 caracteres."),
+  correo: z
+    .string()
+    .trim()
+    .min(1, "Falta el correo del dueño.")
+    .email("Ese correo no es válido: le falta el @ o lo que va después (por ejemplo dueno@sonrisa.com)."),
 });
 
 /**
@@ -66,7 +81,10 @@ export async function altaDeCliente(
     correo: String(formData.get("correo") ?? "").toLowerCase(),
   });
   if (!datos.success) {
-    return { error: "Revisá el nombre, el identificador y el correo.", aviso: null };
+    // El primer problema, con su nombre. Listar los tres cuando falla uno hace
+    // que el operador no sepa cuál tocar.
+    const primero = datos.error.issues[0];
+    return { error: primero?.message ?? "Revisá los datos.", aviso: null };
   }
   const { slug, nombre, correo } = datos.data;
 

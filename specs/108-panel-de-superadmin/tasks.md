@@ -60,6 +60,25 @@ Lo que cambió, además del arreglo: el guion de aislamiento tiene ahora una sec
 solo que cada endpoint responda—. Son 45 comprobaciones, y si alguien vuelve a romper esa
 navegación se pone rojo sin que nadie tenga que acordarse.
 
+## Lo que el dueño encontró usándolo, y el rediseño
+
+Probó los botones y señaló lo que ninguna prueba automática iba a ver:
+
+| Lo que señaló | Por qué pasaba | Qué se hizo |
+|---|---|---|
+| «le das marcar pago y no dice nada» | la acción terminaba sin confirmar | ahora dice «Ahora está pagado hasta el …» |
+| «se achicó y se quedó como tres puntitas» | el botón perdía su texto al cargar | dice «Guardando…», «Suspendiendo…» |
+| «no es tan responsive, está desordenado» | **cuatro controles dentro de una celda** | la lista informa; las acciones van en un panel a todo el ancho |
+| el campo «motivo» siempre visible | ocupaba sitio sin usarse | aparece solo al ir a suspender |
+| la tabla se salía por la derecha | lo mismo | las filas se apilan en pantallas chicas |
+| «le di copiar y me salió un error» | `navigator.clipboard` no existe sin HTTPS | copia, confirma, y si no puede explica qué hacer |
+| «me dijo revisá todo, no cuál era el error» | un mensaje para los tres campos | cada campo con el suyo, verificado en 5 casos |
+
+El diagnóstico de fondo era de estructura, no de estilo: cuatro controles no caben en una
+celda ni en un portátil. Y cada acción explica ahora su consecuencia **antes** de pulsarla
+—suspender avisa de que los mensajes se siguen guardando y de que pagar no la reactiva—,
+que es lo que separa un panel de control de una fila de botones.
+
 ## Pendiente de verificación humana
 
 - **La pantalla en un navegador de verdad**: las acciones se verificaron llamando a las
