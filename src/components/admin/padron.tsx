@@ -364,6 +364,10 @@ function Acciones({ cliente }: { cliente: FilaDelPadron }) {
           )}
         </Bloque>
 
+        {/* Los dos en la MISMA celda de la rejilla y apilados: sueltos, el
+            tercer bloque caía otra vez a la izquierda y la columna derecha
+            quedaba medio vacía. */}
+        <div className="space-y-4">
         <Bloque
           titulo={suspendidoAMano ? "Reactivar el servicio" : "Suspender el servicio"}
           ayuda={
@@ -406,8 +410,6 @@ function Acciones({ cliente }: { cliente: FilaDelPadron }) {
             )}
         </Bloque>
 
-        {/* En la misma columna que suspender: ahí sobraba sitio y esto solo
-            necesita un botón. Antes ocupaba una fila entera él solo. */}
         <Bloque
           titulo="Enlace de acceso"
           ayuda="Para que el dueño elija una contraseña nueva. Sirve una vez, caduca a los 7 días e invalida el anterior."
@@ -427,6 +429,7 @@ function Acciones({ cliente }: { cliente: FilaDelPadron }) {
             <span />
           )}
         </Bloque>
+        </div>
       </div>
 
       <Historico cliente={cliente} />
