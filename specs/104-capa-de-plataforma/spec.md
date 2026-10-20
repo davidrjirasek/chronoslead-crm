@@ -119,9 +119,35 @@ terminal acaba en el historial, en una captura o en un log.
 9. Una organización en gracia ve un cartel con los días que le quedan, y una
    activa no ve nada.
 
+### La entrega del acceso queda a medias a propósito
+
+Escribir la contraseña en un archivo y que el operador se la pase al cliente
+**funciona pero no es el destino**. Mandar una contraseña por WhatsApp o correo
+la deja para siempre en el historial del cliente, y además el operador la
+conoce.
+
+El destino, decidido con el operador el 2026-10-20, es un **enlace de un solo
+uso con caducidad**: el cliente lo abre, elige SU contraseña y entra. Nadie más
+la conoce y un enlace ya usado no sirve. Va en la spec 106, con el protocolo
+completo que el operador pidió:
+
+- Al elegir la contraseña, recomendarle guardarla en un gestor —**explicando qué
+  es**, porque el cliente final no tiene por qué saberlo—.
+- Un «¿olvidaste tu contraseña?» en la pantalla de entrada que diga **a quién
+  escribir**, en vez de una puerta muerta.
+- Un comando que le genere al operador un enlace de recuperación.
+
+Esto último cubre un hueco real heredado de Vocero: hoy **no existe recuperación
+de contraseña** (`scripts/reset-password.mjs` lo dice: la única salida es
+reescribir el hash en la base). El mismo enlace de un solo uso resuelve el alta y
+la recuperación con una sola pieza y sin dependencias nuevas, que es justamente
+la razón por la que la constitución descartó el correo transaccional.
+
 ## Fuera de alcance
 
-- **Panel de superadmin web** en `admin.chronoslead.com` — spec 106. Con el
+- **Enlace de primer acceso y recuperación de contraseña** — spec 106, descrita
+  arriba. Es lo siguiente después del guion de aislamiento.
+- **Panel de superadmin web** en `admin.chronoslead.com` — spec 107. Con el
   comando y una consulta a la base se opera igual, y una pantalla que todavía no
   sabemos cómo se va a usar es trabajo que se tira.
 - **El guion de aislamiento A/B automatizado** (paso 9) — spec 105, que es la
