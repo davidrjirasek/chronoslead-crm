@@ -162,6 +162,13 @@
       "when": 1792498845005,
       "tag": "0022_estado_de_organizacion",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792503422050,
+      "tag": "0023_enlaces_de_acceso",
+      "breakpoints": true
     }
   ]
 }
