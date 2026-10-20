@@ -11,6 +11,18 @@ Vocero original.
 
 Gravedad: 🔴 cruza datos entre clientes · 🟠 impide operar a varios · 🟡 ajuste.
 
+## Estado (2026-10-20)
+
+**Los cuatro 🔴 están cerrados.** Quedan los 🟠 y los 🟡, que no cruzan datos.
+
+| # | Cerrado por |
+|---|---|
+| 1 | [spec 101](../specs/101-resolucion-tenant-por-host/spec.md) — y un segundo caso del mismo patrón, en `/api/bot/*`, por la [103](../specs/103-credencial-de-cerebro-por-organizacion/spec.md) |
+| 2 | [spec 101](../specs/101-resolucion-tenant-por-host/spec.md) |
+| 3 | [spec 103](../specs/103-credencial-de-cerebro-por-organizacion/spec.md) |
+| 4 | [spec 102](../specs/102-webhook-por-organizacion/spec.md) |
+| 8 | [spec 101](../specs/101-resolucion-tenant-por-host/spec.md) |
+
 ## Los atajos
 
 | # | Dónde | Qué hace hoy | Qué pasa con dos organizaciones | Grav. |
@@ -43,11 +55,13 @@ multitenant, solo que la instancia nunca tuvo dos inquilinos.
 - **Bus de eventos SSE por organización** (`src/server/events/bus.ts`).
 - **Secretos de canal cifrados** en columnas `*_cipher` / `*_iv` / `*_tag`.
 
-## Orden de ataque sugerido
+## Orden de ataque
 
-El 1 primero: mientras la organización salga de «la primera membresía» y no del Host,
-arreglar los demás no sirve de nada. Después el 2 y el 4 (las dos superficies que se
-exponen sin sesión), luego el 3, y al final los 🟠 y 🟡.
+Se siguió este, y los cuatro 🔴 quedaron cerrados en ese orden: el 1 primero —mientras la
+organización saliera de «la primera membresía» y no del Host, arreglar los demás no servía
+de nada—, después el 4 (la puerta pública), y luego el 3. El 2 y el 8 cayeron con el 1.
+
+Quedan los 🟠 y los 🟡, ninguno de los cuales cruza datos entre clientes.
 
 El gate de todo esto es el guion de aislamiento A/B (paso 9 de la skill), con dos
 organizaciones sembradas en `*.lvh.me` e **incluidas las pruebas de escritura**: que un
