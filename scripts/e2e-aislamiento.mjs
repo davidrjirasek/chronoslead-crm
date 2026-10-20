@@ -469,6 +469,48 @@ async function main() {
     ok("y no vale una segunda vez", repetido.status >= 400);
   }
 
+  seccion("13 · Recorridos completos (no solo las piezas)");
+  /*
+   * Lo que ve una persona: abrir, entrar y LLEGAR. Probar el login por un lado
+   * y el panel por otro deja pasar justo lo que pasó: las dos piezas bien y el
+   * operador parado en «esta instancia no existe» porque el login lo mandaba a
+   * una raíz que en ese Host no es el panel.
+   */
+  const ADMIN = `http://admin.${BASE_DOMAIN}:${PUERTO}`;
+  const loginAdmin = await fetch(`${ADMIN}/api/auth/sign-in/email`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: ADMIN },
+    body: JSON.stringify({ email: A.correo, password: A.contrasena }),
+  });
+  const cookieAdmin = (loginAdmin.headers.getSetCookie?.() ?? [])
+    .map((c) => c.split(";")[0])
+    .join("; ");
+  ok("el login de admin.* acepta credenciales válidas", loginAdmin.status === 200);
+
+  if (cookieAdmin) {
+    const raiz = await fetch(`${ADMIN}/`, { headers: { cookie: cookieAdmin } });
+    const html = await raiz.text();
+    // El dueño de A no es superadmin: tiene que llegar al panel y que el panel
+    // le diga que no, no quedarse en una pantalla que no explica nada.
+    ok(
+      "tras entrar, la raíz de admin.* LLEVA al panel (no a «no existe»)",
+      !html.includes("Esta instancia no existe"),
+      "se quedó en la pantalla de instancia inexistente"
+    );
+    ok(
+      "y el panel le niega el paso por no ser superadmin",
+      html.includes("No tenés acceso a este panel"),
+      "no mostró el rechazo esperado"
+    );
+  }
+
+  const raizTenant = await pedir(A, "/");
+  ok("la raíz del subdominio de A responde", raizTenant.status < 400, `recibido ${raizTenant.status}`);
+
+  const apex = await fetch(`http://${BASE_DOMAIN}:${PUERTO}/`);
+  const htmlApex = await apex.text();
+  ok("la raíz del apex es la landing", apex.status === 200 && htmlApex.includes("ChronosLead"));
+
   console.log(`\n${comprobaciones - fallos}/${comprobaciones} comprobaciones correctas.`);
   if (fallos > 0) {
     console.log(`\n❌ ${fallos} fallo(s). NADA está Hecho hasta que esto esté verde.\n`);

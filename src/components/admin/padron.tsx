@@ -40,7 +40,21 @@ export function Padron({
   const [abierto, setAbierto] = useState(false);
 
   return (
-    <main className="mx-auto max-w-5xl space-y-6 p-6">
+    <main className="cl-marca min-h-screen">
+      <div className="cl-superficie border-b border-line">
+        <div className="mx-auto flex max-w-5xl items-center gap-2.5 px-6 py-3.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/isotipo.png" alt="" aria-hidden className="h-9 w-9 object-contain" />
+          <div className="min-w-0">
+            <p className="text-[17px] font-extrabold leading-tight tracking-tight">
+              Chronos<span className="text-brand">Lead</span>
+            </p>
+            <p className="text-[11px] text-text-3">Panel del operador</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-5xl space-y-6 p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold tracking-tight">Clientes</h1>
@@ -57,7 +71,7 @@ export function Padron({
       {abierto && (
         <form
           action={accionAlta}
-          className="space-y-3 rounded-lg border border-line bg-raised p-4"
+          className="cl-superficie space-y-3 rounded-lg border border-line p-4"
         >
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1.5">
@@ -92,9 +106,9 @@ export function Padron({
         </form>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-line">
+      <div className="cl-superficie overflow-x-auto rounded-lg border border-line">
         <table className="w-full text-sm">
-          <thead className="bg-panel text-left">
+          <thead className="bg-brand-tint text-left">
             <tr>
               <th className="px-3 py-2 font-medium">Cliente</th>
               <th className="px-3 py-2 font-medium">Dirección</th>
@@ -118,6 +132,7 @@ export function Padron({
             ))}
           </tbody>
         </table>
+      </div>
       </div>
     </main>
   );

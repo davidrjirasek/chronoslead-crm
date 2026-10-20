@@ -7,8 +7,15 @@
  */
 export function SinPermiso({ correo }: { correo: string }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-subtle p-6">
-      <div className="max-w-md text-center">
+    <main className="cl-marca flex min-h-screen items-center justify-center p-6">
+      <div className="cl-superficie max-w-md rounded-xl border border-line p-7 text-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/isotipo.png"
+          alt=""
+          aria-hidden
+          className="mx-auto mb-4 h-11 w-11 object-contain"
+        />
         <h1 className="text-xl font-bold tracking-tight">No tenés acceso a este panel</h1>
         <p className="mt-3 text-sm text-text-3">
           Entraste como <span className="font-mono">{correo}</span>, y ese correo no

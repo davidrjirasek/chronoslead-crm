@@ -27,6 +27,10 @@ export default async function Home() {
   if (isCloud()) {
     const host = await currentTenantHost();
     if (host.kind === "landing") return <LandingPublica />;
+    // 108 — En `admin.*` la raíz ES el panel. Sin esto, entrar funcionaba y el
+    // login dejaba al operador en «esta instancia no existe», porque la raíz
+    // buscaba una organización que ese Host no tiene.
+    if (host.kind === "admin") redirect("/admin");
     if (host.kind !== "tenant") return <InstanciaInexistente />;
   }
   const session = await getSessionOrNull();

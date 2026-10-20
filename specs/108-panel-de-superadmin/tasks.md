@@ -30,8 +30,10 @@
 | Suspender | pasa a suspendida (manual), **y solo esa**: las demás intactas |
 | Reactivar | vuelve a activa |
 | Permisos: mayúsculas, espacios, lista vacía, correo parecido | 6/6 |
+| **Recorrido completo**: entrar en `admin.*` y llegar al panel | ✓ (el guion lo comprueba) |
+| El panel con la identidad de ChronosLead | isotipo, wordmark y fondo de marca |
 
-Gates: typecheck ✓ · lint ✓ · **1220 tests** ✓ · build ✓ · aislamiento **40/40** ✓.
+Gates: typecheck ✓ · lint ✓ · **1220 tests** ✓ · build ✓ · aislamiento **45/45** ✓.
 
 ## Un bug que encontró la prueba en vivo
 
@@ -42,6 +44,21 @@ Lo peligroso no era el fallo sino su forma: **un cero es plausible**. Una tabla 
 estrenada con todos los clientes en cero no llama la atención de nadie, y el dato habría
 quedado mintiendo hasta que alguien lo contrastara con la base. Lo cazó comparar la salida
 contra un `count(*)` directo, no mirar la pantalla.
+
+## El fallo que el dueño encontró, y lo que cambió por él
+
+Le pedí que entrara al panel con todo «verde»: permisos, acciones, aislamiento y 1220
+tests. Entró, y se quedó mirando «esta instancia no existe». El login funcionaba y el panel
+funcionaba; lo roto era el camino entre los dos — el login mandaba a la raíz, y en
+`admin.*` la raíz no era el panel.
+
+Yo había probado **las piezas**, no **el recorrido**. Son cosas distintas y la segunda es la
+que ve el cliente.
+
+Lo que cambió, además del arreglo: el guion de aislamiento tiene ahora una sección
+**«Recorridos completos»** que entra de verdad y comprueba **dónde termina** el usuario —no
+solo que cada endpoint responda—. Son 45 comprobaciones, y si alguien vuelve a romper esa
+navegación se pone rojo sin que nadie tenga que acordarse.
 
 ## Pendiente de verificación humana
 
