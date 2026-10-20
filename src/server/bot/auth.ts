@@ -1,5 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
+import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
+import { organizacionDeCredencial } from "@/server/bot/credencial";
+import { isCloud } from "@/server/tenant/edition";
 import { apiError } from "@/lib/api";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 import { markBotSeen } from "@/server/bot/status";
@@ -66,6 +69,12 @@ export function requireBotKey(req: Request): Response | null {
 function validBotKey(provided: string | null): boolean {
   const expected = process.env.BOT_API_KEY;
   if (!expected || !isBotKeyConfigured() || !provided) return false;
+  // 103 — En plataforma `BOT_API_KEY` es el secreto del DESPLIEGUE, que nadie
+  // ve: lo que vale es la credencial derivada de cada organización. Aceptar
+  // aquí el secreto a secas sería dejar una llave maestra.
+  if (isCloud()) {
+    return organizacionDeCredencial(provided, expected) !== null;
+  }
   const a = Buffer.from(provided);
   const b = Buffer.from(expected);
   return a.length === b.length && timingSafeEqual(a, b);
@@ -77,7 +86,7 @@ function validBotKey(provided: string | null): boolean {
  */
 let cachedOrgId: string | null = null;
 
-export async function resolveInstanceOrg(): Promise<string | null> {
+async function laUnicaOrganizacion(): Promise<string | null> {
   if (cachedOrgId) return cachedOrgId;
   const db = getDb();
   const rows = await db
@@ -86,6 +95,36 @@ export async function resolveInstanceOrg(): Promise<string | null> {
     .limit(1);
   cachedOrgId = rows[0]?.id ?? null;
   return cachedOrgId;
+}
+
+/**
+ * En qué organización escribe esta petición de `/api/bot/*`.
+ *
+ * 103 — Recibe la petición a propósito: antes devolvía «la primera
+ * organización de la tabla», cacheada, así que con muchos clientes TODO lo que
+ * hiciera un cerebro externo caía en la misma bandeja.
+ *
+ * Devuelve `null` si la organización de la credencial ya no existe: la ruta lo
+ * convierte en 409, igual que antes.
+ */
+export async function resolveInstanceOrg(
+  req: Request
+): Promise<string | null> {
+  if (!isCloud()) return laUnicaOrganizacion();
+
+  const organizationId = organizacionDeCredencial(
+    req.headers.get("x-api-key"),
+    process.env.BOT_API_KEY ?? ""
+  );
+  if (!organizationId) return null;
+
+  const db = getDb();
+  const rows = await db
+    .select({ id: schema.organization.id })
+    .from(schema.organization)
+    .where(eq(schema.organization.id, organizationId))
+    .limit(1);
+  return rows[0]?.id ?? null;
 }
 
 /** Solo para tests. */
