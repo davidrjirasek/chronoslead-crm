@@ -47,13 +47,15 @@
     --bubble-out-border: var(--accent-soft);
     --bubble-out-text: var(--text);
 
-    /* Acento (default: azul Vocero; el white-label lo sobreescribe) */
-    --accent: #0d5bff;
-    --accent-hover: #0a4de6;
-    --accent-soft: #d3e2ff;
-    --accent-tint: #ebf1ff;
-    --accent-text: #0038d8;
-    --accent-fg: #ffffff;
+    /* Acento (default: el naranja de ChronosLead; el white-label lo
+       sobreescribe). Es #ff6a00 oscurecido por resolveAccentSet para que el
+       texto encima pase AA: el naranja puro no alcanza como relleno en claro. */
+    --accent: #e05d00;
+    --accent-hover: #bc4e00;
+    --accent-soft: #f9e2d1;
+    --accent-tint: #fdf5f0;
+    --accent-text: #a24300;
+    --accent-fg: #0f1419;
     /* El acento como TINTA (una hora, un enlace) y como anillo de foco. En
        claro son el acento mismo; en oscuro, sus variantes aclaradas: el
        acento sólido es para rellenos y ahí no alcanza AA como texto. */
@@ -140,14 +142,15 @@
     --bubble-in: #173d2c;
     --bubble-in-border: #2a5e45;
 
-    /* Acento: respaldo con el azul Vocero calculado para este fondo; el
-       white-label lo recalcula (ver resolveAccentSet en lib/branding). */
-    --accent: #256bff;
-    --accent-hover: #4883ff;
-    --accent-soft: #1f3f82;
-    --accent-tint: #1e3567;
-    --accent-text: #6f9eff;
-    --accent-fg: #ffffff;
+    /* Acento: respaldo con el naranja de ChronosLead calculado para este
+       fondo; el white-label lo recalcula (ver resolveAccentSet en
+       lib/branding). Sobre oscuro el naranja puro ya contrasta. */
+    --accent: #ff6a00;
+    --accent-hover: #ff8229;
+    --accent-soft: #6e3e26;
+    --accent-tint: #4e352f;
+    --accent-text: #ff9d57;
+    --accent-fg: #0f1419;
     --accent-ink: var(--accent-text);
     --ring: var(--accent-hover);
     --accent-veil: rgba(0, 0, 0, 0.22);
@@ -372,5 +375,73 @@
   *::after {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+ * 107 — La envoltura de ChronosLead
+ *
+ * Portada del CRM anterior (ver el recorrido en móvil del dueño): el patrón
+ * geométrico de marca de fondo en TODA la app y la barra clara encima, no el
+ * azul marino de Vocero.
+ *
+ * Va como clase en el contenedor raíz y no tocando cada componente: así el
+ * día que upstream cambie la barra, el cambio entra solo y esto sigue encima.
+ * Solo se aplica a la marca de la plataforma — una organización white-label
+ * conserva el aspecto sobrio de Vocero.
+ * ============================================================ */
+@layer components {
+  .cl-marca {
+    background-image: url("/brand/bg-light.jpg");
+    background-size: cover;
+    background-position: top center;
+    /*
+     * `fixed` NO: obliga al navegador a repintar el fondo en cada scroll y en
+     * un teléfono se nota como tirones. El patrón ya cubre la pantalla, así que
+     * dejarlo quieto no aporta nada que justifique el costo.
+     */
+    background-attachment: scroll;
+  }
+
+  /* Las superficies se vuelven translúcidas para que el patrón se vea a través,
+     que es lo que da la profundidad del diseño original. */
+  .cl-marca > :where(aside, header),
+  .cl-marca .cl-superficie {
+    background-color: rgb(255 255 255 / 0.72);
+    backdrop-filter: blur(14px);
+  }
+
+  /*
+   * Anula `.nav-dark` dentro de la marca: el isotipo tiene caras blancas
+   * translúcidas y sobre azul marino se lee como un manchón. El sistema visual
+   * pide una variante negativa para fondos oscuros, y esa no existe como
+   * archivo — así que la barra se aclara y el isotipo de color queda donde
+   * funciona. Es la solución sin inventarse el logo de nadie.
+   */
+  .cl-marca .nav-dark {
+    color-scheme: light;
+    --bg: #ffffff;
+    --bg-subtle: rgb(255 255 255 / 0.72);
+    --bg-panel: rgb(255 255 255 / 0.9);
+    --bg-raised: #ffffff;
+    --bg-hover: rgb(255 106 0 / 0.08);
+    --text: #0b0b0b;
+    --text-2: #42506b;
+    --text-3: #6b6b6b;
+    --text-4: #aab4c8;
+    --border: rgb(11 11 11 / 0.08);
+    --border-strong: rgb(11 11 11 / 0.16);
+    --chip-bg: rgb(255 106 0 / 0.1);
+    --row-hover: rgb(255 106 0 / 0.06);
+    --accent: #e05d00;
+    --accent-hover: #bc4e00;
+    --accent-soft: #f9e2d1;
+    --accent-tint: #fdf5f0;
+    --accent-text: #a24300;
+    --accent-fg: #ffffff;
+    --accent-ink: var(--accent);
+    --ring: var(--accent);
+    --shadow-pop: 0 30px 80px -20px rgb(11 11 11 / 0.18),
+      0 8px 24px -12px rgb(11 11 11 / 0.12);
   }
 }

@@ -8,6 +8,8 @@ import type { ThemePreference } from "@/lib/theme";
 import type { ResolvedCommit } from "@/lib/version";
 import { AppNav } from "@/components/app-nav";
 import { BrandLogo } from "@/components/brand-mark";
+import { isChronosLeadName } from "@/lib/brand-chronoslead";
+import { cn } from "@/lib/utils";
 
 /**
  * Cascarón de la app en dos modos:
@@ -72,7 +74,15 @@ export function AppShell({
   }, [navOpen]);
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-background">
+    <div
+      className={cn(
+        "flex h-dvh overflow-hidden bg-background",
+        // 107 — La envoltura de marca: patrón de fondo y barra clara. Solo
+        // para la plataforma; una organización con su propia marca conserva
+        // el aspecto sobrio de Vocero.
+        isChronosLeadName(branding.name) && "cl-marca"
+      )}
+    >
       {navOpen && (
         <button
           aria-label="Cerrar el menú"

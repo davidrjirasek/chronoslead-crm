@@ -63,19 +63,28 @@ describe("white-label: acento", () => {
     expect(lum).toBeLessThan(0xd0);
   });
 
-  it("hex inválido cae al default (el azul Vocero)", () => {
-    expect(resolveAccentSet("rojo")).toEqual(ACCENT_PRESETS["#0d5bff"]!.set);
+  it("hex inválido cae al default (el naranja de ChronosLead)", () => {
+    expect(resolveAccentSet("rojo")).toEqual(
+      resolveAccentSet(DEFAULT_BRANDING.accent)
+    );
   });
 
-  it("el azul Vocero es el default y trae los valores exactos de la landing", () => {
-    expect(DEFAULT_BRANDING.accent).toBe("#0d5bff");
+  it("el azul Vocero sigue siendo un preset válido con sus valores exactos", () => {
+    expect(resolveAccentSet("#0d5bff")).toEqual(ACCENT_PRESETS["#0d5bff"]!.set);
+  });
+
+  it("el naranja de ChronosLead es el default y se oscurece para pasar AA", () => {
+    // 107 — El default cambió con el fork: la plataforma es ChronosLead. El
+    // naranja puro no alcanza AA como relleno en claro, así que la escala lo
+    // oscurece; en oscuro sí entra puro (ver el bloque de tema oscuro).
+    expect(DEFAULT_BRANDING.accent).toBe("#ff6a00");
     expect(resolveAccentSet(DEFAULT_BRANDING.accent)).toEqual({
-      accent: "#0d5bff",
-      hover: "#0a4de6",
-      soft: "#d3e2ff",
-      tint: "#ebf1ff",
-      text: "#0038d8",
-      fg: "#ffffff",
+      accent: "#e05d00",
+      hover: "#bc4e00",
+      soft: "#f9e2d1",
+      tint: "#fdf5f0",
+      text: "#a24300",
+      fg: "#0f1419",
     });
   });
 });
@@ -96,7 +105,13 @@ describe("white-label: acento en tema oscuro", () => {
   });
 
   it("el azul Vocero conserva la tinta blanca en oscuro", () => {
-    expect(resolveAccentSet(DEFAULT_BRANDING.accent, "dark").fg).toBe("#ffffff");
+    expect(resolveAccentSet("#0d5bff", "dark").fg).toBe("#ffffff");
+  });
+
+  it("el naranja de ChronosLead pide tinta OSCURA: encima del naranja, el blanco no pasa AA", () => {
+    const set = resolveAccentSet(DEFAULT_BRANDING.accent, "dark");
+    expect(set.fg).toBe("#0f1419");
+    expect(contrast(set.fg, set.accent)).toBeGreaterThanOrEqual(4.5);
   });
 
   it("los presets NO se aplican tal cual: están calculados para fondo blanco", () => {
@@ -109,7 +124,7 @@ describe("white-label: acento en tema oscuro", () => {
 
   it("hex inválido en oscuro también cae al acento por defecto", () => {
     expect(resolveAccentSet("rojo", "dark")).toEqual(
-      resolveAccentSet("#0d5bff", "dark")
+      resolveAccentSet(DEFAULT_BRANDING.accent, "dark")
     );
   });
 
@@ -149,7 +164,7 @@ describe("white-label: barra lateral bicolor (.nav-dark)", () => {
   it("con el azul Vocero, la barra se ve como siempre", () => {
     // La receta de la barra es la de antes: el ítem activo del tema claro no
     // cambia aunque el tema oscuro de la página sí.
-    expect(resolveNavAccentSet(DEFAULT_BRANDING.accent)).toEqual({
+    expect(resolveNavAccentSet("#0d5bff")).toEqual({
       accent: "#256bff",
       hover: "#4883ff",
       soft: "#122c63",
@@ -209,14 +224,14 @@ describe("tema oscuro: las superficies se distinguen", () => {
 });
 
 describe("white-label: normalización", () => {
-  it("nombre vacío o nulo → default 'Vocero'; se recorta a 30", () => {
-    expect(normalizeBranding(null).name).toBe("Vocero");
-    expect(normalizeBranding({ name: "   " }).name).toBe("Vocero");
+  it("nombre vacío o nulo → default 'ChronosLead'; se recorta a 30", () => {
+    expect(normalizeBranding(null).name).toBe("ChronosLead");
+    expect(normalizeBranding({ name: "   " }).name).toBe("ChronosLead");
     expect(normalizeBranding({ name: "x".repeat(50) }).name).toHaveLength(30);
   });
 
   it("acento inválido → default", () => {
-    expect(normalizeBranding({ accent: "azul" }).accent).toBe("#0d5bff");
+    expect(normalizeBranding({ accent: "azul" }).accent).toBe("#ff6a00");
     expect(normalizeBranding({ accent: "#3F6B66" }).accent).toBe("#3f6b66");
   });
 });
