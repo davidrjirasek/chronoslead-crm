@@ -5,6 +5,7 @@ import { enabledChannels } from "@/server/channels/enabled";
 import { productName } from "@/lib/channels";
 import { BrandLogo } from "@/components/brand-mark";
 import { InstanciaInexistente } from "@/components/instancia-inexistente";
+import { EdicionProvider } from "@/components/auth/edicion";
 import { currentTenantOrg } from "@/server/tenant/current";
 import { isCloud } from "@/server/tenant/edition";
 
@@ -56,7 +57,7 @@ export default async function AuthLayout({
             </div>
           )}
         </div>
-        {children}
+        <EdicionProvider cloud={isCloud()}>{children}</EdicionProvider>
       </div>
     </main>
   );

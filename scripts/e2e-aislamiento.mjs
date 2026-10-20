@@ -115,6 +115,20 @@ function sembrar(org) {
   org.contrasena = /contrasena: (.+)/.exec(txt)?.[1]?.trim();
 }
 
+/** Genera un enlace de acceso con el mismo comando que usa el operador. */
+function generarEnlaceAcceso(org) {
+  try {
+    execFileSync("node", [".tmp-acceso.mjs"], {
+      env: { ...process.env, ORG_ADMIN_EMAIL: org.correo },
+      stdio: "pipe",
+    });
+    const txt = readFileSync(join(".provision", `acceso-${org.slug}.txt`), "utf8");
+    return /enlace: (.+)/.exec(txt)?.[1]?.trim() ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function entrar(org) {
   const r = await pedir(org, "/api/auth/sign-in/email", {
     method: "POST",
@@ -381,6 +395,27 @@ async function main() {
     ok("al reactivar vuelve a entrar", (await pedir(A, "/api/conversations")).status === 200);
   } finally {
     await sql.end({ timeout: 5 });
+  }
+
+  seccion("12 · Enlaces de acceso (106)");
+  const enlaceDeA = generarEnlaceAcceso(A);
+  ok("se genera un enlace para el dueño de A", Boolean(enlaceDeA));
+  if (enlaceDeA) {
+    const token = enlaceDeA.split("/activar/")[1];
+    const activar = (origenHost, tok, pw) =>
+      fetch(`${origenHost}/api/activar`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: origenHost },
+        body: JSON.stringify({ token: tok, contrasena: pw }),
+      });
+    const cruzado = await activar(origen(B), token, `e2e-${RUN}-cruzado`);
+    ok("el enlace de A NO vale en el subdominio de B", cruzado.status >= 400, `recibido ${cruzado.status}`);
+    const inventado = await activar(origen(A), `inventado-${RUN}`, `e2e-${RUN}-x`);
+    ok("un enlace inventado da la misma respuesta", inventado.status >= 400);
+    const propio = await activar(origen(A), token, `e2e-${RUN}-propio`);
+    ok("el enlace de A SÍ vale en su subdominio", propio.status === 200, `recibido ${propio.status}`);
+    const repetido = await activar(origen(A), token, `e2e-${RUN}-otra`);
+    ok("y no vale una segunda vez", repetido.status >= 400);
   }
 
   console.log(`\n${comprobaciones - fallos}/${comprobaciones} comprobaciones correctas.`);

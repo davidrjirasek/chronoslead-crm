@@ -1282,3 +1282,48 @@ export const dispatch = pgTable(
     index("dispatch_status_notbefore_idx").on(t.status, t.notBefore),
   ]
 );
+
+/* ============================================================
+ * 106 — Enlaces de primer acceso y recuperación de contraseña
+ * ============================================================ */
+
+/**
+ * Un enlace de un solo uso para que una persona FIJE su contraseña.
+ *
+ * Se guarda el HASH del token, nunca el token: quien lea la base no puede usar
+ * los enlaces. El token en claro existe solo durante la llamada que lo genera,
+ * viaja en la URL que el operador entrega, y se olvida.
+ *
+ * Cubre el alta (`motivo: "alta"`) y el «olvidé mi contraseña»
+ * (`motivo: "recuperacion"`) con la misma pieza, sin dependencias externas:
+ * por eso la constitución pudo descartar el correo transaccional sin dejar al
+ * cliente sin salida.
+ */
+export const accessLink = pgTable(
+  "access_link",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** SHA-256 del token en base64url. Indexado: es por donde se busca. */
+    tokenHash: text("token_hash").notNull(),
+    motivo: text("motivo", { enum: ["alta", "recuperacion"] }).notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    /** Null mientras no se haya usado. Un enlace usado no vuelve a valer. */
+    usedAt: timestamp("used_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("access_link_token_uq").on(t.tokenHash),
+    /**
+     * Un enlace vivo por persona y motivo: generar uno nuevo invalida el
+     * anterior. Sin esto, un enlace que el operador creyó reemplazado seguiría
+     * abriendo la cuenta.
+     */
+    index("access_link_user_motivo_idx").on(t.userId, t.motivo),
+  ]
+);

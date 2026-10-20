@@ -11,19 +11,22 @@
  * que sembraba el primer registro. Es **idempotente**: correrlo dos veces con
  * el mismo slug no duplica nada.
  *
- * La contraseña inicial se genera aquí y se escribe en `.provision/{slug}.txt`
- * con permisos 600. NO se imprime: lo que aparece en una terminal acaba en el
- * historial del shell, en una captura o en el log de una sesión compartida.
+ * 106 — NO genera contraseña: entrega un enlace de un solo uso para que el
+ * cliente elija la suya. Así nadie más la conoce, ni el operador, y el enlace
+ * caduca a los 7 días aunque quede en un chat viejo.
+ *
+ * El enlace se escribe en `.provision/{slug}.txt` con permisos 600 y no se
+ * imprime: lo que aparece en una terminal acaba en el historial del shell, en
+ * una captura o en el log de una sesión compartida.
  */
-import { randomBytes } from "node:crypto";
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { eq } from "drizzle-orm";
-import { hashPassword } from "better-auth/crypto";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { SEED_STAGES } from "@/server/auth/on-signup";
 import { resolveTenantFromHost } from "@/lib/tenant/host";
+import { crearEnlace, urlDeEnlace } from "@/server/platform/access-link";
 
 const DIRECTORIO = ".provision";
 
@@ -47,13 +50,6 @@ function validarSlug(slug: string): void {
         "  reservada de la plataforma (api, admin, alta, www, app…)."
     );
   }
-}
-
-/** Legible al dictarla por teléfono: sin caracteres que se confundan. */
-function generarContrasena(): string {
-  const alfabeto = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const bytes = randomBytes(24);
-  return Array.from(bytes, (b) => alfabeto[b % alfabeto.length]).join("");
 }
 
 async function main(): Promise<void> {
@@ -91,9 +87,6 @@ async function main(): Promise<void> {
     .where(eq(schema.user.email, correo))
     .limit(1);
 
-  const contrasena = usuarioExistente[0] ? null : generarContrasena();
-  const hash = contrasena ? await hashPassword(contrasena) : null;
-
   const orgId = newId("organization");
   const userId = usuarioExistente[0]?.id ?? `usr_${newId("member").slice(4)}`;
 
@@ -107,12 +100,14 @@ async function main(): Promise<void> {
         email: correo,
         emailVerified: false,
       });
+      // Sin contraseña: la fija el cliente con el enlace. Una cuenta nace sin
+      // llave y la primera llave la elige su dueño.
       await tx.insert(schema.account).values({
         id: `acc_${newId("member").slice(4)}`,
         accountId: userId,
         providerId: "credential",
         userId,
-        password: hash,
+        password: null,
       });
     }
 
@@ -138,26 +133,35 @@ async function main(): Promise<void> {
   });
 
   const dominio = (process.env.BASE_DOMAIN ?? "").trim();
-  const url = dominio ? `https://${slug}.${dominio}` : `(slug: ${slug})`;
+  const { token, expiraEn } = await crearEnlace({
+    organizationId: orgId,
+    userId,
+    motivo: "alta",
+  });
+  const enlace = urlDeEnlace(slug, dominio, token, process.env.APP_BASE_URL ?? "");
+
+  mkdirSync(DIRECTORIO, { recursive: true });
+  const ruta = join(DIRECTORIO, `${slug}.txt`);
+  writeFileSync(
+    ruta,
+    [
+      `organizacion: ${nombre}`,
+      `correo: ${correo}`,
+      `enlace: ${enlace}`,
+      `caduca: ${expiraEn.toISOString()}`,
+      "",
+      "Manda SOLO el enlace. Sirve una vez y caduca a los 7 dias.",
+      "El cliente elige su propia contrasena: nadie mas la conoce.",
+      "",
+    ].join("\n"),
+    { mode: 0o600 }
+  );
+  chmodSync(ruta, 0o600);
 
   console.log(`\n✓ Organización "${nombre}" creada.`);
-  console.log(`  Entra en: ${url}`);
-  console.log(`  Dueño:    ${correo}`);
-
-  if (contrasena) {
-    mkdirSync(DIRECTORIO, { recursive: true });
-    const ruta = join(DIRECTORIO, `${slug}.txt`);
-    writeFileSync(
-      ruta,
-      `organizacion: ${nombre}\nurl: ${url}\ncorreo: ${correo}\ncontrasena: ${contrasena}\n`,
-      { mode: 0o600 }
-    );
-    chmodSync(ruta, 0o600);
-    console.log(`  Contraseña inicial escrita en: ${ruta}`);
-    console.log("  (no se imprime aquí a propósito; bórrala cuando la entregues)\n");
-  } else {
-    console.log("  Ese correo ya tenía cuenta: conserva su contraseña.\n");
-  }
+  console.log(`  Dueño: ${correo}`);
+  console.log(`  Enlace de primer acceso escrito en: ${ruta}`);
+  console.log("  (no se imprime aquí; ábrelo, mándaselo al cliente y bórralo)\n");
 }
 
 main()
