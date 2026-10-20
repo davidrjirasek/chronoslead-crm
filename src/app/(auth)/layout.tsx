@@ -8,7 +8,7 @@ import { InstanciaInexistente } from "@/components/instancia-inexistente";
 import { EdicionProvider } from "@/components/auth/edicion";
 import { EscenografiaChronosLead } from "@/components/auth/escenografia-chronoslead";
 import { isChronosLeadName } from "@/lib/brand-chronoslead";
-import { currentTenantOrg } from "@/server/tenant/current";
+import { currentTenantHost, currentTenantOrg } from "@/server/tenant/current";
 import { isCloud } from "@/server/tenant/edition";
 
 /**
@@ -23,8 +23,15 @@ export default async function AuthLayout({
   // 101 — En plataforma, un Host que no es de nadie no enseña un formulario de
   // acceso: no hay a qué entrar, y pintarlo con la marca por defecto invitaría
   // a probar contraseñas contra una organización que no existe.
-  if (isCloud() && !(await currentTenantOrg())) {
-    return <InstanciaInexistente />;
+  //
+  // 108 — `admin` es la excepción: es una puerta de la plataforma, no de una
+  // organización, así que no tiene ninguna y su login sí debe pintarse.
+  if (isCloud()) {
+    const host = await currentTenantHost();
+    const esPuertaDeLaPlataforma = host.kind === "admin" || host.kind === "alta";
+    if (!esPuertaDeLaPlataforma && !(await currentTenantOrg())) {
+      return <InstanciaInexistente />;
+    }
   }
   const branding = await getBranding().catch(() => DEFAULT_BRANDING);
 

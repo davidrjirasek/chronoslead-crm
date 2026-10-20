@@ -155,3 +155,16 @@ Next compila cada pantalla la **primera** vez que se visita. Medido en esta Mac:
 
 No es un problema del producto: es el modo de trabajo. Antes de concluir que algo va lento,
 medirlo en producción.
+
+## El panel del operador (`admin.*`)
+
+```bash
+PLATFORM_SUPERADMIN_EMAILS=tu-correo@dominio.com   # separados por coma
+```
+
+Se entra en **http://admin.lvh.me:3000/admin** con una cuenta cuyo correo esté en esa
+lista. En cualquier otro subdominio el panel responde 404.
+
+Sin la variable **nadie** es superadmin, a propósito: una lista vacía no abre la puerta.
+Cambiar quién manda exige tocar el servidor y volver a desplegar, que es la barrera que se
+quiere para eso.
