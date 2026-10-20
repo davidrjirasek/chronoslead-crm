@@ -155,6 +155,13 @@
       "when": 1792494429529,
       "tag": "0021_webhook_token_version",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792498845005,
+      "tag": "0022_estado_de_organizacion",
+      "breakpoints": true
     }
   ]
 }

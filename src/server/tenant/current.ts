@@ -2,7 +2,40 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { getDb, schema } from "@/lib/db";
 import { resolveTenantFromHost, type TenantHost } from "@/lib/tenant/host";
+import { estadoDeOrganizacion, type EstadoOrganizacion } from "@/lib/tenant/estado";
 import { baseDomain, isCloud } from "@/server/tenant/edition";
+
+const COLUMNAS = {
+  id: schema.organization.id,
+  slug: schema.organization.slug,
+  name: schema.organization.name,
+  metadata: schema.organization.metadata,
+  paidThrough: schema.organization.paidThrough,
+  suspendedAt: schema.organization.suspendedAt,
+  suspendedReason: schema.organization.suspendedReason,
+} as const;
+
+type Fila = {
+  id: string;
+  slug: string | null;
+  name: string;
+  metadata: string | null;
+  paidThrough: Date | null;
+  suspendedAt: Date | null;
+  suspendedReason: string | null;
+};
+
+function conEstado(fila: Fila | undefined): TenantOrg | null {
+  if (!fila) return null;
+  const { paidThrough, suspendedAt, suspendedReason, ...resto } = fila;
+  return {
+    ...resto,
+    estado: estadoDeOrganizacion(
+      { paidThrough, suspendedAt, suspendedReason },
+      new Date()
+    ),
+  };
+}
 
 /**
  * 101 — La organización de ESTA petición.
@@ -18,6 +51,8 @@ export type TenantOrg = {
   slug: string | null;
   name: string;
   metadata: string | null;
+  /** 104 — Estado derivado de la fecha de pago y de la suspensión manual. */
+  estado: EstadoOrganizacion;
 };
 
 /**
@@ -41,16 +76,11 @@ export async function currentTenantHost(): Promise<TenantHost> {
 async function orgBySlug(slug: string): Promise<TenantOrg | null> {
   const db = getDb();
   const rows = await db
-    .select({
-      id: schema.organization.id,
-      slug: schema.organization.slug,
-      name: schema.organization.name,
-      metadata: schema.organization.metadata,
-    })
+    .select(COLUMNAS)
     .from(schema.organization)
     .where(eq(schema.organization.slug, slug))
     .limit(1);
-  return rows[0] ?? null;
+  return conEstado(rows[0]);
 }
 
 /**
@@ -60,15 +90,10 @@ async function orgBySlug(slug: string): Promise<TenantOrg | null> {
 async function laUnicaOrganizacion(): Promise<TenantOrg | null> {
   const db = getDb();
   const rows = await db
-    .select({
-      id: schema.organization.id,
-      slug: schema.organization.slug,
-      name: schema.organization.name,
-      metadata: schema.organization.metadata,
-    })
+    .select(COLUMNAS)
     .from(schema.organization)
     .limit(1);
-  return rows[0] ?? null;
+  return conEstado(rows[0]);
 }
 
 /**
