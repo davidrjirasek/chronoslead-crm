@@ -1,6 +1,19 @@
 import { createHmac } from "node:crypto";
+import { eq } from "drizzle-orm";
+import { getDb, schema } from "@/lib/db";
 import { getEnv } from "@/lib/env";
 import { nextN } from "@/server/dev/wa-mock-state";
+import { isCloud } from "@/server/tenant/edition";
+import { segmentoDeOrganizacion } from "@/server/whatsapp/webhook-segment";
+
+async function versionDeWebhook(organizationId: string): Promise<number> {
+  const rows = await getDb()
+    .select({ v: schema.organization.webhookTokenVersion })
+    .from(schema.organization)
+    .where(eq(schema.organization.id, organizationId))
+    .limit(1);
+  return rows[0]?.v ?? 1;
+}
 
 /**
  * Construye un payload real de Meta y lo entrega al webhook público por
@@ -8,11 +21,31 @@ import { nextN } from "@/server/dev/wa-mock-state";
  * META_APP_SECRET real si está configurado — así el self-test ejercita la
  * capa 2 de verdad.
  */
-export async function deliverToWebhook(payload: unknown): Promise<Response> {
+/**
+ * 102 — El mock entra por la MISMA puerta que Meta, no por un atajo.
+ *
+ * Con `EDITION=cloud` la puerta compartida responde 404, así que el simulador
+ * tiene que usar la de la organización dueña del número. Hacerlo entrar por
+ * una vía privilegiada sería probar un camino que en producción no existe, y
+ * se saltaría el guardián de procedencia justo en la pieza que lo vigila.
+ */
+export async function deliverToWebhook(
+  payload: unknown,
+  organizationId?: string | null
+): Promise<Response> {
   const env = getEnv();
   const raw = JSON.stringify(payload);
   const port = process.env.PORT ?? "3000";
-  const url = `http://127.0.0.1:${port}/api/webhooks/wa/${env.META_WEBHOOK_VERIFY_TOKEN}`;
+  const segmento = isCloud()
+    ? organizationId
+      ? `${organizationId}/${segmentoDeOrganizacion(
+          organizationId,
+          await versionDeWebhook(organizationId),
+          env.ENCRYPTION_KEY
+        )}`
+      : "sin-organizacion/invalido"
+    : env.META_WEBHOOK_VERIFY_TOKEN;
+  const url = `http://127.0.0.1:${port}/api/webhooks/wa/${segmento}`;
 
   const headers: Record<string, string> = {
     "content-type": "application/json",

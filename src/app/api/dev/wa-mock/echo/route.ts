@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     ...body.data,
     wabaId: creds?.wabaId ?? "WABA-MOCK",
   });
-  const res = await deliverToWebhook(payload);
+  const res = await deliverToWebhook(payload, creds?.organizationId);
   if (!res.ok) {
     return apiError(502, "webhook_error", `El webhook respondió ${res.status}`);
   }
