@@ -75,8 +75,11 @@ corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack 
 Y el gate que manda, con dos organizaciones sembradas en `*.lvh.me` y la app viva:
 
 ```bash
-corepack pnpm test:e2e:aislamiento    # (lo crea el paso 9 de saas-multitenant)
+corepack pnpm test:e2e:aislamiento    # 34 comprobaciones, spec 105
 ```
+
+Necesita la app viva con `EDITION=cloud`, `BASE_DOMAIN=lvh.me`,
+`WA_MOCK_ENABLED=true` y `BOT_API_KEY`. Siembra sus propias organizaciones.
 
 **El de aislamiento manda**: mientras no esté verde, nada está Hecho. Sus comprobaciones de
 ESCRITURA (un evento por la puerta de A no entra en B) importan más que las de lectura.
