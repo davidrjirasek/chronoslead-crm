@@ -115,6 +115,34 @@ de Zoom es el que rompe «Probar».
 El material de Creativo 4D sirve de **ejemplo trabajado** del manual, pero el
 contenido comercial de cada cliente vive fuera del repo: este es público.
 
+### Hallazgo: las personas del Laboratorio son de una ferretería (2026-10-21)
+
+Las seis personas de `src/server/lab/personas.ts` traen **guiones fijos**
+escritos para la demo de Vocero, la Ferretería El Martillo: preguntan por
+martillos, desarmadores, lijadoras, pintura y tiner.
+
+En una instancia de un solo negocio eso es un detalle. **En una plataforma es
+una pieza que falta**: a Student Store y a Castel Muebles les van a aparecer los
+mismos clientes simulados preguntando por martillos.
+
+Lo que el Laboratorio sí mide con esos guiones es valioso y no hay que perderlo:
+**si el agente inventa**. En la corrida de Creativo 4D (score 100 sobre 5 casos;
+uno sin veredicto porque el juez no respondió válido) quedó probado que Fourdy
+no se inventa una política de garantías ni el precio de un galón de pintura, y
+que escala con la frase configurada.
+
+Lo que NO mide es el comportamiento comercial propio de cada negocio. Para
+Creativo 4D: los cinco factores de calificación, el filtro económico y —la
+regla que más importa— **no ofrecer horarios antes de validar la inversión**.
+Ninguna de las seis personas lo toca.
+
+Opciones, para cuando se decida: personas por organización (configurables desde
+la app, como el conocimiento), o un segundo juego de personas genéricas B2B que
+no asuma catálogo de productos. La primera encaja con el resto de la
+plataforma; la segunda es más barata y no resuelve el caso general.
+
+Relacionado con el manual de alta: cada cliente nuevo se va a topar con esto.
+
 ### Pendiente
 
 - Conectar un número real de WhatsApp y probar en vivo que el agente conteste y
