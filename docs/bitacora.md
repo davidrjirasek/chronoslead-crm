@@ -83,6 +83,38 @@ preguntando. La regla quedó en `CLAUDE.md`.
 sus propias organizaciones —quedarían en la base real— y da por encendidos los
 simuladores. Es un gate del código y vive en local.
 
+### Pedido del dueño: manual de alta de un cliente (2026-10-21)
+
+Creativo 4D Group es el **primero** de varios: siguen Student Store, Castel
+Muebles y los demás. Cada uno se configura igual, y hoy ese procedimiento solo
+existe en esta conversación.
+
+Hace falta un **manual paso a paso** para que cualquiera del equipo pueda dar de
+alta una instancia —con Claude Code al lado, pero sin depender de que alguien
+recuerde el orden—. Cubre el recorrido completo, desde cero:
+
+1. Alta de la organización (`provision.mjs`) y entrega del enlace de primer
+   acceso al cliente
+2. Primera entrada del cliente: elegir contraseña, qué ve, los cuatro pasos de
+   la guía de inicio
+3. Proveedor de IA: llave propia por organización, probar conexión
+4. El agente: nombre, tono, instrucciones, escalado, saludo
+5. La base de conocimiento: qué va en bloques y qué en preguntas/respuestas, y
+   **por qué los datos duros van ahí y no en las instrucciones**
+6. La agenda: franjas, duración, respiro, aviso, ventana y **zona horaria**
+7. El conector de reunión (Zoom o Google) y cómo crear sus credenciales
+8. Canales: WhatsApp, y después Instagram/Facebook
+9. El Laboratorio antes de encender el agente
+10. Encender, y qué revisar la primera semana
+
+Lo que se aprendió configurando Creativo 4D va en ese manual, no en la memoria
+de nadie: el campo Tono es de una línea y se come los saltos; la zona horaria
+nace en Ciudad de México; Zoom llama `:admin` a sus permisos; el cuarto permiso
+de Zoom es el que rompe «Probar».
+
+El material de Creativo 4D sirve de **ejemplo trabajado** del manual, pero el
+contenido comercial de cada cliente vive fuera del repo: este es público.
+
 ### Pendiente
 
 - Conectar un número real de WhatsApp y probar en vivo que el agente conteste y

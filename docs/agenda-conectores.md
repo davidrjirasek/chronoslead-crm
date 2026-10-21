@@ -46,6 +46,15 @@ user:read:user            leer tu usuario
 > conexión falla aunque tus credenciales sirvan perfectamente para crear
 > reuniones, y el mensaje de error no lo dice.
 
+> **Cómo los llama hoy el Marketplace** (verificado el 2026-10-21 creando una
+> app real): buscando `meeting:write:meeting` no aparece ese nombre exacto, sino
+> dos variantes — `:admin` y `:master`. En una app Server-to-Server de cuenta va
+> **`:admin`**: `meeting:write:meeting:admin`, `meeting:update:meeting:admin`,
+> `meeting:delete:meeting:admin` y `user:read:user:admin`. Los nombres de arriba
+> siguen siendo los correctos conceptualmente y el código no valida ninguno
+> (`ZOOM_SCOPES` es documentación: no se usa en ninguna comprobación), así que
+> las variantes `:admin` funcionan igual.
+
 ### Google Calendar + Meet (`google`)
 
 Cada cita crea un evento en tu calendario con su enlace de Meet. Su
