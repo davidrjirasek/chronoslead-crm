@@ -143,6 +143,77 @@ plataforma; la segunda es más barata y no resuelve el caso general.
 
 Relacionado con el manual de alta: cada cliente nuevo se va a topar con esto.
 
+### 2026-10-21 — La primera conversación real, y lo que enseñó
+
+Un prospecto simulado por el dueño, por WhatsApp, de punta a punta. El agente
+hizo descubrimiento antes de vender, no se apuró, y **creó una reunión de Zoom
+real**. La cadena completa funciona. Lo que falló, falló en lugares que ni el
+Laboratorio ni las pruebas unitarias podían ver.
+
+#### Lo que se arregló en configuración, el mismo día
+
+| Qué | Causa |
+|---|---|
+| Preguntaba «¿Meet o Zoom?» y mandaba un enlace de Zoom | El conocimiento decía «primera opción Meet o Zoom», heredado del manual del dueño. Pero hay **un solo conector configurado**: ofrecía algo que no podía cumplir |
+| La lista de horarios no seguía lo que pedía el cliente | Ver abajo: es del núcleo. Se mitigó explicándole al agente cómo funciona la lista |
+
+#### Hallazgos del núcleo
+
+**Una nota de voz corta el turno.** El audio entra sin texto, el modelo recibe
+un turno vacío y responde vacío; el sistema lo toma como fallo del proveedor y
+pausa la IA. `[agente] falló del proveedor (raw): respuesta del proveedor sin
+contenido`. En este mercado la gente manda audios constantemente.
+
+**La lista de horarios no puede seguir la conversación.** `offer_slots` solo
+acepta un texto de introducción: el sistema registra **todo** el catálogo pero
+muestra siempre los más próximos. Si el cliente pide otro día, el agente lo
+dice bien en prosa —lee el catálogo real, no inventa— y la lista visible lo
+contradice. Falta un parámetro para decir qué mostrar.
+
+**Zoom no sincroniza con Google Calendar las reuniones creadas por API.**
+Probado con todo configurado: integración conectada con permiso de escritura y
+sincronización bidireccional encendida. La cita no aparece. Editarla a mano en
+el portal de Zoom **sí** la empuja. El comentario de `agenda-connectors.ts`
+—«Zoom sincroniza con el calendario del dueño por su cuenta, si él lo configuró
+allá»— resultó optimista.
+
+#### La regla que fijó el dueño: la IA no se apaga sola
+
+Hoy `applyHandoff` acepta cinco motivos —`manual_reply`, `cliente`, `modelo`,
+`error`, `ventana`— y **los trata a todos igual**: marca el handoff y la IA se
+calla. Pero en cuatro de los cinco **nadie tomó la conversación**.
+
+> Lo único que debería callar a la IA es que una persona haya respondido de
+> verdad.
+
+Fuerza del argumento: la conversación de hoy murió por `error`, y el prospecto
+mandó **tres mensajes de texto más**. Con esta regla, esos tres habrían
+despertado al agente — el bug del audio habría sido un tropiezo y no una
+conversación perdida.
+
+Ya hecho en configuración: al escalar, el agente avisa qué pasa, cuándo le
+responden y que sigue disponible. Después de escalar queda **disponible pero no
+insistente** — «respondés cuando te hablan; no insistís cuando no». Si el
+cliente pidió expresamente una persona, confirma y deja de llevar la charla.
+
+Falta en código: que `error` y `ventana` no pausen la IA.
+
+#### Pedidos de producto del dueño, por orden
+
+1. **Aviso de handoff por WhatsApp**, con plantilla aprobada por Meta. Es el
+   único con espera ajena: la aprobación no depende de nosotros
+2. **Banderita roja** en la Bandeja. Hoy «Atención humana» se ve igual de neutra
+   que «Nuevo»: lo urgente y lo rutinario parecen lo mismo
+3. **Check de «la tomé yo»**, con nombre y hora — «tomada por David, 14:20» —
+   para que dos personas no se pisen
+4. **Transcripción de audios.** El dueño: «hoy ya es casi un commodity; si
+   nuestra gente no hace eso, se queda muy atrás»
+5. **La insignia del commit** no debería verla el cliente. Es información de
+   operador. Forzar un `commitVerified` falso sería peor que el aviso actual
+
+La cadena de los tres primeros: el aviso te trae, la banderita te dice dónde, el
+check evita que se pisen.
+
 ### Pendiente
 
 - Conectar un número real de WhatsApp y probar en vivo que el agente conteste y
