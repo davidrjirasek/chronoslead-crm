@@ -14,7 +14,9 @@ import { LeadForm } from "@/app/(public)/lead-form";
  * real como referencia (no el placeholder [USD X] del diseño original).
  */
 
-const WHATSAPP_NUMBER = "595976260002";
+// El número de la Cloud API: es el que atiende el agente. El 976 quedó
+// fuera a propósito — vive en la app del teléfono, nadie lo atiende aquí.
+const WHATSAPP_NUMBER = "595987550109";
 const waLink = (texto: string) =>
   `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(texto)}`;
 const CTA_TEXT = "Hola, quiero agendar mi diagnóstico gratuito de ChronosLead";
