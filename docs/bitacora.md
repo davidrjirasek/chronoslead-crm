@@ -314,6 +314,30 @@ Seis segundos dentro de un despliegue de minutos: poco probable, no
 imposible. Mientras no haya reintento al arrancar, la práctica es desplegar
 sin nadie escribiendo y mirar la bandeja justo después.
 
+**Y además hay un segundo hueco, que no estaba en el código sino en el
+cambio de contenedor.** Medido en el despliegue de `2210f14` con dos sondas
+independientes consultando `/api/health` cada segundo, 862 mediciones:
+
+| | |
+|---|---|
+| Duración del build | 6 min (el anterior, 8 min 58 s) |
+| Ventana con problemas | **18:23:27 → 18:23:55, 29 segundos** |
+| Dentro de esa ventana | 42 intentos: 21 bien, **21 con error 502** |
+| Racha más larga sin contestar | 2 segundos |
+
+No es un apagón limpio: durante esos 29 segundos el servidor **alterna**,
+contesta uno sí y uno no. Es el repartidor de Coolify mandando tráfico al
+contenedor viejo mientras lo desarma. El commit nuevo ya contestaba a los
+**4 segundos** de empezar la ventana; lo que coletea es el viejo.
+
+Lo que esto significa para la operación: **un webhook de Meta que caiga en
+esos 29 segundos tiene ~50% de chance de recibir un 502.** Meta reintenta las
+entregas fallidas, así que el mensaje debería llegar igual, con retraso —
+pero eso **no está verificado en vivo**, es lo que documenta Meta.
+
+Corrige lo que se había estimado antes de medir: el riesgo no eran 6
+segundos, son ~29, y por un motivo distinto al que se suponía.
+
 ### Pendiente
 
 - **Reintentar al arrancar los entrantes sin respuesta**: hoy un mensaje que
