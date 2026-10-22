@@ -242,6 +242,19 @@ export function MessageThread({ messages }: { messages: MessageDto[] }) {
                         {m.media.caption}
                       </span>
                     )}
+                    {/* 114 — Lo que dice la nota de voz. El agente ya lo lee;
+                        sin esto, quien entra a atender tiene que escuchar el
+                        audio igual y la transcripción solo sirve para la IA.
+                        Se marca como transcripción a propósito: no es lo que
+                        el cliente escribió, es lo que el sistema entendió. */}
+                    {m.media.kind === "audio" && m.text?.trim() && (
+                      <span className="mt-1.5 block border-l-2 border-border-strong pl-2 text-[12.5px] text-text-3">
+                        <span className="block text-[10.5px] uppercase tracking-[.08em] opacity-70">
+                          Transcripción
+                        </span>
+                        <span className="whitespace-pre-wrap break-words">{m.text}</span>
+                      </span>
+                    )}
                   </span>
                 ) : m.type === "text" || m.type === "template" ? (
                   <span className="whitespace-pre-wrap break-words">

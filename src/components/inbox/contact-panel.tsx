@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { agenteSilenciado } from "@/server/ai/silencio";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -83,7 +84,15 @@ export function ContactPanel({
   // El control es la FUENTE DE VERDAD de la conversación: el agente in-process
   // y cualquier cerebro externo conectado por /api/bot/* respetan este flag,
   // así que el toggle opera siempre — `agentReady` solo matiza el texto.
-  const aiActive = conversation.aiEnabled && !conversation.handoffAt;
+  // 114 — La misma regla que usa el servidor (`agenteSilenciado`). Desde que
+  // solo una respuesta humana real calla al agente, mirar `handoffAt` a secas
+  // hacía que el panel dijera «En pausa» mientras el agente contestaba. Una
+  // etiqueta que miente sobre lo que hace el sistema es peor que no tenerla.
+  const silenciado = agenteSilenciado(
+    conversation.handoffAt,
+    conversation.handoffReason
+  );
+  const aiActive = conversation.aiEnabled && !silenciado;
 
   // Aparte del resto: consultar el /health del cerebro externo puede tardar
   // hasta 2 s, y eso no debe demorar la etapa ni la ficha.
@@ -244,13 +253,15 @@ export function ContactPanel({
               <div className="min-w-0">
                 <p className="text-[13px] font-medium">IA en esta conversación</p>
                 <p className="text-[11px] text-text-3">
-                  {conversation.handoffAt
-                    ? "En pausa · atención humana"
+                  {silenciado
+                    ? "En pausa · la atiende una persona"
                     : !conversation.aiEnabled
                       ? "En pausa"
-                      : agentReady || externalActive
-                        ? "Respondiendo"
-                        : "Activada"}
+                      : conversation.handoffAt
+                        ? "Disponible · esperando a una persona"
+                        : agentReady || externalActive
+                          ? "Respondiendo"
+                          : "Activada"}
                 </p>
               </div>
               <Switch
