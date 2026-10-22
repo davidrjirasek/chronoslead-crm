@@ -85,7 +85,7 @@ simuladores. Es un gate del código y vive en local.
 
 ### Pedido del dueño: manual de alta de un cliente (2026-10-21)
 
-Creativo 4D Group es el **primero** de varios: siguen Student Store, Castel
+Creativo 4D Group es el **primero** de varios: siguen THE Student Store, Castel
 Muebles y los demás. Cada uno se configura igual, y hoy ese procedimiento solo
 existe en esta conversación.
 
@@ -115,6 +115,14 @@ de Zoom es el que rompe «Probar».
 El material de Creativo 4D sirve de **ejemplo trabajado** del manual, pero el
 contenido comercial de cada cliente vive fuera del repo: este es público.
 
+**Escrito el 2026-10-22**: [alta-de-cliente.md](alta-de-cliente.md), con los
+doce pasos y su lista de control. Le entró un paso que no estaba en el pedido
+original y que es el que más muerde — el **2 · agregar el dominio en Coolify**.
+El 503 de un subdominio inventado ya estaba anotado arriba como comprobación de
+que un host inventado no cae en un tenant real; lo que faltaba era decir la otra
+cara: **ese mismo 503 le pasa a un cliente legítimo** hasta que alguien agrega
+su dominio a mano y despliega.
+
 ### Hallazgo: las personas del Laboratorio son de una ferretería (2026-10-21)
 
 Las seis personas de `src/server/lab/personas.ts` traen **guiones fijos**
@@ -122,7 +130,7 @@ escritos para la demo de Vocero, la Ferretería El Martillo: preguntan por
 martillos, desarmadores, lijadoras, pintura y tiner.
 
 En una instancia de un solo negocio eso es un detalle. **En una plataforma es
-una pieza que falta**: a Student Store y a Castel Muebles les van a aparecer los
+una pieza que falta**: a THE Student Store y a Castel Muebles les van a aparecer los
 mismos clientes simulados preguntando por martillos.
 
 Lo que el Laboratorio sí mide con esos guiones es valioso y no hay que perderlo:
@@ -221,7 +229,7 @@ El dueño pidió dos avisos en días distintos, y son la misma pieza:
 | Disparador | Aviso |
 |---|---|
 | Una conversación escaló a atención humana | quién espera, desde cuándo y por qué |
-| Un directivo consultó por el servicio (caso Student Store) | quién es, de qué institución, qué pidió |
+| Un directivo consultó por el servicio (caso THE Student Store) | quién es, de qué institución, qué pidió |
 
 Los dos son **mandar una plantilla a un número interno con datos de la
 conversación**. No son dos desarrollos: es uno —el canal de avisos al equipo—
@@ -235,7 +243,7 @@ Es la misma disciplina que la agenda, que nunca confirma una cita antes de que
 el calendario la registre. Prometer un aviso que falló es peor que no
 prometerlo: el cliente se queda esperando y nadie se entera.
 
-El caso de Student Store le agrega valor comercial: un director que consulta
+El caso de THE Student Store le agrega valor comercial: un director que consulta
 por el comedor de su colegio es un contrato entero. Sin el aviso, ese lead
 depende de que la persona haga un segundo esfuerzo —escribir a otro número—.
 Con el aviso, el equipo puede tomar la iniciativa.

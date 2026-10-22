@@ -12,9 +12,28 @@ llave de IA y su propio agente. La landing pública vive en el apex `chronoslead
 > **Lo primero que cambia respecto a una instancia de un solo negocio:**
 > `select … from organization limit 1` ya no significa «mi organización»; es el cruce de
 > datos entre clientes. La organización actual se resuelve SIEMPRE por el Host.
-> La ruta de resolución **todavía no existe**: la crea el paso 1 de la skill
-> `saas-multitenant`. Hasta entonces, cada `limit(1)` sobre `organization` es deuda
-> anotada en el inventario del paso 0.
+>
+> **La ruta de resolución ya existe** (pasos 1 y 2 de la skill `saas-multitenant`,
+> hechos): `resolveTenantFromHost()` en `src/lib/tenant/host.ts` convierte el Host en
+> `{tenant, landing, admin, alta, desconocido}`, y `currentTenantOrg()` en
+> `src/server/tenant/current.ts` es el que devuelve «esta organización». No queda
+> deuda de `limit(1)` sobre `organization`.
+
+## Qué falta del mapa (auditado 2026-10-22)
+
+De los diez pasos de la skill `saas-multitenant`, **ocho están**. Faltan dos, y
+uno de ellos tiene una trampa que muerde en cada alta:
+
+| Paso | Estado |
+|---|---|
+| **6 · Embedded Signup** | **No está.** Cada cliente conecta WhatsApp a mano: comparte su WABA, y su token se pega en Ajustes → WhatsApp. El botón que lo hace solo necesita el estatus de Tech Provider de Meta — decisión del dueño: después |
+| **7 · Alta automática** | **No se quiere.** El alta la hace el operador desde `admin.…` tras la reunión de diagnóstico. No es un agujero, es el modelo de negocio |
+| **8 · Infra comodín** | **No está, y es la trampa.** El DNS sí es comodín (Cloudflare resuelve cualquier subdominio), pero **el proxy de Coolify tiene una lista de dominios escrita a mano**. Un subdominio que no esté en esa lista contesta `503 no available server` y NUNCA llega a la app: la pantalla «esta instancia no existe» no se ve jamás |
+
+> **Por eso, dar de alta un cliente son DOS lugares, no uno:** el panel de
+> superadmin **y** el campo Domains de Coolify. Si se olvida el segundo, el
+> cliente queda perfecto en la base y su dirección no existe.
+> Procedimiento completo: [docs/alta-de-cliente.md](docs/alta-de-cliente.md).
 
 ## Reglas (resumen de la constitución)
 
@@ -73,10 +92,10 @@ primero es especificación, el segundo es procedimiento.
 
 | Quieres cambiar… | Toca… |
 |---|---|
-| Qué organización es «esta» | *(no existe aún — paso 1 de `saas-multitenant`)* |
+| Qué organización es «esta» | `src/lib/tenant/host.ts` (Host → tenant) · `src/server/tenant/current.ts` (`currentTenantOrg()`) |
 | El acceso a datos con tenant | `src/lib/db/tenant.ts` (`scoped()`) |
 | Los webhooks públicos | `src/app/api/webhooks/{wa,ig,messenger,tiktok}/[webhookToken]/` |
-| La plataforma (alta, suspensión, superadmin, cuotas) | *(no existe aún — paso 7)* |
+| La plataforma (alta, suspensión, superadmin, pagos) | `src/app/admin/` + `src/components/admin/padron.tsx` · acciones en `src/app/admin/actions.ts` |
 | El canal WhatsApp | `src/server/whatsapp/` |
 | El agente / cerebro | `src/server/ai/`, `src/server/brains/` |
 | Esquema y migraciones | `src/lib/db/schema.ts` → `pnpm db:generate` → `drizzle/` |
