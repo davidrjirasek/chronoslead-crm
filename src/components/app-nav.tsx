@@ -43,6 +43,7 @@ export function AppNav({
   role,
   theme,
   commit,
+  avisarCommitSinVerificar = true,
   agenda = false,
   kicker = "CRM · WhatsApp",
   open = false,
@@ -52,6 +53,8 @@ export function AppNav({
   userName: string;
   role: string;
   theme: ThemePreference;
+  /** 114 — El aviso de commit sin verificar es de operador, no de cliente. */
+  avisarCommitSinVerificar?: boolean;
   /**
    * Commit resuelto en el servidor. Gana al de build porque puede venir de la
    * plataforma cuando quien construyó no lo pasó como build-arg — y en ese
@@ -219,7 +222,7 @@ export function AppNav({
         title={versionTitle(branding.name, version)}
       >
         {versionLabel(version.commit)}
-        {version.commit && !version.verified && (
+        {avisarCommitSinVerificar && version.commit && !version.verified && (
           <span className="mt-0.5 flex items-center gap-1">
             <AlertTriangle
               className="h-3 w-3 shrink-0 text-warning-text"

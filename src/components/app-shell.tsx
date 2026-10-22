@@ -29,6 +29,7 @@ export function AppShell({
   role,
   theme,
   commit,
+  avisarCommitSinVerificar = true,
   agenda = false,
   kicker,
   aviso = null,
@@ -40,6 +41,9 @@ export function AppShell({
   theme: ThemePreference;
   /** Commit resuelto en el servidor, con su procedencia (ver `resolveCommit`). */
   commit?: ResolvedCommit;
+  /** 114 — ¿Se muestra el aviso de commit sin verificar? En plataforma no:
+   *  es información de operador y el cliente solo ve un triángulo. */
+  avisarCommitSinVerificar?: boolean;
   /** 015 — ¿esta instancia tiene agenda? Lo decide el servidor. */
   agenda?: boolean;
   /** 028 — La etiqueta bajo el logo (`navKicker`). */
@@ -95,6 +99,7 @@ export function AppShell({
       <AppNav
         branding={branding}
         commit={commit}
+        avisarCommitSinVerificar={avisarCommitSinVerificar}
         userName={userName}
         role={role}
         theme={theme}
