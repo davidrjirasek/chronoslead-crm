@@ -419,13 +419,6 @@ export function LandingPublica() {
           ))}
         </nav>
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
-          <Link
-            href="/app/login"
-            data-testid="landing-ingresar"
-            className="hidden font-semibold text-[13px] text-zinc-500 transition hover:text-ink sm:inline-block"
-          >
-            Ingresar
-          </Link>
           <CtaPrimario className="whitespace-nowrap px-3.5 py-2 text-[12px] sm:px-5 sm:py-2.5 sm:text-[13px]">
             Agendá tu diagnóstico
           </CtaPrimario>
@@ -1061,9 +1054,14 @@ export function LandingPublica() {
                 <a href="#preguntas" className="block text-white/65 transition hover:text-white">
                   Preguntas frecuentes
                 </a>
-                <Link href="/app/login" className="block text-white/65 transition hover:text-white">
-                  Ingresar al CRM
-                </Link>
+                {/* Sin enlace de ingreso: en la plataforma cada cliente entra por
+                    SU subdominio, y el apex no sabe de qué empresa es quien
+                    hace clic. Un «Ingresar» genérico solo puede llevar a un
+                    error. La frase le dice al cliente lo que necesita saber. */}
+                <p className="text-white/45">
+                  ¿Ya sos cliente? Entrá en{" "}
+                  <span className="text-white/65">tuempresa.chronoslead.com</span>
+                </p>
               </div>
               <div className="space-y-2">
                 <p className="font-bold text-[10.5px] text-primary uppercase tracking-[.14em]">
