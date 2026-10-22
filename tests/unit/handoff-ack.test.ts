@@ -238,17 +238,32 @@ describe("acuse del patrón de respaldo antes de traspasar (FR-022)", () => {
     // Primer turno: acuse + traspaso.
     turno("quiero hablar con un humano");
     await correrTurno();
-    // Lo que llegue mientras tanto re-encola un turno; ese turno lee la
-    // conversación YA traspasada. El último entrante sigue siendo la misma
-    // frase, así que si el silencio no mandara, el acuse saldría dos veces.
+
+    // 112 — Lo que llegue mientras tanto re-encola un turno, que lee la
+    // conversación YA traspasada con el mismo entrante. Antes el turno se
+    // cortaba en el guardián del handoff; ahora el agente sigue disponible
+    // mientras nadie conteste (`silencio.ts`), así que lo que impide el acuse
+    // repetido es la guarda de TRANSICIÓN del patrón de respaldo.
+    //
+    // Decirle dos veces «te paso con el equipo» a quien ya lo pidió es ruido.
+    chatJson.mockResolvedValueOnce({
+      ok: true,
+      data: { action: "reply", reply: "Quedo por acá por si necesitás algo más." },
+    });
     turno(
       "quiero hablar con un humano",
       conversacion({ handoffAt: new Date(), handoffReason: "cliente" })
     );
     await correrTurno();
 
-    expect(sendText).toHaveBeenCalledTimes(1);
-    expect(eventos).toEqual([`enviado:${HANDOFF_BACKUP_ACK}`, "handoff:cliente"]);
+    const acuses = sendText.mock.calls.filter(
+      (c) => c[0]?.text === HANDOFF_BACKUP_ACK || c[1] === HANDOFF_BACKUP_ACK
+    );
+    expect(acuses.length).toBeLessThanOrEqual(1);
+    expect(
+      eventos.filter((e) => e === `enviado:${HANDOFF_BACKUP_ACK}`)
+    ).toHaveLength(1);
+    expect(eventos.filter((e) => e === "handoff:cliente")).toHaveLength(1);
   });
 
   it("es el mismo emisor y el mismo orden que el `farewell` del camino del modelo", async () => {
