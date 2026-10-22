@@ -20,6 +20,8 @@ const WHATSAPP_NUMBER = "595987550109";
 const waLink = (texto: string) =>
   `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(texto)}`;
 const CTA_TEXT = "Hola, quiero agendar mi diagnóstico gratuito de ChronosLead";
+// Distinto a propósito: en la bandeja se reconoce de qué botón vino el lead.
+const CTA_AGENTE = "Hola, quiero probar el asesor digital de ChronosLead";
 
 const NAV_LINKS = [
   { href: "#solucion", label: "La solución" },
@@ -419,13 +421,6 @@ export function LandingPublica() {
           ))}
         </nav>
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
-          <Link
-            href="/app/login"
-            data-testid="landing-ingresar"
-            className="hidden font-semibold text-[13px] text-zinc-500 transition hover:text-ink sm:inline-block"
-          >
-            Ingresar
-          </Link>
           <CtaPrimario className="whitespace-nowrap px-3.5 py-2 text-[12px] sm:px-5 sm:py-2.5 sm:text-[13px]">
             Agendá tu diagnóstico
           </CtaPrimario>
@@ -1007,14 +1002,24 @@ export function LandingPublica() {
                 Escribinos por WhatsApp y coordinamos tu diagnóstico gratuito: una reunión donde
                 diseñamos el sistema a la medida de tu negocio.
               </p>
+              {/* 113 — Aquí el llamado NO es agendar: es probar. La sección se
+                  titula «Probalo vos mismo» y al lado está el formulario para
+                  quien prefiere que lo contacten. Dos caminos distintos; dos
+                  botones de agendar competirían entre sí.
+                  El texto precargado es propio para reconocer en la bandeja
+                  que ese lead vino de aquí y no de un botón de diagnóstico. */}
               <a
-                href={waLink(CTA_TEXT)}
+                href={waLink(CTA_AGENTE)}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-7 flex w-fit items-center justify-center gap-2.5 rounded-full bg-primary px-7 py-4 font-bold text-[15px] text-white shadow-[0_14px_32px_-10px_rgba(255,106,0,.6)] transition hover:bg-[#E24D00] active:scale-[.98]"
+                className="mt-7 flex w-fit items-center justify-center gap-3 rounded-full bg-primary px-7 py-4 font-bold text-[15px] text-white shadow-[0_14px_32px_-10px_rgba(255,106,0,.6)] transition hover:bg-[#E24D00] active:scale-[.98]"
               >
-                Agendá tu diagnóstico gratis →
+                <WhatsappIcon className="h-[18px] w-[18px]" />
+                Conversá con tu asesor digital
               </a>
+              <p className="mt-3 text-[13px] text-white/45">
+                Te responde en segundos, cualquier día y a cualquier hora.
+              </p>
             </div>
             <LeadForm />
           </div>
@@ -1061,9 +1066,14 @@ export function LandingPublica() {
                 <a href="#preguntas" className="block text-white/65 transition hover:text-white">
                   Preguntas frecuentes
                 </a>
-                <Link href="/app/login" className="block text-white/65 transition hover:text-white">
-                  Ingresar al CRM
-                </Link>
+                {/* Sin enlace de ingreso: en la plataforma cada cliente entra por
+                    SU subdominio, y el apex no sabe de qué empresa es quien
+                    hace clic. Un «Ingresar» genérico solo puede llevar a un
+                    error. La frase le dice al cliente lo que necesita saber. */}
+                <p className="text-white/45">
+                  ¿Ya sos cliente? Entrá en{" "}
+                  <span className="text-white/65">tuempresa.chronoslead.com</span>
+                </p>
               </div>
               <div className="space-y-2">
                 <p className="font-bold text-[10.5px] text-primary uppercase tracking-[.14em]">
