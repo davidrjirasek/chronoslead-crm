@@ -29,6 +29,8 @@ import {
 } from "@/server/ai/orden-turno";
 import { agendaEnabled } from "@/server/agenda/flag";
 import { bookSlot, offerSlots } from "@/server/agenda/agent";
+import { contenidoParaElModelo } from "@/server/ai/contenido";
+import { agenteSilenciado } from "@/server/ai/silencio";
 import { getOffers, mapaDeHuecosParaModelo } from "@/server/agenda/offers";
 
 /**
@@ -161,7 +163,10 @@ export async function runAgentTurn(
   if (!(await isAiConfiguredFor(organizationId))) return;
 
   // Condiciones de silencio: handoff activo o IA apagada en la conversación.
-  if (conversation.handoffAt || !conversation.aiEnabled) return;
+  if (!conversation.aiEnabled) return;
+  // 112 — Marcada para atención humana no es lo mismo que atendida: mientras
+  // nadie conteste, el agente sigue disponible (ver `silencio.ts`).
+  if (agenteSilenciado(conversation.handoffAt, conversation.handoffReason)) return;
 
   const profileRows = await db
     .select()
@@ -230,7 +235,15 @@ export async function runAgentTurn(
   // Patrón de respaldo ANTES del LLM (FR-022). Avisa y traspasa, en el mismo
   // orden que el camino del modelo (`farewell` y luego handoff): callar ante
   // quien pide una persona se lee como que el bot dejó de contestar.
-  if (lastInbound.text && matchesHandoffIntent(lastInbound.text)) {
+  // 112 — Solo en la TRANSICIÓN. Desde que el agente puede seguir hablando
+  // en una conversación ya traspasada, el acuse necesita esta guarda: un turno
+  // re-encolado lee el mismo entrante y volvería a acusar. Decirle dos veces
+  // «te paso con el equipo» a quien ya lo pidió es ruido, no atención.
+  if (
+    !conversation.handoffAt &&
+    lastInbound.text &&
+    matchesHandoffIntent(lastInbound.text)
+  ) {
     await acknowledgeHandoff(conversation);
     await applyHandoff(conversationId, organizationId, "cliente");
     return leido;
@@ -278,11 +291,13 @@ export async function runAgentTurn(
       content: buildAgentSystemPrompt({ profile, kb, stages, agenda }),
     },
     ...history
-      .filter((m) => m.text)
       .map((m) => ({
         role: m.direction === "in" ? ("user" as const) : ("assistant" as const),
-        content: m.text!,
-      })),
+        content: contenidoParaElModelo(m),
+      }))
+      .filter((m): m is { role: "user" | "assistant"; content: string } =>
+        m.content !== null
+      ),
     /**
      * Va AL FINAL, después del historial: es el estado de AHORA, y ponerlo
      * antes lo dejaría enterrado bajo la conversación en cuanto esta crezca.

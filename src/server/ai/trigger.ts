@@ -3,6 +3,7 @@ import { isAiConfiguredFor } from "@/lib/ai/provider";
 import { despachoActivo } from "@/server/brains/config";
 import { despacharAlCerebro } from "@/server/dispatch/encolar";
 import { organizacionConServicio } from "@/server/tenant/servicio";
+import { transcribirNotaDeVoz } from "@/server/ai/nota-de-voz";
 
 /**
  * Punto de enganche del turno tras la ingesta de un mensaje entrante REAL (las
@@ -30,6 +31,11 @@ export async function maybeRunAgentTurn(
   // agente incluido ni por un cerebro externo. El mensaje entrante YA está
   // guardado cuando se llega aquí: se corta el servicio, no los datos.
   if (!(await organizacionConServicio(organizationId))) return;
+
+  // 112 — Si el entrante es una nota de voz y el conector está encendido, se
+  // transcribe ANTES de pensar el turno: así el agente lee lo que dijo el
+  // cliente y no «llegó un audio». Sin conector vuelve enseguida.
+  await transcribirNotaDeVoz(organizationId, messageId);
 
   if (despachoActivo()) {
     await despacharAlCerebro(conversationId, organizationId, messageId);
