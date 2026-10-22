@@ -26,12 +26,15 @@ export default async function AuthLayout({
   //
   // 108 — `admin` es la excepción: es una puerta de la plataforma, no de una
   // organización, así que no tiene ninguna y su login sí debe pintarse.
+  // 116 — `admin` es además la puerta del OPERADOR, y el titular lo dice.
+  let esPuertaDeOperador = false;
   if (isCloud()) {
     const host = await currentTenantHost();
     const esPuertaDeLaPlataforma = host.kind === "admin" || host.kind === "alta";
     if (!esPuertaDeLaPlataforma && !(await currentTenantOrg())) {
       return <InstanciaInexistente />;
     }
+    esPuertaDeOperador = host.kind === "admin";
   }
   const branding = await getBranding().catch(() => DEFAULT_BRANDING);
 
@@ -43,7 +46,9 @@ export default async function AuthLayout({
   if (isChronosLeadName(branding.name)) {
     return (
       <EscenografiaChronosLead>
-        <EdicionProvider cloud={isCloud()}>{children}</EdicionProvider>
+        <EdicionProvider cloud={isCloud()} puertaDeOperador={esPuertaDeOperador}>
+          {children}
+        </EdicionProvider>
       </EscenografiaChronosLead>
     );
   }
@@ -80,7 +85,9 @@ export default async function AuthLayout({
             </div>
           )}
         </div>
-        <EdicionProvider cloud={isCloud()}>{children}</EdicionProvider>
+        <EdicionProvider cloud={isCloud()} puertaDeOperador={esPuertaDeOperador}>
+          {children}
+        </EdicionProvider>
       </div>
     </main>
   );

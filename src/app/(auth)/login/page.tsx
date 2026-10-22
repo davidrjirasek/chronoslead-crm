@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "@/lib/auth/client";
-import { useEsPlataforma } from "@/components/auth/edicion";
+import { useEsPlataforma, useEsPuertaDeOperador } from "@/components/auth/edicion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 export default function LoginPage() {
   const router = useRouter();
   const esPlataforma = useEsPlataforma();
+  const esPuertaDeOperador = useEsPuertaDeOperador();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -42,13 +43,15 @@ export default function LoginPage() {
     return (
       <div className="w-full max-w-md">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand">
-          Bienvenida de nuevo
+          {esPuertaDeOperador ? "ChronosLead" : "Bienvenida de nuevo"}
         </p>
         <h1 className="mt-2 text-[34px] font-extrabold leading-tight tracking-tight">
-          Ingresá a tu CRM
+          {esPuertaDeOperador ? "Panel de operador" : "Ingresá a tu CRM"}
         </h1>
         <p className="mt-2 text-sm text-text-3">
-          Tus conversaciones, citas y oportunidades te esperan.
+          {esPuertaDeOperador
+            ? "Tus clientes y configuraciones, en un solo lugar."
+            : "Tus conversaciones, citas y oportunidades te esperan."}
         </p>
         <form onSubmit={onSubmit} className="mt-7 space-y-4">
           <div className="space-y-1.5">
