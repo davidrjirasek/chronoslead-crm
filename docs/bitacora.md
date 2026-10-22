@@ -261,8 +261,63 @@ tocar los webhooks que esa llave tenga de otras herramientas.
 sigue siendo una pieza que falta, y en campañas de Meta buena parte de la
 interacción son comentarios.
 
+### Una respuesta buena, descartada por no venir envuelta (2026-10-21)
+
+Fernando mandó una nota de voz y se quedó sin contestar. La conversación
+escaló a humano por `error`. En los logs del contenedor:
+
+```
+[agente] fallo del proveedor (raw): sin JSON extraíble
+(raw=Entiendo. ¿Con qué agencia o de qué forma están manejando ahora las
+campañas, y qué sentís que les está faltando para que funcione mejor?)
+```
+
+**La transcripción funcionó y la respuesta era buena.** Lo único que faltó fue
+el envoltorio: el agente le pide al modelo un objeto JSON con la acción a
+tomar, el modelo escribió la frase suelta, los tres reintentos de `chatJson`
+volvieron igual, y la frase se tiró.
+
+Eso contradice la Definición de Hecho de este mismo repo: «un hipo del
+proveedor nunca tumba el turno». El reintento estaba, la extracción robusta
+estaba; lo que faltaba era el último escalón — **si después de todo eso hay
+una frase utilizable, usarla**.
+
+Arreglado en `src/server/ai/rescate.ts`: `chatJson` ahora devuelve el último
+`raw` también cuando falla, y el pipeline manda esa frase antes de escalar.
+Con tres candados, porque no todo crudo es una frase:
+
+| Se descarta | Por qué |
+|---|---|
+| Empieza con `{`, `[` o ` ``` ` | Es el envoltorio a medio escribir, no una frase |
+| Menciona `json`, `"action":`, `schema`, `esquema del` | Delata la maquinaria; un cliente nunca tiene que leer eso |
+| Pasa de 1200 caracteres | No es un mensaje de chat, es otra cosa |
+
+El test usa la frase textual del log de producción, la que se perdió. Que el
+rescate funcione contra el modelo real queda **pendiente de verificación
+humana** hasta que vuelva a pasar en vivo.
+
+### Cuánto corta un despliegue (2026-10-22)
+
+El dueño preguntó si actualizar corta las conversaciones. Lo que dice el
+código, no la intuición:
+
+- **Nada de lo que ya llegó se pierde.** El entrante se guarda en la base
+  —otro contenedor, que no se reinicia— antes de que el agente piense nada.
+- **Hay una ventana de 6 segundos.** `AGENT_COALESCE_MS` (`src/lib/env.ts:59`)
+  es la espera a propósito para juntar varios mensajitos en una sola
+  respuesta, y vive en un `Map` en memoria del contenedor
+  (`src/server/ai/pipeline.ts:60-69`). Si el contenedor se reemplaza justo en
+  esos 6 s, ese mensaje queda guardado **sin respuesta automática, y nadie lo
+  reintenta**.
+
+Seis segundos dentro de un despliegue de minutos: poco probable, no
+imposible. Mientras no haya reintento al arrancar, la práctica es desplegar
+sin nadie escribiendo y mirar la bandeja justo después.
+
 ### Pendiente
 
+- **Reintentar al arrancar los entrantes sin respuesta**: hoy un mensaje que
+  cae en la ventana de 6 s del despliegue se queda sin contestar para siempre
 - Conectar un número real de WhatsApp y probar en vivo que el agente conteste y
   agende (Ajustes → WhatsApp; el webhook lo registra el CRM solo al guardar)
 - **El corte de dominio**, que requiere el OK explícito del dueño. Al mover el
