@@ -214,6 +214,32 @@ Falta en código: que `error` y `ventana` no pausen la IA.
 La cadena de los tres primeros: el aviso te trae, la banderita te dice dónde, el
 check evita que se pisen.
 
+### Avisos al equipo: un mecanismo, muchos disparadores (2026-10-22)
+
+El dueño pidió dos avisos en días distintos, y son la misma pieza:
+
+| Disparador | Aviso |
+|---|---|
+| Una conversación escaló a atención humana | quién espera, desde cuándo y por qué |
+| Un directivo consultó por el servicio (caso Student Store) | quién es, de qué institución, qué pidió |
+
+Los dos son **mandar una plantilla a un número interno con datos de la
+conversación**. No son dos desarrollos: es uno —el canal de avisos al equipo—
+y cada aviso nuevo después es configuración.
+
+La plantilla `aviso_atencion_humana` ya está **aprobada por Meta** (22-oct).
+
+**Regla de ejecución, no negociable:** si el agente le dice al cliente «ya
+estoy avisando al equipo», el aviso tiene que haber salido ANTES de prometerlo.
+Es la misma disciplina que la agenda, que nunca confirma una cita antes de que
+el calendario la registre. Prometer un aviso que falló es peor que no
+prometerlo: el cliente se queda esperando y nadie se entera.
+
+El caso de Student Store le agrega valor comercial: un director que consulta
+por el comedor de su colegio es un contrato entero. Sin el aviso, ese lead
+depende de que la persona haga un segundo esfuerzo —escribir a otro número—.
+Con el aviso, el equipo puede tomar la iniciativa.
+
 ### Pendiente
 
 - Conectar un número real de WhatsApp y probar en vivo que el agente conteste y
