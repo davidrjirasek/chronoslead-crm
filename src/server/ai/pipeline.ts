@@ -30,6 +30,7 @@ import {
 import { agendaEnabled } from "@/server/agenda/flag";
 import { bookSlot, offerSlots } from "@/server/agenda/agent";
 import { contenidoParaElModelo } from "@/server/ai/contenido";
+import { respuestaRescatable } from "@/server/ai/rescate";
 import { agenteSilenciado } from "@/server/ai/silencio";
 import { getOffers, mapaDeHuecosParaModelo } from "@/server/agenda/offers";
 
@@ -314,6 +315,24 @@ export async function runAgentTurn(
   });
   if (!result.ok) {
     if (result.error === "not_configured") return leido;
+
+    /**
+     * 115 — Antes de escalar, mirar si el modelo igual contestó algo bueno.
+     *
+     * A veces el modelo escribe la frase suelta en vez del objeto JSON. Los
+     * tres reintentos de `chatJson` vuelven igual y el turno se perdía con una
+     * respuesta perfecta adentro. Si la frase se le puede decir a una persona,
+     * se manda; el turno queda servido y nadie se queda esperando.
+     */
+    const rescate = respuestaRescatable(result.raw);
+    if (rescate) {
+      console.warn(
+        `[agente] el modelo contestó sin JSON; se rescata la frase (${result.detail})`
+      );
+      await deliverReply(conversation, rescate);
+      return leido;
+    }
+
     // Fallo persistente del proveedor o salida imposible → escalar (FR-022).
     console.error(`[agente] fallo del proveedor (raw): ${result.detail}`);
     await applyHandoff(conversationId, organizationId, "error");

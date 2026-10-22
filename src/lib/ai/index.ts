@@ -24,7 +24,13 @@ export type ChatMessage = {
 
 export type ChatJsonResult<T> =
   | { ok: true; data: T; raw: string }
-  | { ok: false; error: "not_configured" | "provider_error" | "invalid_output"; detail: string };
+  | {
+      ok: false;
+      error: "not_configured" | "provider_error" | "invalid_output";
+      detail: string;
+      /** 115 — Lo último que contestó el proveedor, para poder rescatarlo. */
+      raw?: string;
+    };
 
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 500;
@@ -74,6 +80,8 @@ export async function chatJson<T>(
   }
 
   let lastDetail = "";
+
+  let lastRaw: string | undefined;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const attemptMessages: ChatMessage[] =
       attempt === 1
@@ -94,6 +102,7 @@ export async function chatJson<T>(
         opts?.timeoutMs
       );
       const extracted = extractJson(raw);
+      lastRaw = raw;
       if (extracted === null) {
         lastDetail = `sin JSON extraíble (raw=${truncate(raw)})`;
         continue;
@@ -142,6 +151,7 @@ export async function chatJson<T>(
       ? "invalid_output"
       : "provider_error",
     detail: lastDetail,
+    raw: lastRaw,
   };
 }
 

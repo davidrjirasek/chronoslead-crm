@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { isCloud } from "@/server/tenant/edition";
 import { cookies, headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { getSessionOrNull } from "@/lib/auth/session";
@@ -40,6 +41,13 @@ export default async function AppLayout({
       // Baja con su procedencia, para que la insignia no presente como
       // verificado un commit que no salió del build (#50).
       commit={resolveCommit()}
+      // 114 — El aviso de «commit sin verificar» es información de OPERADOR.
+      // En plataforma lo ve cada cliente en su propia barra, y para él no
+      // significa nada: solo un triángulo de advertencia en su CRM. El dato
+      // sigue disponible donde corresponde, en `/api/health`.
+      // No se falsea `verified`: una insignia que miente sobre qué código
+      // corre es peor que una fea (#50).
+      avisarCommitSinVerificar={!isCloud()}
       // Qué módulos opcionales existen se decide en el servidor y baja por
       // prop, igual que los canales de la Bandeja. El nav es un componente de
       // cliente: no puede —ni debe— leer variables de entorno.
