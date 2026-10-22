@@ -240,6 +240,27 @@ por el comedor de su colegio es un contrato entero. Sin el aviso, ese lead
 depende de que la persona haga un segundo esfuerzo —escribir a otro número—.
 Con el aviso, el equipo puede tomar la iniciativa.
 
+### Bandeja unificada, verificada en vivo (2026-10-22)
+
+WhatsApp, Instagram y Messenger entrando a la misma bandeja, con su distintivo
+de canal y su contador. Probado mandando un mensaje real por cada uno.
+
+| Canal | Cómo entra | Cuenta |
+|---|---|---|
+| WhatsApp | Cloud API de Meta, directo | +595 987 550109 |
+| Instagram | Zernio | `@creativo4dgroup` |
+| Messenger | Zernio | página `Creativo 4D` |
+
+Para encenderlo hicieron falta dos cosas: `CHANNELS=whatsapp,instagram,messenger`
+en el despliegue, y **una sola API key de Zernio** —la misma para los dos
+canales, porque la llave es de la cuenta y no de la red—. El webhook lo da de
+alta el CRM en Zernio al conectar, limitado a las cuentas del negocio, sin
+tocar los webhooks que esa llave tenga de otras herramientas.
+
+**Entran los mensajes directos; los comentarios de publicaciones no.** Eso
+sigue siendo una pieza que falta, y en campañas de Meta buena parte de la
+interacción son comentarios.
+
 ### Pendiente
 
 - Conectar un número real de WhatsApp y probar en vivo que el agente conteste y
