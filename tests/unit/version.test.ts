@@ -160,8 +160,22 @@ describe("un commit que no salió del build se presenta como NO verificado", () 
       path.join(RAIZ, "src", "components", "app-nav.tsx"),
       "utf8"
     );
+    // En la nube hay una condición más por delante (ver la prueba siguiente),
+    // así que se admite un guardián extra antes de las dos del upstream.
     expect(nav).toMatch(
-      /\{version\.commit && !version\.verified && \([\s\S]{0,400}UNVERIFIED_COMMIT_NOTE/
+      /\{(?:\w+ && )?version\.commit && !version\.verified && \([\s\S]{0,400}UNVERIFIED_COMMIT_NOTE/
+    );
+  });
+
+  it("y en la nube no se pinta: es ruido interno para el cliente", () => {
+    // 114 — El aviso «commit sin verificar» le habla a quien despliega, no a
+    // quien atiende clientes. En `EDITION=cloud` se apaga.
+    const nav = readFileSync(
+      path.join(RAIZ, "src", "components", "app-nav.tsx"),
+      "utf8"
+    );
+    expect(nav).toMatch(
+      /\{avisarCommitSinVerificar && version\.commit && !version\.verified &&/
     );
   });
 
