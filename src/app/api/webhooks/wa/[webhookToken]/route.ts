@@ -2,6 +2,7 @@ import { after } from "next/server";
 import { getEnv } from "@/lib/env";
 import {
   isValidSignature,
+  registrarFirmaRechazada,
   isValidWebhookToken,
   type WebhookPayload,
 } from "@/server/inbox/webhook";
@@ -59,6 +60,7 @@ export async function POST(req: Request, { params }: Params) {
   const rawBody = await req.text();
   const signature = req.headers.get("x-hub-signature-256");
   if (!isValidSignature(rawBody, signature, env.META_APP_SECRET)) {
+    registrarFirmaRechazada("wa", signature);
     return new Response(null, { status: 401 });
   }
 

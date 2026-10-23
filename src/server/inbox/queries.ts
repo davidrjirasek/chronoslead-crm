@@ -168,6 +168,10 @@ export function serializeConversation(
     handoffAt: c.handoffAt?.toISOString() ?? null,
     handoffReason: c.handoffReason,
     handoffNote: c.handoffNote,
+    tomadaPor:
+      c.takenAt && c.takenByName
+        ? { nombre: c.takenByName, cuando: c.takenAt.toISOString() }
+        : null,
     lastInboundAt: c.lastInboundAt?.toISOString() ?? null,
     lastMessageAt: c.lastMessageAt?.toISOString() ?? null,
     unreadCount: c.unreadCount,
@@ -190,7 +194,13 @@ export function serializeConversation(
 export async function updateConversation(
   organizationId: string,
   conversationId: string,
-  patch: { aiEnabled?: boolean; reactivate?: boolean; markRead?: boolean }
+  patch: {
+    aiEnabled?: boolean;
+    reactivate?: boolean;
+    markRead?: boolean;
+    /** 119 — `null` la suelta; un nombre la toma. */
+    tomar?: { userId: string; nombre: string } | null;
+  }
 ) {
   const db = getDb();
   const set: Record<string, unknown> = { updatedAt: new Date() };
@@ -201,6 +211,13 @@ export async function updateConversation(
     set.aiEnabled = patch.aiEnabled ?? true;
   }
   if (patch.markRead) set.unreadCount = 0;
+  if (patch.tomar !== undefined) {
+    // Soltar no borra que estuvo tomada por error: borra los tres campos a la
+    // vez, que es lo que significa «nadie la tiene».
+    set.takenBy = patch.tomar?.userId ?? null;
+    set.takenByName = patch.tomar?.nombre ?? null;
+    set.takenAt = patch.tomar ? new Date() : null;
+  }
 
   const updated = await db
     .update(schema.conversation)

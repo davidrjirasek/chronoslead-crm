@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { getEnv } from "@/lib/env";
-import { isValidSignature, isValidWebhookToken } from "@/server/inbox/webhook";
+import { isValidSignature,
+  registrarFirmaRechazada, isValidWebhookToken } from "@/server/inbox/webhook";
 import { processMetaPagePayload } from "@/server/messenger/ingest";
 import {
   channelDisabledResponse,
@@ -67,13 +68,9 @@ export async function POST(req: Request, { params }: Params) {
     // la URL secreta puede inyectar mensajes falsos: el agente los contestaría
     // enviando un mensaje REAL desde la página al destinatario que el atacante
     // elija.
-    if (
-      !isValidSignature(
-        rawBody,
-        req.headers.get("x-hub-signature-256"),
-        env.META_APP_SECRET
-      )
-    ) {
+    const firmaMsg = req.headers.get("x-hub-signature-256");
+    if (!isValidSignature(rawBody, firmaMsg, env.META_APP_SECRET)) {
+      registrarFirmaRechazada("messenger", firmaMsg);
       return new Response(null, { status: 401 });
     }
   } else {

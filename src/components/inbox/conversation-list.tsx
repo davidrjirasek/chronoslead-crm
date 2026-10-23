@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Flag, Inbox, Megaphone, Search, Sparkles, X } from "lucide-react";
+import { Check, Flag, Inbox, Megaphone, Search, Sparkles, X } from "lucide-react";
 import type { ConversationDto } from "@/lib/types";
 import { etiquetaDeOrigen, titularDeOrigen } from "@/lib/anuncios";
 import { CHANNEL_LABEL, type Channel } from "@/lib/channels";
@@ -309,8 +309,16 @@ export function ConversationList({
                     por el fondo, y lo urgente tiene que verse aunque no sea la
                     conversación abierta.
                   */}
-                  {c.handoffAt ? (
-                    <span className="absolute inset-y-0 left-0 w-[4px] bg-danger" />
+                  {c.handoffAt || c.tomadaPor ? (
+                    <span
+                      className={cn(
+                        "absolute inset-y-0 left-0 w-[4px]",
+                        // 119 — Ya tomada, la urgencia baja: alguien la tiene.
+                        // Que siga en rojo haría que el rojo deje de significar
+                        // «nadie se hizo cargo», que es TODO su valor.
+                        c.tomadaPor ? "bg-success" : "bg-danger"
+                      )}
+                    />
                   ) : (
                     active && (
                       <span className="absolute inset-y-0 left-0 w-[3px] bg-brand" />
@@ -379,21 +387,33 @@ export function ConversationList({
                             {c.stageName}
                           </span>
                         )}
-                        {c.handoffAt && (
+                        {c.tomadaPor ? (
                           <span
-                            className="inline-flex min-w-0 items-center gap-1 rounded-full border border-danger-soft bg-danger-tint px-2 py-0.5 text-[11px] font-semibold text-danger-text"
-                            title={
-                              c.handoffNote
-                                ? `Espera a una persona: ${c.handoffNote}`
-                                : "Espera a una persona"
-                            }
+                            className="inline-flex min-w-0 items-center gap-1 rounded-full border border-success-soft bg-success-tint px-2 py-0.5 text-[11px] font-semibold text-success-text"
+                            title={`La tomó ${c.tomadaPor.nombre} el ${new Date(c.tomadaPor.cuando).toLocaleString("es")}`}
                           >
-                            <Flag className="h-3 w-3 shrink-0" strokeWidth={2.2} />
+                            <Check className="h-3 w-3 shrink-0" strokeWidth={2.4} />
                             <span className="truncate">
-                              Atención humana
-                              {c.handoffNote ? ` · ${c.handoffNote}` : ""}
+                              La tomó {c.tomadaPor.nombre}
                             </span>
                           </span>
+                        ) : (
+                          c.handoffAt && (
+                            <span
+                              className="inline-flex min-w-0 items-center gap-1 rounded-full border border-danger-soft bg-danger-tint px-2 py-0.5 text-[11px] font-semibold text-danger-text"
+                              title={
+                                c.handoffNote
+                                  ? `Espera a una persona: ${c.handoffNote}`
+                                  : "Espera a una persona"
+                              }
+                            >
+                              <Flag className="h-3 w-3 shrink-0" strokeWidth={2.2} />
+                              <span className="truncate">
+                                Atención humana
+                                {c.handoffNote ? ` · ${c.handoffNote}` : ""}
+                              </span>
+                            </span>
+                          )
                         )}
                         {c.anuncio && (
                           <span

@@ -13,6 +13,8 @@ export type ConversationDto = {
   handoffReason: string | null;
   /** 118 — Por qué escaló, en palabras del modelo. Se lee al pasar el mouse. */
   handoffNote: string | null;
+  /** 119 — Quién se hizo cargo, y cuándo. Null = nadie todavía. */
+  tomadaPor: { nombre: string; cuando: string } | null;
   lastInboundAt: string | null;
   lastMessageAt: string | null;
   unreadCount: number;

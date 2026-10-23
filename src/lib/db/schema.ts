@@ -417,6 +417,25 @@ export const conversation = pgTable(
      * NULL cuando la escalada no vino del modelo.
      */
     handoffNote: text("handoff_note"),
+    /**
+     * 119 — Quién se hizo cargo, y cuándo.
+     *
+     * La banderita roja dice «esta conversación espera»; esto dice «ya la
+     * tomé yo». Sin eso, dos personas del equipo le escriben al mismo cliente
+     * —o peor, las dos suponen que la tomó la otra y no le escribe nadie—.
+     *
+     * No se borra al reactivar la IA: es historia de quién atendió, no un
+     * estado del agente.
+     */
+    takenBy: text("taken_by"),
+    /**
+     * El nombre al momento de tomarla, copiado a propósito. Es historia: si
+     * mañana esa persona se cambia el nombre o deja el equipo, «la tomó Ana a
+     * las 14:02» sigue siendo cierto. Además evita cruzar con la tabla de
+     * usuarios en la consulta de la bandeja, que se pide todo el tiempo.
+     */
+    takenByName: text("taken_by_name"),
+    takenAt: timestamp("taken_at"),
     lastInboundAt: timestamp("last_inbound_at"),
     lastMessageAt: timestamp("last_message_at"),
     unreadCount: integer("unread_count").notNull().default(0),

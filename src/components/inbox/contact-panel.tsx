@@ -55,6 +55,7 @@ export function ContactPanel({
   onPatchConversation: (patch: {
     aiEnabled?: boolean;
     reactivate?: boolean;
+    tomar?: boolean;
   }) => Promise<void>;
   /** 026 — Ausente = quien mira no puede eliminar: no se le ofrece. */
   onDeleteConversation?: (alsoContact: boolean) => Promise<string | null>;
@@ -245,6 +246,66 @@ export function ContactPanel({
               >
                 Reactivar IA
               </Button>
+            </div>
+          )}
+
+          {/*
+            119 — Quién se hizo cargo. Solo aparece cuando hay algo que
+            atender: ofrecer «la tomo yo» en una conversación que nadie pidió
+            atender es ruido. Una vez tomada, se queda visible aunque se
+            reactive la IA: es historia de quién atendió, no un estado del
+            agente.
+          */}
+          {(conversation.handoffAt || conversation.tomadaPor) && (
+            <div
+              className={
+                conversation.tomadaPor
+                  ? "mt-3 rounded-md border border-success-soft bg-success-tint px-3 py-2.5"
+                  : "mt-3 rounded-md border border-danger-soft bg-danger-tint px-3 py-2.5"
+              }
+            >
+              {conversation.tomadaPor ? (
+                <>
+                  <p className="text-[13px] font-medium text-success-text">
+                    La tomó {conversation.tomadaPor.nombre}
+                  </p>
+                  <p className="text-[11px] text-success-text/80">
+                    {new Date(conversation.tomadaPor.cuando).toLocaleString("es", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
+                    })}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-2 w-full"
+                    onClick={() => void onPatchConversation({ tomar: false })}
+                  >
+                    Soltarla
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-[13px] font-medium text-danger-text">
+                    Esta conversación espera a una persona
+                  </p>
+                  {conversation.handoffNote && (
+                    <p className="mt-0.5 text-[11px] text-danger-text/80">
+                      {conversation.handoffNote}
+                    </p>
+                  )}
+                  <Button
+                    size="sm"
+                    className="mt-2 w-full"
+                    onClick={() => void onPatchConversation({ tomar: true })}
+                  >
+                    La tomo yo
+                  </Button>
+                </>
+              )}
             </div>
           )}
 

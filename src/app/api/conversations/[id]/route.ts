@@ -1,6 +1,8 @@
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import { canConfigure } from "@/lib/auth/roles";
+import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { construirEventoOlvido } from "@/server/brains/contract";
 import { avisarOlvido, type ResultadoOlvido } from "@/server/brains/deliver";
@@ -14,6 +16,15 @@ const patchSchema = z.object({
   aiEnabled: z.boolean().optional(),
   reactivate: z.boolean().optional(),
   markRead: z.boolean().optional(),
+  /**
+   * 119 — `true` la toma quien está en sesión; `false` la suelta.
+   *
+   * Es un booleano y NO un nombre a propósito: el nombre sale de la sesión.
+   * Si viniera del cliente, cualquiera podría firmar la conversación con el
+   * nombre de otro, y lo único que este registro tiene que garantizar es
+   * justamente quién fue.
+   */
+  tomar: z.boolean().optional(),
 });
 
 type Params = { params: Promise<{ id: string }> };
@@ -23,7 +34,18 @@ export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
   const body = await parseBody(req, patchSchema);
   if (!body.ok) return body.response;
 
-  const updated = await updateConversation(session.organizationId, id, body.data);
+  const { tomar, ...resto } = body.data;
+  let patchTomar: { userId: string; nombre: string } | null | undefined;
+  if (tomar !== undefined) {
+    patchTomar = tomar
+      ? { userId: session.userId, nombre: await nombreDeUsuario(session.userId) }
+      : null;
+  }
+
+  const updated = await updateConversation(session.organizationId, id, {
+    ...resto,
+    ...(patchTomar !== undefined ? { tomar: patchTomar } : {}),
+  });
   if (!updated) return apiError(404, "not_found", "Conversación no encontrada");
 
   const row = await getConversation(session.organizationId, id);
@@ -43,6 +65,18 @@ export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
   }
   return Response.json({ conversation: null });
 });
+
+/** El nombre con el que se firma la conversación. Nunca viene del cliente. */
+async function nombreDeUsuario(userId: string): Promise<string> {
+  const filas = await getDb()
+    .select({ name: schema.user.name })
+    .from(schema.user)
+    .where(eq(schema.user.id, userId))
+    .limit(1);
+  // Un usuario sin nombre es raro, pero «alguien del equipo» dice más que
+  // dejar el campo vacío: lo que importa es que alguien la tomó.
+  return filas[0]?.name?.trim() || "alguien del equipo";
+}
 
 const FECHA_DE_CITA = new Intl.DateTimeFormat("es-MX", { dateStyle: "long" });
 

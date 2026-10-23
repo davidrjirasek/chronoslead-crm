@@ -37,6 +37,44 @@ export function isValidSignature(
   return safeEqual(signatureHeader.slice("sha256=".length), expected);
 }
 
+/**
+ * 119 — Por qué se rechazó una firma, en palabras de quien va a leerlo.
+ *
+ * La noche del 23-oct el webhook devolvía 401 **sin escribir nada**: desde
+ * afuera «no llegó ningún mensaje» y «llegaron y los eché a todos» se ven
+ * exactamente igual, y se perdieron veinte minutos adivinando. Un rechazo que
+ * corta TODA la entrada de mensajes no puede ser silencioso.
+ *
+ * Distingue los dos casos porque apuntan a causas distintas: sin cabecera, el
+ * que golpea probablemente no es Meta; con cabecera que no cuadra, el secreto
+ * es de otra app.
+ *
+ * Nunca registra la firma ni el secreto.
+ */
+export function motivoDeFirmaRechazada(signatureHeader: string | null): string {
+  if (!signatureHeader) {
+    return "no vino la cabecera x-hub-signature-256 (quien golpeó puede no ser Meta)";
+  }
+  if (!signatureHeader.startsWith("sha256=")) {
+    return "la cabecera x-hub-signature-256 no tiene el formato esperado";
+  }
+  return (
+    "la firma no coincide: META_APP_SECRET es de otra app de Meta, " +
+    "o está mal copiado"
+  );
+}
+
+/** Deja rastro del rechazo. Es la línea que faltaba. */
+export function registrarFirmaRechazada(
+  canal: string,
+  signatureHeader: string | null
+): void {
+  console.error(
+    `[webhook:${canal}] RECHAZADO 401 — ${motivoDeFirmaRechazada(signatureHeader)}. ` +
+      `Mientras esto siga, NO entra ningún mensaje de este canal.`
+  );
+}
+
 /* ---------- Tipos del payload de Meta (subconjunto soportado) ---------- */
 
 /** Payload de un adjunto en un mensaje del webhook (008). */
