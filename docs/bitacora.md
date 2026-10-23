@@ -481,11 +481,19 @@ cuando la firma no cuadra, el webhook devuelve `401` **sin escribir una sola
 línea en el registro**. «No hay rastro» se lee igual que «no llegó nunca». Un
 rechazo por firma tiene que gritar. **Pendiente de arreglar.**
 
-**Hipótesis de la causa, sin verificar:** el secreto copiado es de la app
-`ChronosLead` (id `2170205020228499`), pero la firma la pone **la app suscrita
-a la WABA**, que puede ser otra. Se comprueba mirando qué app tiene suscrita
-la cuenta de WhatsApp. No se hizo: era la 1 de la mañana del día de los
-anuncios.
+**RESUELTO la misma noche (01:15).** La hipótesis era correcta: el secreto
+copiado era de la app `ChronosLead` (id `2170205020228499`), la nueva, la que
+se prepara para Tech Provider. La app suscrita al número es **`Creativo 4D CRM
+Wapp`** (id `2836268363425327`), la vieja —se reconoce porque sus URLs legales
+apuntan a `creativo4dgroup.com`, no a chronoslead.com—. Con SU secreto, los
+mensajes entraron de inmediato.
+
+**Las dos cerraduras del webhook quedaron puestas**: el segmento secreto en la
+dirección y la firma verificada.
+
+Se probó en este orden a propósito: primero el registro del rechazo, después
+el secreto. Así la prueba dejó de ser a ciegas — si fallaba, el registro lo
+decía.
 
 **La lección de proceso:** se presentó como «dos minutos» un cambio que puede
 cortar toda la operación. No lo era. La prueba de un mensaje real ANTES de
