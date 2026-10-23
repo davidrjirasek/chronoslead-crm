@@ -179,9 +179,17 @@ export function AgentClient() {
         </div>
       )}
 
-      <div className="grid gap-4 p-4 sm:gap-6 sm:p-6 lg:grid-cols-2">
-        <ProfileSection profile={profile} onSave={saveProfile} />
-        <AvisoSection avisos={avisos} onSave={saveProfile} />
+      {/*
+        Dos columnas y TRES tarjetas hacían que el conocimiento cayera solo a
+        la izquierda, dejando media pantalla en blanco a la derecha. La
+        columna izquierda apila lo que configura al agente; la derecha es para
+        el conocimiento, que es la que crece sin techo.
+      */}
+      <div className="grid gap-4 p-4 sm:gap-6 sm:p-6 lg:grid-cols-2 lg:items-start">
+        <div className="flex flex-col gap-4 sm:gap-6">
+          <ProfileSection profile={profile} onSave={saveProfile} />
+          <AvisoSection avisos={avisos} onSave={saveProfile} />
+        </div>
         <KbSection entries={entries} kbSize={kbSize} onChanged={() => void refetch()} />
       </div>
     </div>
@@ -415,12 +423,22 @@ function AvisoSection({
 }) {
   const [phone, setPhone] = useState(avisos.phone ?? "");
   const [name, setName] = useState(avisos.name ?? "");
+  const [guardado, setGuardado] = useState(false);
   useEffect(() => {
     setPhone(avisos.phone ?? "");
     setName(avisos.name ?? "");
   }, [avisos]);
 
   const encendido = Boolean(avisos.phone);
+  /**
+   * Un botón que siempre se puede apretar no distingue «guardado» de «sin
+   * guardar», y el acuse de la pantalla vive arriba del todo, lejos de aquí:
+   * el dueño guardó y no supo si había guardado. El botón apagado cuando no
+   * hay nada que guardar es la respuesta, y el acuse va al lado.
+   */
+  const sinCambios =
+    phone.trim() === (avisos.phone ?? "").trim() &&
+    name.trim() === (avisos.name ?? "").trim();
 
   return (
     <Card>
@@ -457,13 +475,29 @@ function AvisoSection({
             Es el saludo del mensaje: «Hola David: la conversación con…».
           </p>
         </div>
-        <Button
-          onClick={() =>
-            void onSave({ alertPhone: phone || null, alertName: name || null })
-          }
-        >
-          Guardar
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            disabled={sinCambios}
+            onClick={async () => {
+              await onSave({
+                alertPhone: phone || null,
+                alertName: name || null,
+              });
+              setGuardado(true);
+              setTimeout(() => setGuardado(false), 2500);
+            }}
+          >
+            Guardar aviso
+          </Button>
+          {guardado && (
+            <span className="text-xs text-primary">Guardado ✓</span>
+          )}
+          {!guardado && sinCambios && encendido && (
+            <span className="text-xs text-muted-foreground">
+              Guardado. Los avisos van a {avisos.phone}.
+            </span>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

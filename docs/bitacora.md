@@ -403,6 +403,31 @@ plataforma** —que la agencia se entere de las escaladas de todos sus
 clientes—, que no es «un destinatario más» sino otro concepto: transversal, no
 por organización.
 
+### El canal de avisos, probado en vivo (2026-10-22, 23:12)
+
+Dos pruebas reales contra producción, una por cada camino de escalada.
+
+**Camino 1 — el cliente pide un humano.** Llegó el aviso con el motivo de
+respaldo: «el cliente pidió hablar con una persona». Correcto: hay un
+detector de intención (`matchesHandoffIntent`) que corre ANTES del modelo y
+escala al instante sin gastar una llamada. El modelo nunca opina, así que no
+hay palabras suyas — y para eso existe el texto de respaldo.
+
+**Camino 2 — el modelo decide.** Se escribió «soy cliente y tengo un problema
+con la factura de este mes». No cae en el detector, así que el modelo pensó,
+decidió escalar y escribió su motivo. El aviso llegó diciendo:
+
+> Motivo: **Cliente actual con problema de facturación**
+
+**Eso confirma el hallazgo completo**: `action.reason` se escribe, se guarda en
+`handoff_note` y llega al aviso. Las categorías que pedía el dueño existen sin
+que nadie configure ninguna lista.
+
+Verificado de paso, sin pruebas aparte: la hora sale en la zona del negocio
+(23:12 reales, no la del servidor), y el teléfono dentro del `{{2}}` lo
+convierte WhatsApp en enlace tocable — que era el motivo de ponerlo ahí: que
+el aviso se pueda **reenviar** a alguien que no entra a la plataforma.
+
 ### Las categorías las decide Meta (2026-10-22)
 
 Las tres plantillas quedaron aprobadas, y una se reclasificó sola:
