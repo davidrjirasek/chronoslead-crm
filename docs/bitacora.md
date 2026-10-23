@@ -346,6 +346,65 @@ pero eso **no está verificado en vivo**, es lo que documenta Meta.
 Corrige lo que se había estimado antes de medir: el riesgo no eran 6
 segundos, son ~29, y por un motivo distinto al que se suponía.
 
+### El canal de avisos, y el motivo que estábamos tirando (2026-10-22)
+
+Hasta hoy, cuando una conversación escalaba **no se enteraba nadie**: quedaba
+marcada en la bandeja y publicada por SSE, y si nadie miraba la pantalla, el
+cliente esperaba. Las escaladas que más valen son justo las de fuera de hora.
+
+**El hallazgo que abarató el diseño.** La acción de escalar del modelo ya
+llevaba el motivo en palabras (`actions.ts:23`, `reason`) y el pipeline lo
+descartaba. El dueño pedía avisos por categoría —«quiere agendar una cita»,
+«quiere visitar una propiedad», «un proveedor precisa respuesta por pagos»— y
+la respuesta no era construir una taxonomía: era **dejar de tirar lo que el
+modelo ya escribía**. Una lista de categorías queda corta ante el motivo
+número cinco; el modelo no.
+
+| Qué | Dónde |
+|---|---|
+| El motivo en palabras | `conversation.handoff_note` |
+| A quién avisar | `organization.alert_phone` / `alert_name` |
+| La decisión y el envío | `src/server/ai/aviso-de-atencion.ts` |
+| El enganche | `applyHandoff()` |
+| La pantalla | Agente → «Aviso de atención humana» |
+
+Migración `0025`, puramente aditiva: tres columnas nulables.
+
+**Las dos reglas que no se pueden romper, y por qué existen:**
+
+`applyHandoff` escribía **sin mirar el estado previo**. Un cliente que manda
+cinco mensajes a una conversación ya escalada habría generado cinco avisos.
+Ahora lee antes de escribir y solo avisa el PASO a escalada.
+
+El envío **jamás lanza**. Si Meta rechaza o la plantilla desapareció, se
+registra y se sigue: la conversación del cliente no paga el fallo de su propia
+notificación. Misma regla que la agenda con sus conectores.
+
+**Alcance de esta vuelta: un destinatario por organización.** Cada aviso es una
+conversación que Meta cobra; con cuatro destinatarios cada escalada cuesta
+cuatro. Decisión del dueño. Queda anotado para después el **destinatario de
+plataforma** —que la agencia se entere de las escaladas de todos sus
+clientes—, que no es «un destinatario más» sino otro concepto: transversal, no
+por organización.
+
+### Las categorías las decide Meta (2026-10-22)
+
+Las tres plantillas quedaron aprobadas, y una se reclasificó sola:
+
+| Plantilla | Mandada como | Quedó en |
+|---|---|---|
+| `reenganche_prospecto_frio` | Marketing | Marketing |
+| `reenganche_consulta_pendiente` | Utilidad | **Marketing** |
+| `aviso_atencion_humana` | Utilidad | **Utilidad** |
+
+La que importaba para el canal de avisos se quedó en Utilidad, que era el
+riesgo real: en Marketing, Meta limita cuántos mensajes recibe una persona por
+día y **cualquiera puede darse de baja** — un canal de avisos que se apaga solo
+es peor que no tenerlo.
+
+La reclasificada solo cuesta más. Y Meta tiene razón: invitar a retomar una
+conversación comercial **es** marketing. No conviene buscarle la vuelta.
+
 ### Pendiente
 
 - **Reintentar al arrancar los entrantes sin respuesta**: hoy un mensaje que
