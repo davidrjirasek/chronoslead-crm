@@ -344,7 +344,23 @@ entregas fallidas, así que el mensaje debería llegar igual, con retraso —
 pero eso **no está verificado en vivo**, es lo que documenta Meta.
 
 Corrige lo que se había estimado antes de medir: el riesgo no eran 6
-segundos, son ~29, y por un motivo distinto al que se suponía.
+segundos, y el motivo era distinto al que se suponía.
+
+**Segunda y tercera medición (mismo día): CERO.** Los despliegues de
+`babf841` y `fef85ea` no tuvieron ni una medición caída. Así que **el hueco no es fijo**: a veces aparece y a
+veces no, y decir «la ventana son 29 segundos» era convertir una medición en
+ley. La forma honesta:
+
+| Despliegue | Mediciones caídas |
+|---|---|
+| `2210f14` | 21 en una ventana de 29 s (~50 % de los pedidos) |
+| `babf841` | 0 |
+| `fef85ea` | 0 (incluye la migración `0025`) |
+
+Lo que se puede afirmar con tres datos: **puede haber hasta medio minuto de
+intermitencia, o ninguna.** La práctica no cambia —desplegar sin nadie
+escribiendo y mirar la bandeja después—, pero el número sí: es un techo
+observado, no lo que pasa siempre.
 
 ### El canal de avisos, y el motivo que estábamos tirando (2026-10-22)
 
