@@ -30,6 +30,7 @@ import {
 import { agendaEnabled } from "@/server/agenda/flag";
 import { bookSlot, offerSlots } from "@/server/agenda/agent";
 import { contenidoParaElModelo } from "@/server/ai/contenido";
+import { avisarAtencionHumana } from "@/server/ai/aviso-de-atencion";
 import { respuestaRescatable } from "@/server/ai/rescate";
 import { agenteSilenciado } from "@/server/ai/silencio";
 import { getOffers, mapaDeHuecosParaModelo } from "@/server/agenda/offers";
@@ -408,7 +409,13 @@ export async function runAgentTurn(
       if (action.farewell) {
         await deliverReply(conversation, action.farewell);
       }
-      await applyHandoff(conversationId, organizationId, "modelo");
+      // 117 — `action.reason` se descartaba. Es lo que hace útil al aviso.
+      await applyHandoff(
+        conversationId,
+        organizationId,
+        "modelo",
+        action.reason
+      );
       return leido;
     }
   }
@@ -503,15 +510,47 @@ async function persistTestOutbound(
 export async function applyHandoff(
   conversationId: string,
   organizationId: string,
-  reason: "cliente" | "modelo" | "error" | "ventana"
+  reason: "cliente" | "modelo" | "error" | "ventana",
+  /** 117 — Por qué, en palabras del modelo. Va tal cual en el aviso. */
+  nota?: string | null
 ): Promise<void> {
   const db = getDb();
+
+  /**
+   * 117 — Hay que saber si YA estaba escalada ANTES de escribir.
+   *
+   * Esta función escribe cada vez que se la llama, sin mirar el estado
+   * previo. Sin esta lectura, un cliente que manda cinco mensajes a una
+   * conversación ya escalada generaría cinco avisos. Solo el PASO a escalada
+   * avisa.
+   */
+  const previas = await db
+    .select({ handoffAt: schema.conversation.handoffAt })
+    .from(schema.conversation)
+    .where(eq(schema.conversation.id, conversationId))
+    .limit(1);
+  const yaEstabaEscalada = Boolean(previas[0]?.handoffAt);
+
   const updated = await db
     .update(schema.conversation)
-    .set({ handoffAt: new Date(), handoffReason: reason, updatedAt: new Date() })
+    .set({
+      handoffAt: new Date(),
+      handoffReason: reason,
+      ...(nota?.trim() ? { handoffNote: nota.trim() } : {}),
+      updatedAt: new Date(),
+    })
     .where(eq(schema.conversation.id, conversationId))
     .returning();
   if (!updated[0]) return;
+
+  // El aviso nunca lanza: si falla, la conversación del cliente sigue igual.
+  await avisarAtencionHumana({
+    organizationId,
+    conversationId,
+    motivo: reason,
+    nota,
+    yaEstabaEscalada,
+  });
   publish(organizationId, {
     type: "conversation.updated",
     data: {

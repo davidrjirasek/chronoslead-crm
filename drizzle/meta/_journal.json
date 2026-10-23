@@ -176,6 +176,13 @@
       "when": 1792521756103,
       "tag": "0024_historico_de_pagos",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792716351395,
+      "tag": "0025_calm_guardsmen",
+      "breakpoints": true
     }
   ]
 }

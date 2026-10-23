@@ -42,6 +42,12 @@ export function AgentClient() {
   const [entries, setEntries] = useState<KbEntry[]>([]);
   const [kbSize, setKbSize] = useState<{ chars: number; warnAt: number; warning: boolean } | null>(null);
   const [saved, setSaved] = useState(false);
+  // 117 — A quién avisar cuando escala. Vive en la organización, no en el
+  // perfil del agente, así que viaja aparte en la misma respuesta.
+  const [avisos, setAvisos] = useState<{
+    phone: string | null;
+    name: string | null;
+  }>({ phone: null, name: null });
   // «Quién responde»: se refresca solo, porque la última llamada del cerebro
   // externo y su /health cambian sin que nadie toque esta pantalla.
   const [brain, setBrain] = useState<BrainStatusDto | null>(null);
@@ -64,6 +70,7 @@ export function AgentClient() {
       setProfile(p.profile);
       setAiConfigured(p.aiConfigured);
       setAiMensaje(p.aiMensaje ?? null);
+      setAvisos(p.avisos ?? { phone: null, name: null });
     }
     if (kb) setEntries(kb.entries);
     if (size) setKbSize(size);
@@ -86,7 +93,9 @@ export function AgentClient() {
     );
   }
 
-  async function saveProfile(patch: Partial<Profile>) {
+  async function saveProfile(
+    patch: Partial<Profile> & { alertPhone?: string | null; alertName?: string | null }
+  ) {
     await fetch("/api/agent/profile", {
       method: "PUT",
       headers: { "content-type": "application/json" },
@@ -172,6 +181,7 @@ export function AgentClient() {
 
       <div className="grid gap-4 p-4 sm:gap-6 sm:p-6 lg:grid-cols-2">
         <ProfileSection profile={profile} onSave={saveProfile} />
+        <AvisoSection avisos={avisos} onSave={saveProfile} />
         <KbSection entries={entries} kbSize={kbSize} onChanged={() => void refetch()} />
       </div>
     </div>
@@ -183,7 +193,9 @@ function ProfileSection({
   onSave,
 }: {
   profile: Profile;
-  onSave: (patch: Partial<Profile>) => Promise<void>;
+  onSave: (
+    patch: Partial<Profile> & { alertPhone?: string | null; alertName?: string | null }
+  ) => Promise<void>;
 }) {
   const [form, setForm] = useState(profile);
   useEffect(() => setForm(profile), [profile]);
@@ -379,6 +391,79 @@ function KbSection({
             </p>
           )}
         </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
+
+/**
+ * 117 — A quién avisar cuando una conversación necesita a una persona.
+ *
+ * Vacío apaga la función, y eso se dice en la pantalla: un campo en blanco
+ * que no explica nada parece algo sin terminar, no una decisión.
+ */
+function AvisoSection({
+  avisos,
+  onSave,
+}: {
+  avisos: { phone: string | null; name: string | null };
+  onSave: (patch: {
+    alertPhone?: string | null;
+    alertName?: string | null;
+  }) => Promise<void>;
+}) {
+  const [phone, setPhone] = useState(avisos.phone ?? "");
+  const [name, setName] = useState(avisos.name ?? "");
+  useEffect(() => {
+    setPhone(avisos.phone ?? "");
+    setName(avisos.name ?? "");
+  }, [avisos]);
+
+  const encendido = Boolean(avisos.phone);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Aviso de atención humana</CardTitle>
+        <CardDescription>
+          {encendido
+            ? "Cuando una conversación necesite a una persona, llega un WhatsApp a este número con el motivo."
+            : "Sin número, nadie recibe aviso: la escalada solo se ve entrando a la Bandeja."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="aviso-phone">Número que recibe el aviso</Label>
+          <Input
+            id="aviso-phone"
+            placeholder="+595 981 123456"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Con código de país. Dejalo vacío para no recibir avisos.
+          </p>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="aviso-name">A nombre de quién</Label>
+          <Input
+            id="aviso-name"
+            placeholder="David"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Es el saludo del mensaje: «Hola David: la conversación con…».
+          </p>
+        </div>
+        <Button
+          onClick={() =>
+            void onSave({ alertPhone: phone || null, alertName: name || null })
+          }
+        >
+          Guardar
+        </Button>
       </CardContent>
     </Card>
   );

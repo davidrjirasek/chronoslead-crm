@@ -97,6 +97,13 @@ export const organization = pgTable("organization", {
    */
   suspendedAt: timestamp("suspended_at"),
   suspendedReason: text("suspended_reason"),
+  /**
+   * 117: a quién avisar cuando una conversación necesita a una persona.
+   * NULL APAGA la función: un cliente recién dado de alta no manda avisos y
+   * no falla por eso. `alert_name` es el {{1}} de la plantilla.
+   */
+  alertPhone: text("alert_phone"),
+  alertName: text("alert_name"),
 });
 
 export const member = pgTable("member", {
@@ -402,6 +409,14 @@ export const conversation = pgTable(
         "manual_reply",
       ],
     }),
+    /**
+     * 117: POR QUÉ escaló, en palabras del modelo ("quiere visitar la
+     * propiedad", "un proveedor espera respuesta por pagos"). El modelo ya lo
+     * escribía —`handoff.reason` en `actions.ts`— y se descartaba. Guardarlo
+     * da la categoría del aviso sin mantener ninguna lista de categorías.
+     * NULL cuando la escalada no vino del modelo.
+     */
+    handoffNote: text("handoff_note"),
     lastInboundAt: timestamp("last_inbound_at"),
     lastMessageAt: timestamp("last_message_at"),
     unreadCount: integer("unread_count").notNull().default(0),
