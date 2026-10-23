@@ -507,6 +507,45 @@ perdía en silencio.
 hasta ahora. La serie completa: 21, 0, 0, 34. Confirma que es variable y que
 el número no se puede prometer.
 
+### El corte de dominio, hecho (2026-10-23, 01:50)
+
+`chronoslead.com` pasó del sistema anterior a la plataforma. Con el OK
+explícito del dueño, sin clientes en el sistema viejo y antes de lanzar los
+anuncios: el mejor momento posible.
+
+**La decisión que lo volvió de bajo riesgo: NO se tocó `APP_BASE_URL`.**
+
+Se fue a leer para qué se usa de verdad, en vez de asumir que había que
+cambiarlo. En producción hace dos cosas: arma la URL del webhook
+(`webhook-url.ts:28`) y le pone protocolo y puerto a los enlaces de acceso —
+y en producción no hay puerto. **El enlace de acceso no sale de ahí**: sale de
+`slug + baseDomain` (`access-link.ts:201`).
+
+Dejándolo en `admin.chronoslead.com`, los webhooks de Meta y Zernio siguieron
+apuntando a un dominio que no se movió. **No hubo que volver a registrar nada**
+— que era justo la parte capaz de dejar la operación sin mensajes entrantes.
+
+| Paso | Detalle |
+|---|---|
+| 1 | Detener la app vieja. **Desmarcar «Run Docker Cleanup»**: venía activado y habría borrado su imagen, convirtiendo el rollback en una reconstrucción |
+| 2 | Quitarle sus dos dominios. **Desmarcar «borrar el registro DNS»**: venía activado, y si Coolify tocaba el DNS el dominio dejaba de resolver |
+| 3 | Agregar `https://chronoslead.com` a la plataforma. Coolify agregó el `www` solo, que `resolveTenantFromHost` ya trata como landing |
+| 4 | Desplegar |
+
+**Medido:** el apex estuvo ~4 minutos en 503 mientras construía, y `admin.`
+tuvo ~20 segundos de intermitencia en el cambio de contenedor (502 y 200
+alternados, el mismo patrón de siempre). Los webhooks nunca se cortaron.
+
+**Verificado en vivo:** las cuatro direcciones en 200, las tres páginas legales
+en 200 —las mira Meta para el App Review—, certificado Let's Encrypt del apex
+válido hasta el 29-dic, los 14 botones de la landing apuntando a
+`595987550109`, `/app/login` en 404, y mensajes reales entrando por **WhatsApp
+e Instagram**.
+
+**El sistema anterior quedó detenido, no borrado**, con su imagen y su base
+(`chronos-lead-db`) intactas. Encenderlo y devolverle el dominio es cuestión de
+minutos si hiciera falta.
+
 ### Pendiente
 
 - **Reintentar al arrancar los entrantes sin respuesta**: hoy un mensaje que
