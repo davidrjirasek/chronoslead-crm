@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Inbox, Megaphone, Search, Sparkles, UserRound, X } from "lucide-react";
+import { Flag, Inbox, Megaphone, Search, Sparkles, X } from "lucide-react";
 import type { ConversationDto } from "@/lib/types";
 import { etiquetaDeOrigen, titularDeOrigen } from "@/lib/anuncios";
 import { CHANNEL_LABEL, type Channel } from "@/lib/channels";
@@ -299,8 +299,22 @@ export function ConversationList({
               const active = selectedId === c.id;
               return (
                 <li key={c.id} className="relative border-b border-border">
-                  {active && (
-                    <span className="absolute inset-y-0 left-0 w-[3px] bg-brand" />
+                  {/*
+                    118 — Una conversación que espera a una persona se marca en
+                    el BORDE de la fila, no solo con una pastilla más. Antes la
+                    etiqueta «Atención humana» tenía el mismo peso visual que la
+                    etapa y el anuncio: había que leer las tres para encontrarla.
+                    Esto se ve sin leer, que es el punto.
+                    Gana sobre la barra de «fila activa»: esa ya se distingue
+                    por el fondo, y lo urgente tiene que verse aunque no sea la
+                    conversación abierta.
+                  */}
+                  {c.handoffAt ? (
+                    <span className="absolute inset-y-0 left-0 w-[4px] bg-danger" />
+                  ) : (
+                    active && (
+                      <span className="absolute inset-y-0 left-0 w-[3px] bg-brand" />
+                    )
                   )}
                   <button
                     onClick={() => onSelect(c.id)}
@@ -366,9 +380,19 @@ export function ConversationList({
                           </span>
                         )}
                         {c.handoffAt && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-warning-soft bg-warning-tint px-2 py-0.5 text-[11px] text-warning-text">
-                            <UserRound className="h-3 w-3" strokeWidth={1.7} />
-                            Atención humana
+                          <span
+                            className="inline-flex min-w-0 items-center gap-1 rounded-full border border-danger-soft bg-danger-tint px-2 py-0.5 text-[11px] font-semibold text-danger-text"
+                            title={
+                              c.handoffNote
+                                ? `Espera a una persona: ${c.handoffNote}`
+                                : "Espera a una persona"
+                            }
+                          >
+                            <Flag className="h-3 w-3 shrink-0" strokeWidth={2.2} />
+                            <span className="truncate">
+                              Atención humana
+                              {c.handoffNote ? ` · ${c.handoffNote}` : ""}
+                            </span>
                           </span>
                         )}
                         {c.anuncio && (

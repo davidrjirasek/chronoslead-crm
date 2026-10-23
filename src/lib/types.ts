@@ -11,6 +11,8 @@ export type ConversationDto = {
   aiEnabled: boolean;
   handoffAt: string | null;
   handoffReason: string | null;
+  /** 118 — Por qué escaló, en palabras del modelo. Se lee al pasar el mouse. */
+  handoffNote: string | null;
   lastInboundAt: string | null;
   lastMessageAt: string | null;
   unreadCount: number;
