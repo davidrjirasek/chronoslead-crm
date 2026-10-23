@@ -572,8 +572,88 @@ El corte de dominio no la rompió: la hizo visible.
 Una página que nadie puede abrir se da por buena sin pruebas. El guion E2E
 debería cubrir el apex, no solo los subdominios.
 
+### Imágenes: dos agujeros distintos, uno barato y uno caro (2026-10-23)
+
+El dueño preguntó por imágenes y resultaron ser **dos cosas separadas**. Vale
+la pena no confundirlas: una es un defecto, la otra es una función.
+
+#### A · El pie de foto que se tira (RECIBIR) — defecto, barato
+
+Cuando un cliente manda una foto **con texto al pie** —«acá va mi comprobante
+de 200.000»— ese texto **se captura y se guarda** (`mediaAsset.caption`, en
+`src/server/inbox/ingest.ts`), y el **cerebro externo lo recibe**
+(`src/server/brains/deliver.ts`).
+
+**El agente incluido nunca lo ve.** Dos motivos, los dos comprobados:
+
+1. `message.text` queda en `null`: la ingesta lee `msg.text?.body`, y una
+   imagen de WhatsApp trae su texto en `msg.image.caption`, no ahí.
+2. El historial del turno es un `select()` sobre `schema.message` **sin join a
+   `mediaAsset`**, así que el pie de foto no viaja.
+
+Resultado: el agente lee «[El cliente envió una imagen. No podés verla ni
+escucharla.]» y **pierde lo que el cliente efectivamente escribió**. El dato
+está en la base, sin usar.
+
+Es el mismo tipo de fallo que el audio de 112: una pieza sana cuyo contenido no
+llega al modelo. Arreglo: llevar el caption al historial y usarlo en
+`contenidoParaElModelo`. Aditivo, sin migración.
+
+> **No confundir con «ver» la imagen.** Esto no la mira: solo recupera el texto
+> que el cliente escribió al lado. Para que el modelo vea la foto hace falta un
+> conector de visión, con el patrón de `transcripcion.ts` — y con dos
+> decisiones del dueño: cuesta más por mensaje, y esas fotos (un comprobante
+> lleva número de cuenta) salen hacia el proveedor del modelo.
+
+#### B · El banco de imágenes (ENVIAR) — función, cara
+
+Lo que pidió el dueño: que el agente tenga **un puñado de imágenes de producto
+y mande la que corresponde** a lo que le preguntan. Un vendedor con el catálogo
+en la mano.
+
+**No existe.** Las acciones del agente son siete y ninguna manda archivos:
+`none`, `reply`, `update_lead`, `move_stage`, `handoff`, `offer_slots`,
+`book_slot`.
+
+Lo reutilizable ya está, y es más de lo que parece:
+
+| Pieza | Dónde |
+|---|---|
+| Enviar imagen con pie, por WhatsApp | `sendMediaMessage()` en `src/server/inbox/send.ts` |
+| Guardar el archivo | volumen + `mediaAsset` |
+| **Enseñarle al modelo una lista para que elija una** | la agenda: `mapaDeHuecosParaModelo()` inyecta los huecos y el modelo elige por id |
+
+Ese último es el hallazgo arquitectónico: **el mecanismo ya está probado en
+producción**, solo cambia el contenido de la lista.
+
+Lo que falta: dónde vive el banco (y la **descripción de cuándo mandar cada
+una**, que es lo que el modelo lee para elegir), una pantalla para cargarlas,
+inyectar el catálogo en el turno, la acción nueva validada contra el banco de
+**esa** organización, y los guardarraíles (el Laboratorio no manda de verdad;
+la ventana de 24 h; no repetir la misma foto).
+
+**Dos a cuatro días**, y toca el modelo de datos — o sea **ciclo completo** por
+el Principio VI: spec, plan y tasks antes de código. Para comparar: el audio
+fueron ~300 líneas sin tocar la base.
+
+**Versión barata que funciona hoy, sin código:** el agente ya puede poner un
+enlace en su `reply`. Con las imágenes en una URL pública y una línea en la
+base de conocimiento, manda el enlace. Convierte menos que una foto en la
+conversación, pero sirve para medir si la gente realmente las pide antes de
+gastar cuatro días.
+
+**Para quién es:** no para Creativo 4D vendiendo CRM. Para **Castel Muebles**
+(catálogo) y **THE Student Store** (la foto del menú semanal). Es función de
+plataforma para el cliente siguiente, no para el lanzamiento de esta semana.
+
 ### Pendiente
 
+- **El pie de foto no llega al agente** (A, arriba): el dato ya está guardado y
+  se descarta. Barato, aditivo, sin migración
+- **Banco de imágenes para que el agente las envíe** (B, arriba): ciclo
+  completo, 2-4 días. **El dueño confirma si se avanza o no**
+- **Conector de visión** para que el modelo lea la imagen: patrón de
+  `transcripcion.ts`; decisión pendiente por costo y por datos sensibles
 - **Reintentar al arrancar los entrantes sin respuesta**: hoy un mensaje que
   cae en la ventana de 6 s del despliegue se queda sin contestar para siempre
 - Conectar un número real de WhatsApp y probar en vivo que el agente conteste y
