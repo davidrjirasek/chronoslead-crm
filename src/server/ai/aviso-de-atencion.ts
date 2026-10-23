@@ -95,10 +95,31 @@ export function horaDelAviso(cuando: Date, zonaHoraria: string): string {
   }
 }
 
+/**
+ * Quién espera: nombre y, si se conoce, su teléfono.
+ *
+ * El teléfono va DENTRO del {{2}} y no en una variable nueva a propósito: la
+ * plantilla ya está aprobada por Meta y agregarle un hueco la mandaría de
+ * vuelta a revisión. Así el aviso se puede **reenviar** a alguien del equipo
+ * que no entra a la plataforma, que es para lo que sirve.
+ *
+ * Sin teléfono —un contacto de Instagram o Messenger no tiene— va solo el
+ * nombre: un paréntesis vacío se lee como un error.
+ */
+export function quienEspera(
+  nombre: string,
+  telefono: string | null | undefined
+): string {
+  const n = nombre.trim() || "un contacto";
+  const t = telefono?.trim();
+  return t ? `${n} (${t})` : n;
+}
+
 /** Las cuatro variables de la plantilla, en el orden que Meta espera. */
 export function variablesDelAviso(opts: {
   nombreDestino: string | null | undefined;
   nombreDelContacto: string;
+  telefonoDelContacto?: string | null;
   cuando: Date;
   zonaHoraria: string;
   motivo: MotivoTecnico | null;
@@ -106,7 +127,7 @@ export function variablesDelAviso(opts: {
 }): [string, string, string, string] {
   return [
     opts.nombreDestino?.trim() || "equipo",
-    opts.nombreDelContacto.trim() || "un contacto",
+    quienEspera(opts.nombreDelContacto, opts.telefonoDelContacto),
     horaDelAviso(opts.cuando, opts.zonaHoraria),
     motivoDelAviso(opts.motivo, opts.nota),
   ];
@@ -159,6 +180,7 @@ export async function avisarAtencionHumana(opts: {
       .select({
         isTest: schema.conversation.isTest,
         contactName: schema.contact.name,
+        contactPhone: schema.contact.phone,
       })
       .from(schema.conversation)
       .innerJoin(
@@ -239,6 +261,7 @@ export async function avisarAtencionHumana(opts: {
       variables: variablesDelAviso({
         nombreDestino: org!.alertName,
         nombreDelContacto: conv.contactName ?? "",
+        telefonoDelContacto: conv.contactPhone,
         cuando: new Date(),
         zonaHoraria,
         motivo: opts.motivo,

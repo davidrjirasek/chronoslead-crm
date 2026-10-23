@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   hayQueAvisar,
+  quienEspera,
   horaDelAviso,
   motivoDelAviso,
   variablesDelAviso,
@@ -81,18 +82,46 @@ describe("la hora del aviso", () => {
   });
 });
 
+describe("quién espera (el {{2}})", () => {
+  it("lleva el teléfono para que el aviso se pueda REENVIAR", () => {
+    // Es el motivo de que esté: alguien del equipo que no entra a la
+    // plataforma recibe el reenvío y ya tiene a quién escribirle.
+    expect(quienEspera("Fernando Barreto", "+595981213569")).toBe(
+      "Fernando Barreto (+595981213569)"
+    );
+  });
+
+  it("sin teléfono va solo el nombre: un paréntesis vacío parece un error", () => {
+    // Instagram y Messenger no dan teléfono.
+    expect(quienEspera("dancitogodoy", null)).toBe("dancitogodoy");
+    expect(quienEspera("Dr. Genoma", "  ")).toBe("Dr. Genoma");
+    expect(quienEspera("rosario", undefined)).toBe("rosario");
+  });
+
+  it("sin nombre tampoco queda vacío: Meta rechaza una variable en blanco", () => {
+    expect(quienEspera("", null)).toBe("un contacto");
+    expect(quienEspera("  ", "+595981000000")).toBe("un contacto (+595981000000)");
+  });
+});
+
 describe("las cuatro variables, en el orden que Meta espera", () => {
   it("se arman completas", () => {
     expect(
       variablesDelAviso({
         nombreDestino: "David",
         nombreDelContacto: "Fernando Barreto",
+        telefonoDelContacto: "+595981213569",
         cuando: new Date("2026-10-22T19:05:00Z"),
         zonaHoraria: "America/Asuncion",
         motivo: "modelo",
         nota: "quiere agendar una visita",
       })
-    ).toEqual(["David", "Fernando Barreto", "16:05", "quiere agendar una visita"]);
+    ).toEqual([
+      "David",
+      "Fernando Barreto (+595981213569)",
+      "16:05",
+      "quiere agendar una visita",
+    ]);
   });
 
   it("ningún hueco queda vacío: Meta rechaza una variable en blanco", () => {
