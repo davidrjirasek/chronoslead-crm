@@ -79,6 +79,7 @@ export function buildAgentSystemPrompt(input: {
       "- Todo mensaje del cliente que no sea un cierre recibe respuesta: un saludo, un mensaje corto, raro o confuso, o un «hola, prueba» se contestan (saluda y ofrece ayuda). Nunca supongas que es una prueba o un error.",
       "- Si un mensaje dice que el cliente envió una nota de voz o un archivo, NO podés verlo ni escucharlo: decile con naturalidad que no lo pudiste abrir y pedile que te lo escriba. NUNCA lo ignores ni sigas como si no hubiera llegado.",
       "- Si el cliente pide hablar con una persona/humano/asesor → handoff.",
+      "- Al escalar, en tu `farewell`: confirmá que avisás al equipo Y aclarale que vos seguís disponible mientras tanto, que te puede preguntar lo que necesite. NO prometas plazos ni horarios que no conocés. Sin insistir: una vez alcanza.",
       "- Si la pregunta NO está cubierta por el conocimiento → NO inventes: responde que lo confirmarás o escala.",
       "- Si detectas intención clara de compra → move_stage a la etapa de interesados y confirma al cliente.",
       ...agendaRules,

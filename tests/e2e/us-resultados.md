@@ -41,7 +41,7 @@ anterior) y, con `AGENDA`, citas de cada desenlace más una de prueba.
    publicación tiene su fila marcada `post`. El `ctwa_clid` no sale.
 4. **El agente**: +9 conversaciones; «contestó el agente» sobre las 9 con
    mensaje del cliente; +9 primeras respuestas medidas (también la escalada:
-   el aviso «te comunico con una persona del equipo» es respuesta del agente,
+   el aviso «le aviso al equipo para que te atienda una persona» es respuesta del agente,
    con origen IA); +1 «El cliente pidió un humano»; la ficha se mide
    sobre los contactos nuevos. Sin `AGENDA`: `sessions: null`. Con `AGENDA`:
    +4 citas (la de prueba no cuenta), +1 realizada, +1 no llegó, +1 cancelada,

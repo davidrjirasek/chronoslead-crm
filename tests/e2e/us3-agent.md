@@ -18,7 +18,8 @@
 4. **move_stage (FR-021)**: inbound "me interesa, lo compro".
    ✅ Respuesta del agente + el lead aparece en "Interesado" en el kanban.
 5. **Handoff por frase (FR-022/SC-006)**: inbound "quiero hablar con un humano".
-   ✅ El cliente recibe UN acuse («te comunico con una persona del equipo»),
+   ✅ El cliente recibe UN acuse («le aviso al equipo para que te atienda una persona»
+      + «seguí contándome lo que necesites»),
    marcado como IA, ANTES del traspaso — igual que el `farewell` del camino
    del modelo. Sin él, quien pidió una persona se quedaba sin respuesta.
    Automatizado en `scripts/e2e-selftest.mjs` (sección FR-022).
