@@ -467,6 +467,35 @@ Salió de ver al agente derivar a un cliente al 976 y preguntar antes de
 "arreglarlo". El número no está en el código: vive en la base de conocimiento,
 así que es configuración del negocio y no se toca desde aquí.
 
+### META_APP_SECRET cortó todos los mensajes entrantes (2026-10-23, 00:15)
+
+Se agregó `META_APP_SECRET` en Coolify para activar la segunda cerradura del
+webhook (la firma `x-hub-signature-256`). **Dejaron de entrar los mensajes.**
+Un número nuevo escribió al 987 y no apareció en la bandeja.
+
+Se quitó la variable, se volvió a desplegar, y los mensajes entraron de
+inmediato. Confirmado con un mensaje real.
+
+**Por qué estuvimos veinte minutos a ciegas, y es un defecto del código:**
+cuando la firma no cuadra, el webhook devuelve `401` **sin escribir una sola
+línea en el registro**. «No hay rastro» se lee igual que «no llegó nunca». Un
+rechazo por firma tiene que gritar. **Pendiente de arreglar.**
+
+**Hipótesis de la causa, sin verificar:** el secreto copiado es de la app
+`ChronosLead` (id `2170205020228499`), pero la firma la pone **la app suscrita
+a la WABA**, que puede ser otra. Se comprueba mirando qué app tiene suscrita
+la cuenta de WhatsApp. No se hizo: era la 1 de la mañana del día de los
+anuncios.
+
+**La lección de proceso:** se presentó como «dos minutos» un cambio que puede
+cortar toda la operación. No lo era. La prueba de un mensaje real ANTES de
+cerrar es lo que lo detectó; sin ella, el primer lead de los anuncios se
+perdía en silencio.
+
+**Cuarta medición del hueco de despliegue: 34 mediciones caídas**, la mayor
+hasta ahora. La serie completa: 21, 0, 0, 34. Confirma que es variable y que
+el número no se puede prometer.
+
 ### Pendiente
 
 - **Reintentar al arrancar los entrantes sin respuesta**: hoy un mensaje que
