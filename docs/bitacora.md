@@ -546,6 +546,32 @@ e Instagram**.
 (`chronos-lead-db`) intactas. Encenderlo y devolverle el dominio es cuestión de
 minutos si hiciera falta.
 
+### Media landing invisible, y nadie podía saberlo (2026-10-23, 02:10)
+
+Apenas el apex pasó a la plataforma, el dueño abrió el sitio y vio texto
+ilegible: blanco sobre blanco.
+
+**Causa:** la landing usa `bg-ink` y `text-ink`, y este proyecto **no define
+`ink`** — solo `brand.ink`, que es otra cosa. Tailwind descarta la clase en
+silencio. `text-ink` parecía funcionar porque heredaba un color oscuro, pero
+las tres secciones de `bg-ink` —una tarjeta, el cierre y **todo el pie**—
+quedaban con fondo blanco y texto blanco encima.
+
+Arreglado en `tailwind.config.ts` con `ink: "#0B0B0B"`. El valor sale del
+propio archivo: `rgba(11,11,11,…)` aparece 12 veces en sus sombras. Literal y
+no token del tema porque el sitio público es de un solo tema: no tiene una
+sola clase `dark:`.
+
+**La lección, que es de proceso y no de CSS:** estaba roto desde que se portó
+la landing, y **no había forma de verlo**. La landing solo se renderiza en el
+apex, y el apex lo servía el sistema anterior; las dos direcciones que tenía
+la plataforma —`admin.` y el subdominio del cliente— muestran el panel y el
+CRM, nunca la landing. **Nadie la había abierto jamás en esta plataforma.**
+El corte de dominio no la rompió: la hizo visible.
+
+Una página que nadie puede abrir se da por buena sin pruebas. El guion E2E
+debería cubrir el apex, no solo los subdominios.
+
 ### Pendiente
 
 - **Reintentar al arrancar los entrantes sin respuesta**: hoy un mensaje que
