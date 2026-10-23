@@ -72,6 +72,21 @@ const config: Config = {
           ink: "var(--accent-ink)",
           veil: "var(--accent-veil)",
         },
+        /**
+         * 120 — El casi-negro del sitio público.
+         *
+         * La landing lo usaba (`bg-ink`, `text-ink`) y NO EXISTÍA: Tailwind
+         * descartaba la clase en silencio. `text-ink` parecía funcionar porque
+         * heredaba un color oscuro, pero las tres secciones de `bg-ink` —una
+         * tarjeta, el cierre y TODO EL PIE— quedaban con fondo blanco y texto
+         * blanco encima. Invisibles. Lo detectó el dueño mirando el sitio
+         * recién cortado el dominio.
+         *
+         * Es un literal y no un token del tema a propósito: el sitio público
+         * es de un solo tema (no tiene una sola clase `dark:`) y este mismo
+         * `#0B0B0B` ya está escrito 12 veces en sus sombras.
+         */
+        ink: "#0B0B0B",
         "text-2": "var(--text-2)",
         "text-3": "var(--text-3)",
         "text-4": "var(--text-4)",
