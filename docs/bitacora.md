@@ -646,12 +646,80 @@ gastar cuatro días.
 (catálogo) y **THE Student Store** (la foto del menú semanal). Es función de
 plataforma para el cliente siguiente, no para el lanzamiento de esta semana.
 
+#### C · El camino del medio: mandar por URL — el que no se había visto
+
+La pregunta del dueño («si es una URL pública, ¿dónde alojamos las imágenes?»)
+destapó una tercera opción que no estaba en el análisis.
+
+Hoy `sendMediaMessage()` manda **subiendo el archivo** y pasando
+`{ id: waMediaId }`. **La Cloud API de Meta también acepta
+`{ link: "https://…" }`**: Meta busca la imagen y la entrega como **foto real**,
+no como enlace.
+
+Si eso funciona, el abanico deja de ser binario:
+
+| Camino | Trabajo | Qué le llega al cliente |
+|---|---|---|
+| Enlace dentro del `reply` | **cero**, funciona hoy | un enlace |
+| **Mandar por `link`** | chico: la acción nueva + el catálogo, **sin tabla ni pantalla de carga** | **la foto** |
+| Banco completo en el CRM | 2-4 días, ciclo completo | la foto, y el cliente la sube desde la plataforma |
+
+> **PENDIENTE DE VERIFICACIÓN HUMANA, y es bloqueante:** que Meta acepte `link`
+> sale de su documentación, **no se probó contra este código**. Media hora:
+> mandar uno de verdad y verlo llegar. Sin eso, el camino del medio no existe
+> y no hay que planificar encima.
+
+**Dónde alojar las imágenes**, de menos a más trabajo:
+
+1. **La web del propio cliente.** Cero servicios nuevos, cero costo, las
+   imágenes son suyas. Castel Muebles tiene sitio. Es la de arranque.
+2. **Una ruta pública en el CRM, solo para la biblioteca.** Hoy no existe:
+   `/api/media/[assetId]` va con `withAuth` y `scoped()` —correcto, ahí viven
+   los adjuntos privados de las conversaciones—. Haría falta una ruta aparte,
+   pública a propósito. Es parte del banco completo igual.
+3. **S3 / R2 / Cloudinary: prohibido en el núcleo** por la Constitución II. Si
+   un cliente ya usa uno y da la URL, es asunto suyo; el producto no se
+   construye encima.
+
+**Descartado: `chronoslead.com`.** El repositorio es **público**: las fotos de
+un cliente quedarían a la vista de cualquiera. Y son de un cliente, no de la
+plataforma.
+
+**Google Drive no sirve**, que fue la intuición del dueño y es correcta: un
+enlace compartido de Drive entrega **una página HTML**, no el binario. Meta
+busca la imagen y encuentra HTML. Los trucos de enlace directo se rompen solos
+y Google los limita.
+
+#### Costo en tokens de cada opción (2026-10-23)
+
+El dueño preguntó si esto le sale caro al cliente. El hallazgo de fondo:
+**`renderKb()` inyecta la base de conocimiento ENTERA en cada turno** — sin
+búsqueda, sin recorte (`src/server/ai/prompts.ts`).
+
+| | ¿Cuesta? | Cuánto |
+|---|---|---|
+| Mandar la imagen | **no** | la foto no pasa por el modelo; este solo emite un id o una URL |
+| El catálogo en el contexto | sí, por turno | 5 imágenes con descripción ≈ 50-100 tokens |
+| La versión del enlace | sí, por turno | **casi lo mismo**: son líneas del conocimiento, que va entero |
+| El pie de foto (A) | **no** | reemplaza el texto de relleno que ya se manda |
+| Visión (leer la imagen) | **sí, y mucho** | cientos a más de mil tokens **por foto recibida** |
+
+**La conclusión que decide:** entre el banco y la versión del enlace **el costo
+de operar es casi el mismo**. La elección no es cara-vs-barata de operar, es
+cara-vs-barata de **construir**. El único que cuesta de verdad operar es la
+visión — de ahí que vaya apagado por defecto y por organización.
+
 ### Pendiente
 
 - **El pie de foto no llega al agente** (A, arriba): el dato ya está guardado y
   se descarta. Barato, aditivo, sin migración
+- **Probar que Meta acepta `link` en un envío de media** (C, arriba): media
+  hora, y **bloquea** el camino del medio. Es lo primero de este tema
 - **Banco de imágenes para que el agente las envíe** (B, arriba): ciclo
   completo, 2-4 días. **El dueño confirma si se avanza o no**
+- **El conocimiento va entero en cada turno** (`renderKb()`): hoy da igual,
+  pero cuando un cliente cargue menú, precios por colegio y cincuenta P/R, cada
+  mensaje va a arrastrar todo eso. Es un límite que va a aparecer
 - **Conector de visión** para que el modelo lea la imagen: patrón de
   `transcripcion.ts`; decisión pendiente por costo y por datos sensibles
 - **Reintentar al arrancar los entrantes sin respuesta**: hoy un mensaje que
