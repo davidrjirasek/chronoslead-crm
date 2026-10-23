@@ -446,6 +446,27 @@ es peor que no tenerlo.
 La reclasificada solo cuesta más. Y Meta tiene razón: invitar a retomar una
 conversación comercial **es** marketing. No conviene buscarle la vuelta.
 
+### Lo que quedó andando al cerrar el 22-oct
+
+| Qué | Estado |
+|---|---|
+| Transcripción de notas de voz | **Probado en vivo** |
+| Rescate de respuestas sin envoltorio JSON | Desplegado; falta que el proveedor vuelva a fallar para verlo actuar |
+| Canal de avisos de atención humana | **Probado en vivo, por los dos caminos** |
+| Las tres plantillas de Meta | Aprobadas |
+| La puerta del operador se presenta como tal | Desplegado |
+| Manual de alta de un cliente | Escrito |
+
+**Dos números, y no son intercambiables.** Confirmado por el dueño:
+
+- `595 987 550109` — **ventas**. Es el del agente, y al que apunta la landing
+- `595 976 260002` — **clientes actuales**. El agente deriva ahí los temas de
+  cuenta y facturación, y eso es correcto
+
+Salió de ver al agente derivar a un cliente al 976 y preguntar antes de
+"arreglarlo". El número no está en el código: vive en la base de conocimiento,
+así que es configuración del negocio y no se toca desde aquí.
+
 ### Pendiente
 
 - **Reintentar al arrancar los entrantes sin respuesta**: hoy un mensaje que
