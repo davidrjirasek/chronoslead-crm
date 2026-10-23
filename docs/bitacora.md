@@ -489,7 +489,10 @@ apuntan a `creativo4dgroup.com`, no a chronoslead.com—. Con SU secreto, los
 mensajes entraron de inmediato.
 
 **Las dos cerraduras del webhook quedaron puestas**: el segmento secreto en la
-dirección y la firma verificada.
+dirección y la firma verificada. **Probado en los tres canales**: WhatsApp,
+Instagram y Messenger siguen entrando con la firma activa (los dos sociales
+van por Zernio, que valida contra el secreto de la organización y no contra
+`META_APP_SECRET`, pero se comprobó en vivo en vez de suponerlo).
 
 Se probó en este orden a propósito: primero el registro del rechazo, después
 el secreto. Así la prueba dejó de ser a ciegas — si fallaba, el registro lo
