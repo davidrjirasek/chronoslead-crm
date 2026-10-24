@@ -513,7 +513,8 @@ inmediato. Confirmado con un mensaje real.
 **Por qué estuvimos veinte minutos a ciegas, y es un defecto del código:**
 cuando la firma no cuadra, el webhook devuelve `401` **sin escribir una sola
 línea en el registro**. «No hay rastro» se lee igual que «no llegó nunca». Un
-rechazo por firma tiene que gritar. **Pendiente de arreglar.**
+rechazo por firma tiene que gritar. **Arreglado esa misma noche en 119**
+(`945ba35`), con `tests/unit/firma-rechazada.test.ts`.
 
 **RESUELTO la misma noche (01:15).** La hipótesis era correcta: el secreto
 copiado era de la app `ChronosLead` (id `2170205020228499`), la nueva, la que
@@ -745,6 +746,18 @@ visión — de ahí que vaya apagado por defecto y por organización.
 
 ### Pendiente
 
+> **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
+> conectar un número real de WhatsApp (los tres canales llevan días probados),
+> el corte de dominio (hecho y verificado el 23-oct, 01:50) y el rechazo por
+> firma sin rastro (arreglado en 119). Una lista de pendientes que miente se
+> vuelve ruido, y es el mismo defecto que tenía el `CLAUDE.md`: el que la lee
+> le cree.
+>
+> **Nada de lo que queda abajo bloquea el lanzamiento de anuncios.** Lo
+> operativo —agente, tres canales, transcripción, rescate, aviso de atención
+> humana, banderita en la bandeja, las dos cerraduras del webhook, las tres
+> plantillas, el dominio— está desplegado y probado en vivo.
+
 - **El modelo contesta en prosa demasiado seguido**: dos rescates en una sola
   conversación, y cada uno cuesta 3× un turno normal. El rescate tapa el
   síntoma; la causa (el agente ve su propia voz en prosa en el historial) sigue
@@ -765,12 +778,6 @@ visión — de ahí que vaya apagado por defecto y por organización.
   `transcripcion.ts`; decisión pendiente por costo y por datos sensibles
 - **Reintentar al arrancar los entrantes sin respuesta**: hoy un mensaje que
   cae en la ventana de 6 s del despliegue se queda sin contestar para siempre
-- Conectar un número real de WhatsApp y probar en vivo que el agente conteste y
-  agende (Ajustes → WhatsApp; el webhook lo registra el CRM solo al guardar)
-- **El corte de dominio**, que requiere el OK explícito del dueño. Al mover el
-  apex: `APP_BASE_URL` pasa a `https://chronoslead.com` y hay que **volver a
-  registrar el webhook en Meta**, porque su URL sale de esa variable. El
-  sistema anterior queda **detenido, no borrado**, una semana
 - **Coolify está expuesto por HTTP sin cifrar** en el puerto 8000: la
   contraseña del panel —control total del servidor— viaja en claro en cada
   entrada. Ponerlo detrás de HTTPS
