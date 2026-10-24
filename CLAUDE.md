@@ -122,11 +122,23 @@ corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack 
 Y el gate que manda, con dos organizaciones sembradas en `*.lvh.me` y la app viva:
 
 ```bash
-corepack pnpm test:e2e:aislamiento    # 34 comprobaciones, spec 105
+corepack pnpm test:e2e:aislamiento    # 45 comprobaciones, spec 105
 ```
 
 Necesita la app viva con `EDITION=cloud`, `BASE_DOMAIN=lvh.me`,
 `WA_MOCK_ENABLED=true` y `BOT_API_KEY`. Siembra sus propias organizaciones.
+
+> **La base de desarrollo YA EXISTE en la Mac del dueño** y el `.env` dice
+> dónde: `127.0.0.1:**5433**`, base `vocero`. El binario vive en
+> `~/.local/share/pgsql/bin` y los datos en `~/.local/share/chronoslead-pgdata`
+> — **no** en Homebrew, **no** en `/Applications`, **no** en el 5432. Buscarlo
+> donde «se suele instalar» da falso negativo; ya costó una descarga al pedo el
+> 24-oct. Para saber si está corriendo: `lsof -nP -iTCP:5433 -sTCP:LISTEN`.
+>
+> **No lo corras tres veces seguidas.** El producto permite 10 inicios de
+> sesión cada 10 minutos por IP; a la segunda o tercera corrida el guion choca
+> con el 429 y avisa «esto NO es un fallo de aislamiento: no pude medir». Una
+> corrida, y si hay que repetir, esperá los 10 minutos.
 
 **El de aislamiento manda**: mientras no esté verde, nada está Hecho. Sus comprobaciones de
 ESCRITURA (un evento por la puerta de A no entra en B) importan más que las de lectura.
