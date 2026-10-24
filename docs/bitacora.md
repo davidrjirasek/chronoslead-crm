@@ -744,6 +744,35 @@ de operar es casi el mismo**. La elección no es cara-vs-barata de operar, es
 cara-vs-barata de **construir**. El único que cuesta de verdad operar es la
 visión — de ahí que vaya apagado por defecto y por organización.
 
+### El gate que manda no se puede correr en la Mac del dueño (2026-10-24)
+
+`CLAUDE.md` es terminante: *«**El de aislamiento manda**: mientras no esté
+verde, nada está Hecho»*. Son 34 comprobaciones de que un cliente **no ve ni
+escribe** en los datos de otro — el corazón de ser plataforma.
+
+**No hay rastro de que se haya corrido desde que la plataforma está viva.** Lo
+único anotado es que no debe correrse contra producción, que es correcto:
+siembra sus propias organizaciones.
+
+Y no se puede correr aquí: **esta Mac no tiene Postgres ni Docker**
+(comprobado: nada escuchando en 5432, sin `docker`, sin `colima`, sin
+Postgres.app, sin fórmula de brew). El `.env` local sí tiene todo lo demás
+—`EDITION`, `BASE_DOMAIN`, `WA_MOCK_ENABLED`, `BOT_API_KEY`—; falta la base.
+
+**Desde la última corrida conocida entraron, entre otras, las specs 112, 114,
+115, 116, 117, 118, 119 y 120 — y dos tocaron el esquema**: `alert_phone` /
+`alert_name` (117, migración `0025`) y las 19 líneas de 119. El esquema y la
+multitenencia son exactamente lo que ese gate protege.
+
+**Proporción, para no asustar de más:** hoy hay **un** cliente real en
+producción. Una fuga entre organizaciones no tiene a quién fugarse. El riesgo
+es bajo ahora y **se vuelve serio con el segundo cliente** — o sea, antes de
+dar de alta a THE Student Store.
+
+**Qué hace falta:** que el dueño instale **una** cosa en la Mac, una vez
+—Docker Desktop o Postgres.app, las dos gratis— y a partir de ahí el gate se
+corre solo, cuando haga falta. No se puede hacer por él: pide su contraseña.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
@@ -758,6 +787,9 @@ visión — de ahí que vaya apagado por defecto y por organización.
 > humana, banderita en la bandeja, las dos cerraduras del webhook, las tres
 > plantillas, el dominio— está desplegado y probado en vivo.
 
+- **BLOQUEANTE ANTES DEL SEGUNDO CLIENTE: correr el guion de aislamiento.**
+  Hoy no se puede: la Mac no tiene Postgres ni Docker. El dueño instala uno,
+  una vez, y queda resuelto para siempre (ver la sección de arriba)
 - **El modelo contesta en prosa demasiado seguido**: dos rescates en una sola
   conversación, y cada uno cuesta 3× un turno normal. El rescate tapa el
   síntoma; la causa (el agente ve su propia voz en prosa en el historial) sigue
@@ -769,8 +801,11 @@ visión — de ahí que vaya apagado por defecto y por organización.
   se descarta. Barato, aditivo, sin migración
 - **Probar que Meta acepta `link` en un envío de media** (C, arriba): media
   hora, y **bloquea** el camino del medio. Es lo primero de este tema
-- **Banco de imágenes para que el agente las envíe** (B, arriba): ciclo
-  completo, 2-4 días. **El dueño confirma si se avanza o no**
+- ~~Banco de imágenes~~ — **NO va por ahora.** Decisión del dueño (24-oct):
+  «era una posibilidad nomás, no algo que quiero incluir todavía; puede ser
+  para un cliente específico, no para Creativo ni para todas las versiones de
+  ChronosLead». Queda como función a pedido de un cliente, no de plataforma.
+  El análisis (A/B/C y los costos) se conserva arriba para cuando se pida.
 - **El conocimiento va entero en cada turno** (`renderKb()`): hoy da igual,
   pero cuando un cliente cargue menú, precios por colegio y cincuenta P/R, cada
   mensaje va a arrastrar todo eso. Es un límite que va a aparecer
@@ -783,5 +818,6 @@ visión — de ahí que vaya apagado por defecto y por organización.
   entrada. Ponerlo detrás de HTTPS
 - `commitVerified:false` en el health: cosmético, Coolify no pasa
   `SOURCE_COMMIT` como build arg
-- Revisión en móvil (375 px) de las pantallas del CRM: **pendiente de
-  verificación humana**
+- ~~Revisión en móvil (375 px)~~ — **HECHO**: la revisó el dueño y está bien
+  (24-oct). Estaba marcada «pendiente de verificación humana» porque Claude no
+  podía probarla; la verificación humana es él, y la dio.
