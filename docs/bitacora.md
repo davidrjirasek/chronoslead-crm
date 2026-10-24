@@ -744,7 +744,82 @@ de operar es casi el mismo**. La elección no es cara-vs-barata de operar, es
 cara-vs-barata de **construir**. El único que cuesta de verdad operar es la
 visión — de ahí que vaya apagado por defecto y por organización.
 
-### El gate que manda no se puede correr en la Mac del dueño (2026-10-24)
+### El gate de aislamiento, corrido por fin: 39/45 y ningún agujero (2026-10-24)
+
+Corrido dos veces con el mismo resultado, o sea reproducible: **39 de 45**,
+seis fallos.
+
+```
+❌ la cookie de A en SU host funciona
+❌ bandeja responde a ambas — A=500 B=500
+❌ el mismo evento por la puerta de A SÍ entra en A
+❌ B sigue entrando: solo se cortó quien debía
+❌ el mensaje a una organización suspendida SE GUARDA
+❌ al reactivar vuelve a entrar
+```
+
+**Los seis son UN solo problema, y es local.** En el registro de la app:
+
+```
+routine: 'errorMissingColumn'  →  GET /api/conversations 500
+```
+
+A la base de desarrollo **le faltan las migraciones nuevas**: no tiene
+`organization.alert_phone`, la que agregó 117. La bandeja consulta una columna
+que no existe → 500 → y a partir de ahí el guion no puede comprobar que los
+mensajes llegaron ni que la suspensión cortó, así que esas cinco caen en
+cascada detrás de la primera.
+
+**Producción no lo tiene**: allá las migraciones se aplican al arrancar el
+contenedor. Es la copia local la que quedó atrás.
+
+**Lo que SÍ quedó probado — que era la pregunta de fondo:**
+
+| Comprobación | |
+|---|---|
+| Un evento por la puerta de B con el número de A **no entra en A** | ✅ |
+| …y tampoco aparece en B | ✅ |
+| La firma de B no abre la puerta de A | ✅ |
+| Una organización inventada no tiene puerta | ✅ |
+| El login de A no muestra la marca de B | ✅ |
+| El enlace de acceso de A no vale en el subdominio de B, ni dos veces | ✅ |
+| La credencial de cerebro de A con el id de B no vale | ✅ |
+| Un subdominio inexistente no filtra la marca de nadie | ✅ |
+
+**Ninguno de los seis fallos dice que un cliente vea datos de otro.** El
+aislamiento aguanta; lo que está roto es el entorno de desarrollo.
+
+**Siguiente paso, con el dueño presente** (toca su base): aplicar las
+migraciones locales (`corepack pnpm db:migrate`) y volver a correrlo. Si queda
+45/45, la plataforma está certificada para el segundo cliente.
+
+### Lo que costó llegar hasta acá (2026-10-24)
+
+Dos errores propios, anotados porque el segundo ya es patrón:
+
+**1 · Se dio por ausente un Postgres que estaba corriendo.** Se buscó en el
+puerto 5432, en el PATH, en `/Applications` y en Homebrew — las convenciones—
+en vez de leer el `.env` del proyecto, que dice `127.0.0.1:5433`. Resultado:
+114 MB descargados y 390 MB instalados al pedo, después borrados. El dueño
+había dicho «para mí que ya había bajado Postgres» y tenía razón.
+
+Es el tercer caso del mismo patrón —antes el logo y la guía de despliegue—:
+**asumir la convención en vez de leer lo que el proyecto declara.** La
+diferencia es que esta vez no lo detectó el dueño: lo detectó el propio
+Postgres al chocar de puertos. La trampa quedó escrita en `CLAUDE.md`, no en
+una nota suelta.
+
+**2 · Se corrió el guion tres veces seguidas y chocó con el 429.** El producto
+limita a 10 inicios de sesión cada 10 minutos por IP. Las corridas 2 y 3 no
+midieron nada; hubo que esperar 11 minutos para tener una limpia. También
+quedó en `CLAUDE.md`.
+
+### El gate que manda no se puede correr en la Mac del dueño (2026-10-24, corregido)
+
+> **Desmentido el mismo día.** Sí se puede: la base estaba instalada y
+> corriendo todo el tiempo, en el puerto 5433. Lo de abajo se conserva porque
+> explica cómo se llegó a la conclusión equivocada, pero **su premisa es
+> falsa**.
 
 `CLAUDE.md` es terminante: *«**El de aislamiento manda**: mientras no esté
 verde, nada está Hecho»*. Son 34 comprobaciones de que un cliente **no ve ni
@@ -787,9 +862,12 @@ corre solo, cuando haga falta. No se puede hacer por él: pide su contraseña.
 > humana, banderita en la bandeja, las dos cerraduras del webhook, las tres
 > plantillas, el dominio— está desplegado y probado en vivo.
 
-- **BLOQUEANTE ANTES DEL SEGUNDO CLIENTE: correr el guion de aislamiento.**
-  Hoy no se puede: la Mac no tiene Postgres ni Docker. El dueño instala uno,
-  una vez, y queda resuelto para siempre (ver la sección de arriba)
+- **Aplicar las migraciones a la base local y volver a correr el guion.**
+  Corrido el 24-oct: 39/45, y los seis fallos son uno solo —a la base local le
+  falta `organization.alert_phone` (117)—. **Ninguno es una fuga entre
+  clientes**; el aislamiento salió verde entero. Falta `corepack pnpm
+  db:migrate` con el dueño presente, porque toca su base, y confirmar 45/45
+  antes del segundo cliente
 - **El modelo contesta en prosa demasiado seguido**: dos rescates en una sola
   conversación, y cada uno cuesta 3× un turno normal. El rescate tapa el
   síntoma; la causa (el agente ve su propia voz en prosa en el historial) sigue
