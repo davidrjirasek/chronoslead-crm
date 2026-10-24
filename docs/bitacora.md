@@ -300,9 +300,43 @@ Con tres candados, porque no todo crudo es una frase:
 | Menciona `json`, `"action":`, `schema`, `esquema del` | Delata la maquinaria; un cliente nunca tiene que leer eso |
 | Pasa de 1200 caracteres | No es un mensaje de chat, es otra cosa |
 
-El test usa la frase textual del log de producción, la que se perdió. Que el
-rescate funcione contra el modelo real queda **pendiente de verificación
-humana** hasta que vuelva a pasar en vivo.
+El test usa la frase textual del log de producción, la que se perdió.
+
+#### PROBADO EN VIVO (2026-10-23) — y lo que destapó
+
+El rescate **actuó dos veces** en una sola conversación real, en los registros
+del contenedor:
+
+```
+[agente] el modelo contestó sin JSON; se rescata la frase
+(raw=Perfecto, ya veo el panorama. Lo que pasa es que sin un sistema de
+seguimiento estructurado, esas oportunidades se pierden en el día a día…)
+
+[agente] el modelo contestó sin JSON; se rescata la frase
+(raw=Perfecto. Para saber si estamos dentro del rango que están evaluando,
+nuestras implementaciones parten de un setup de G. 12.500.000 y un fee desde
+G. 4.000.000 mensuales. ¿Ese nivel de inversión está dentro de lo que
+contemplan para resolver esta parte del negocio?)
+```
+
+Las dos se habrían perdido. La segunda es **la pregunta de calificación con
+los precios**: el turno donde se decide si hay negocio.
+
+**Pero dos veces en una conversación no es un hipo, es una tendencia.** Y la
+causa ya estaba documentada en el código, en 029: *«las respuestas anteriores
+del agente llegan como texto plano, y con ellas a la vista el modelo contestaba
+en texto plano»*. El `TURN_FORMAT_REMINDER` se agregó para eso y **no alcanza**.
+
+El precio de que no alcance: cada rescate quema los **3 intentos** de
+`MAX_ATTEMPTS`, y cada intento manda el contexto entero —prompt, KB completo e
+historial—. **Un turno rescatado cuesta ~3× uno normal**, en tokens y en
+demora. El cliente no lo ve; la factura sí.
+
+**Hipótesis para atacar la causa, sin probar:** el historial mapea los turnos
+del agente a su `text` pelado, así que el modelo ve su propia voz en prosa y la
+imita. Devolvérselos con la forma que se le pide —`{"action":"reply","text":…}`—
+reforzaría el patrón en vez de contradecirlo. Es una hipótesis: hay que medirla
+antes de creerle.
 
 ### Cuánto corta un despliegue (2026-10-22)
 
@@ -711,6 +745,13 @@ visión — de ahí que vaya apagado por defecto y por organización.
 
 ### Pendiente
 
+- **El modelo contesta en prosa demasiado seguido**: dos rescates en una sola
+  conversación, y cada uno cuesta 3× un turno normal. El rescate tapa el
+  síntoma; la causa (el agente ve su propia voz en prosa en el historial) sigue
+  ahí. Medirlo antes de tocarlo
+- **Ruido en los registros**: `Server Reference ID did not match … Received
+  "x"` repetido. Huele a alguien tanteando acciones de servidor desde fuera.
+  Mirar qué es
 - **El pie de foto no llega al agente** (A, arriba): el dato ya está guardado y
   se descarta. Barato, aditivo, sin migración
 - **Probar que Meta acepta `link` en un envío de media** (C, arriba): media
