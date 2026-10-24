@@ -85,7 +85,7 @@ simuladores. Es un gate del código y vive en local.
 
 ### Pedido del dueño: manual de alta de un cliente (2026-10-21)
 
-Creativo 4D Group es el **primero** de varios: siguen THE Student Store, Castel
+Creativo 4D Group es el **primero** de varios: siguen The Student Store, Castel
 Muebles y los demás. Cada uno se configura igual, y hoy ese procedimiento solo
 existe en esta conversación.
 
@@ -130,7 +130,7 @@ escritos para la demo de Vocero, la Ferretería El Martillo: preguntan por
 martillos, desarmadores, lijadoras, pintura y tiner.
 
 En una instancia de un solo negocio eso es un detalle. **En una plataforma es
-una pieza que falta**: a THE Student Store y a Castel Muebles les van a aparecer los
+una pieza que falta**: a The Student Store y a Castel Muebles les van a aparecer los
 mismos clientes simulados preguntando por martillos.
 
 Lo que el Laboratorio sí mide con esos guiones es valioso y no hay que perderlo:
@@ -229,7 +229,7 @@ El dueño pidió dos avisos en días distintos, y son la misma pieza:
 | Disparador | Aviso |
 |---|---|
 | Una conversación escaló a atención humana | quién espera, desde cuándo y por qué |
-| Un directivo consultó por el servicio (caso THE Student Store) | quién es, de qué institución, qué pidió |
+| Un directivo consultó por el servicio (caso The Student Store) | quién es, de qué institución, qué pidió |
 
 Los dos son **mandar una plantilla a un número interno con datos de la
 conversación**. No son dos desarrollos: es uno —el canal de avisos al equipo—
@@ -243,7 +243,7 @@ Es la misma disciplina que la agenda, que nunca confirma una cita antes de que
 el calendario la registre. Prometer un aviso que falló es peor que no
 prometerlo: el cliente se queda esperando y nadie se entera.
 
-El caso de THE Student Store le agrega valor comercial: un director que consulta
+El caso de The Student Store le agrega valor comercial: un director que consulta
 por el comedor de su colegio es un contrato entero. Sin el aviso, ese lead
 depende de que la persona haga un segundo esfuerzo —escribir a otro número—.
 Con el aviso, el equipo puede tomar la iniciativa.
@@ -678,7 +678,7 @@ conversación, pero sirve para medir si la gente realmente las pide antes de
 gastar cuatro días.
 
 **Para quién es:** no para Creativo 4D vendiendo CRM. Para **Castel Muebles**
-(catálogo) y **THE Student Store** (la foto del menú semanal). Es función de
+(catálogo) y **The Student Store** (la foto del menú semanal). Es función de
 plataforma para el cliente siguiente, no para el lanzamiento de esta semana.
 
 #### C · El camino del medio: mandar por URL — el que no se había visto
@@ -767,7 +767,7 @@ multitenencia son exactamente lo que ese gate protege.
 **Proporción, para no asustar de más:** hoy hay **un** cliente real en
 producción. Una fuga entre organizaciones no tiene a quién fugarse. El riesgo
 es bajo ahora y **se vuelve serio con el segundo cliente** — o sea, antes de
-dar de alta a THE Student Store.
+dar de alta a The Student Store.
 
 **Qué hace falta:** que el dueño instale **una** cosa en la Mac, una vez
 —Docker Desktop o Postgres.app, las dos gratis— y a partir de ahí el gate se
