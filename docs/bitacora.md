@@ -789,9 +789,26 @@ contenedor. Es la copia local la que quedó atrás.
 **Ninguno de los seis fallos dice que un cliente vea datos de otro.** El
 aislamiento aguanta; lo que está roto es el entorno de desarrollo.
 
-**Siguiente paso, con el dueño presente** (toca su base): aplicar las
-migraciones locales (`corepack pnpm db:migrate`) y volver a correrlo. Si queda
-45/45, la plataforma está certificada para el segundo cliente.
+#### 45/45 — VERDE (2026-10-25)
+
+Con el OK del dueño se respaldó la base (`pg_dump`, 123 KB) y se corrió
+`corepack pnpm db:migrate`: **le faltaban 3 de 28 migraciones**. Tras
+aplicarlas aparecieron `alert_phone` y `alert_name`, y las 8 organizaciones
+quedaron intactas.
+
+Una sola corrida del guion —la lección del 429— y:
+
+```
+✅ Aislamiento verde.     45/45 comprobaciones correctas.
+```
+
+Las 13 secciones corrieron, nada omitido (se verificó que «3-5» es una sección
+combinada, no tres salteadas, y que no faltó ninguna credencial). Las cinco de
+Suspensión y las cuatro de ESCRITURA por webhook —las que mandan— en verde.
+
+**Queda confirmado lo que el 24-oct era solo hipótesis:** los seis fallos eran
+el entorno local atrasado, no un defecto del producto. **La plataforma está
+certificada para dar de alta al segundo cliente.**
 
 ### Lo que costó llegar hasta acá (2026-10-24)
 
@@ -862,12 +879,9 @@ corre solo, cuando haga falta. No se puede hacer por él: pide su contraseña.
 > humana, banderita en la bandeja, las dos cerraduras del webhook, las tres
 > plantillas, el dominio— está desplegado y probado en vivo.
 
-- **Aplicar las migraciones a la base local y volver a correr el guion.**
-  Corrido el 24-oct: 39/45, y los seis fallos son uno solo —a la base local le
-  falta `organization.alert_phone` (117)—. **Ninguno es una fuga entre
-  clientes**; el aislamiento salió verde entero. Falta `corepack pnpm
-  db:migrate` con el dueño presente, porque toca su base, y confirmar 45/45
-  antes del segundo cliente
+- ~~Correr el guion de aislamiento~~ — **HECHO, 45/45 verde** (25-oct). La
+  plataforma queda certificada para el segundo cliente. **Volver a correrlo
+  antes de cada alta de cliente nuevo**, que es cuando importa
 - **El modelo contesta en prosa demasiado seguido**: dos rescates en una sola
   conversación, y cada uno cuesta 3× un turno normal. El rescate tapa el
   síntoma; la causa (el agente ve su propia voz en prosa en el historial) sigue
