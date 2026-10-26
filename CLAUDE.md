@@ -1,5 +1,20 @@
 # ChronosLead — Guía para Claude
 
+## Empezá leyendo esto, en este orden
+
+Si llegás a este repo sin contexto —chat nuevo, otra máquina, otra persona—,
+**estos tres archivos tienen todo lo que hace falta.** No hay conocimiento
+importante que viva solo en una conversación: lo que no está acá, no existe.
+
+| Archivo | Qué tiene |
+|---|---|
+| **este archivo** | Las reglas. Qué manda sobre qué, y las trampas que ya costaron tiempo |
+| **[docs/bitacora.md](docs/bitacora.md)** | **Qué se hizo, cómo se probó y qué quedó pendiente.** El registro operativo real: dominios, decisiones del dueño, fallos encontrados en vivo y por qué se arreglaron así. **Al cerrar cada fase se le agrega: qué quedó, cómo se probó, qué sigue** |
+| **[docs/alta-de-cliente.md](docs/alta-de-cliente.md)** | Cómo dar de alta un cliente, doce pasos con lista de control |
+
+El estado de diseño durable vive en `specs/`; las decisiones de arquitectura,
+en `docs/adr-*.md`.
+
 > **Este repo es un fork de Vocero CRM convertido en SaaS multitenant.** Lo de abajo
 > (desde «Lee primero AGENTS.md») es la guía original de Vocero y describe su código:
 > sigue siendo válida. Lo de aquí arriba es lo que cambia por ser plataforma, y manda
