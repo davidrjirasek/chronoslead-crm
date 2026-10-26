@@ -865,6 +865,64 @@ dar de alta a The Student Store.
 —Docker Desktop o Postgres.app, las dos gratis— y a partir de ahí el gate se
 corre solo, cuando haga falta. No se puede hacer por él: pide su contraseña.
 
+### La base de producción no tenía copias de seguridad (2026-10-25)
+
+Escribiendo el manual de operaciones se revisó Coolify → la base → Backups:
+
+```
+Schedules: 0     Enabled: 0     Total executions: 0
+No scheduled backups
+```
+
+**Nunca se había hecho una copia, desde que la plataforma existe.** Con un
+cliente en producción y varios por entrar.
+
+Resuelto el mismo día, con el OK del dueño:
+
+| | |
+|---|---|
+| Frecuencia | diaria, `0 3 * * *` |
+| Retención | 14 copias · 30 días · tope de 2 GB |
+| Primera copia | a mano, 129.21 KB, correcta |
+
+La retención estaba en 0 —sin límite— y se fijó: sin tope, las copias terminan
+llenando el disco del servidor.
+
+**Sigue faltando la mitad: las copias son `Local`**, en el mismo servidor que
+la base. Protegen del error humano, no de que el servidor desaparezca. Las dos
+salidas, que se complementan: snapshots del proveedor del VPS (recuperan el
+servidor entero) y copias a un S3 (recuperan los datos aunque el servidor no
+exista). **Pendiente: averiguar si el VPS tiene snapshots activados** — se le
+consultó a Kevin.
+
+**La lección de proceso:** la pregunta «¿hay copias de seguridad?» no la hizo
+nadie en meses. Apareció sola al redactar un manual de operaciones, que es
+justamente para lo que sirven los manuales. Quedó como pregunta número 1 del
+`metodo-de-trabajo.pdf`.
+
+### Dos manuales en PDF, y una sesión paralela archivada (2026-10-26)
+
+En `~/Documents/ChronosLead/` (fuera del repo, que es público):
+
+| Archivo | Qué es |
+|---|---|
+| `manual-operaciones.pdf` | 14 páginas. Inventario de servicios, credenciales, rutina de vigilancia, manual de incidentes con los casos reales, riesgos conocidos, qué hacer si el dueño no está, y trabajo en equipo |
+| `metodo-de-trabajo.pdf` | 5 páginas. Método genérico para cualquier proyecto |
+| `generar-manual.py` | Convierte cualquier `.md` a PDF con la marca. Usa Chrome, no instala nada |
+
+**Se descubrió una segunda sesión de Claude sobre la misma carpeta**:
+«Chronoslead Nuevo (fork)», creada el 22-oct 19:25, activa hasta el 23-oct
+07:06. **Es la que hizo las specs 117 a 120**, el lío del `META_APP_SECRET` y
+el corte de dominio — lo que explica los commits que aparecieron sin que esta
+sesión los hubiera hecho. Archivada el 26-oct: sin worktree que limpiar y todo
+su trabajo ya commiteado y documentado.
+
+**La regla correcta**, que se precisó tras una pregunta del dueño: el riesgo no
+es tener varias conversaciones sobre la misma carpeta —leer y operar en
+paralelo es inocuo—, sino **dos sesiones escribiendo los mismos archivos a la
+vez**. Dar de alta un cliente ocurre íntegramente en paneles web y no toca el
+repositorio.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
@@ -882,6 +940,9 @@ corre solo, cuando haga falta. No se puede hacer por él: pide su contraseña.
 - ~~Correr el guion de aislamiento~~ — **HECHO, 45/45 verde** (25-oct). La
   plataforma queda certificada para el segundo cliente. **Volver a correrlo
   antes de cada alta de cliente nuevo**, que es cuando importa
+- **Copias de seguridad fuera del servidor**: hoy son `Local`. Falta saber si
+  el VPS tiene snapshots, y configurar un S3 en Coolify. **Es lo más urgente
+  de esta lista**
 - **El modelo contesta en prosa demasiado seguido**: dos rescates en una sola
   conversación, y cada uno cuesta 3× un turno normal. El rescate tapa el
   síntoma; la causa (el agente ve su propia voz en prosa en el historial) sigue
