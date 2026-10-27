@@ -25,6 +25,25 @@ export type FilaDelPadron = {
   estado: EstadoOrganizacion;
   /** 109 — Los últimos cobros, para verlos sin salir del panel. */
   pagos: PagoDelHistorico[];
+  /**
+   * 123 — Supervisión. Números agregados, nunca contenido: el superadmin
+   * administra la cartera y no lee las conversaciones de nadie. «Cuántas
+   * esperan» es una cuenta; qué dicen, no se muestra ni se consulta.
+   */
+  supervision: Supervision;
+};
+
+export type Supervision = {
+  /** Cuándo escribió por última vez un cliente suyo. `null` = nunca. */
+  ultimaEntrante: Date | null;
+  /** Conversaciones marcadas para atención humana, sin resolver. */
+  esperandoPersona: number;
+  /** Cómo está su llave de IA. `null` = no configuró ninguna. */
+  estadoIa: "active" | "paused_invalid_token" | "paused_no_credit" | null;
+  /** Tokens consumidos en el mes corriente (122). */
+  tokensDelMes: number;
+  /** Tokens del mes que se fueron en intentos que no sirvieron. */
+  tokensDesperdiciados: number;
 };
 
 export async function listarPadron(): Promise<FilaDelPadron[]> {
@@ -47,6 +66,34 @@ export async function listarPadron(): Promise<FilaDelPadron[]> {
       usuarios: sql<number>`(
         select count(*) from "member" m
         where m."organization_id" = "organization"."id"
+      )`.mapWith(Number),
+      /*
+       * 123 — Las mismas subconsultas literales que `usuarios`, y por el mismo
+       * motivo: con identificadores de Drizzle interpolados el SQL sale mal y
+       * devuelve ceros plausibles para todos.
+       */
+      ultimaEntrante: sql<Date | null>`(
+        select max(m."created_at") from "message" m
+        where m."organization_id" = "organization"."id" and m."direction" = 'in'
+      )`,
+      esperandoPersona: sql<number>`(
+        select count(*) from "conversation" c
+        where c."organization_id" = "organization"."id" and c."handoff_at" is not null
+      )`.mapWith(Number),
+      estadoIa: sql<string | null>`(
+        select a."status" from "ai_credentials" a
+        where a."organization_id" = "organization"."id" limit 1
+      )`,
+      tokensDelMes: sql<number>`(
+        select coalesce(sum(u."total_tokens"), 0) from "ai_usage" u
+        where u."organization_id" = "organization"."id"
+          and u."created_at" >= date_trunc('month', now())
+      )`.mapWith(Number),
+      tokensDesperdiciados: sql<number>`(
+        select coalesce(sum(u."total_tokens"), 0) from "ai_usage" u
+        where u."organization_id" = "organization"."id"
+          and u."created_at" >= date_trunc('month', now())
+          and u."resultado" <> 'ok'
       )`.mapWith(Number),
     })
     .from(schema.organization)
@@ -86,6 +133,13 @@ export async function listarPadron(): Promise<FilaDelPadron[]> {
     usuarios: f.usuarios,
     pagadoHasta: f.paidThrough,
     pagos: porOrganizacion.get(f.id) ?? [],
+    supervision: {
+      ultimaEntrante: f.ultimaEntrante ? new Date(f.ultimaEntrante) : null,
+      esperandoPersona: f.esperandoPersona,
+      estadoIa: (f.estadoIa as Supervision["estadoIa"]) ?? null,
+      tokensDelMes: f.tokensDelMes,
+      tokensDesperdiciados: f.tokensDesperdiciados,
+    },
     estado: estadoDeOrganizacion(
       {
         paidThrough: f.paidThrough,

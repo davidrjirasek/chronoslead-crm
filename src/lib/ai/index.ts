@@ -6,6 +6,12 @@ import {
   type EstadoIa,
 } from "@/lib/ai/provider";
 import { marcarEstadoPorRespuesta } from "@/server/ai/credentials";
+import {
+  anotarConsumo,
+  normalizarConsumo,
+  type Consumo,
+  type ResultadoDeConsumo,
+} from "@/server/ai/consumo";
 
 /**
  * Adaptador LLM OpenRouter-compatible — ÚNICA frontera con el proveedor de IA
@@ -95,25 +101,43 @@ export async function chatJson<T>(
             },
           ];
     try {
-      const raw = await callProvider(
+      const respuesta = await callProvider(
         provider,
         model,
         attemptMessages,
         opts?.timeoutMs
       );
+      const raw = respuesta.content;
+
+      /**
+       * 122 — Se anota ESTE intento, haya servido o no. Un turno que falla el
+       * formato gasta hasta tres llamadas, y ese gasto se paga igual.
+       */
+      const anotar = (resultado: ResultadoDeConsumo) =>
+        void anotarConsumo({
+          organizationId: opts?.organizationId,
+          proposito: opts?.judge ? "juez" : "agente",
+          resultado,
+          model,
+          consumo: respuesta.consumo,
+        });
+
       const extracted = extractJson(raw);
       lastRaw = raw;
       if (extracted === null) {
+        anotar("sin_json");
         lastDetail = `sin JSON extraíble (raw=${truncate(raw)})`;
         continue;
       }
       const parsed = schema.safeParse(extracted);
       if (!parsed.success) {
+        anotar("no_cumple_esquema");
         lastDetail = `no cumple el esquema: ${parsed.error.issues
           .map((i) => i.path.join(".") + " " + i.message)
           .join("; ")} (raw=${truncate(raw)})`;
         continue;
       }
+      anotar("ok");
       return { ok: true, data: parsed.data, raw };
     } catch (err) {
       lastDetail = err instanceof Error ? err.message : String(err);
@@ -171,7 +195,7 @@ async function callProvider(
   model: string,
   messages: ChatMessage[],
   timeoutMs = 60_000
-): Promise<string> {
+): Promise<{ content: string; consumo: Consumo | null }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -191,12 +215,14 @@ async function callProvider(
     }
     const json = (await res.json()) as {
       choices?: { message?: { content?: string } }[];
+      /** 122 — Lo manda el proveedor en cada respuesta; antes se descartaba. */
+      usage?: unknown;
     };
     const content = json.choices?.[0]?.message?.content;
     if (typeof content !== "string" || content.length === 0) {
       throw new Error("respuesta del proveedor sin contenido");
     }
-    return content;
+    return { content, consumo: normalizarConsumo(json.usage) };
   } finally {
     clearTimeout(timer);
   }

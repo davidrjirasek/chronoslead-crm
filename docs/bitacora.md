@@ -923,6 +923,24 @@ paralelo es inocuo—, sino **dos sesiones escribiendo los mismos archivos a la
 vez**. Dar de alta un cliente ocurre íntegramente en paneles web y no toca el
 repositorio.
 
+### Titularidad de las cuentas (2026-10-27)
+
+El manual de operaciones listaba los servicios pero **no a nombre de quién
+está cada cuenta ni con qué correo se entra** — el dato que hace falta
+justamente el día que el dueño no está. Se agregó la sección «Cuentas y
+titularidad», deliberadamente **con los huecos a la vista**: un manual que no
+menciona un servicio parece completo; uno que dice «por confirmar» obliga a
+completarlo.
+
+**Hostinger** (el proveedor del VPS, que tampoco estaba nombrado) estaba a
+nombre de David con su correo personal. **Migrado el mismo día a
+`creativo4dgroup@gmail.com`.** Cambiar el correo de la cuenta no toca el
+servidor, el DNS ni la aplicación: solo mueve a dónde llegan los avisos de
+vencimiento y los restablecimientos.
+
+**Faltan Namecheap, Cloudflare, Meta, Zernio y Groq.** El orden lo da el daño:
+primero las que apagan el servicio si se pierden.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
@@ -940,6 +958,8 @@ repositorio.
 - ~~Correr el guion de aislamiento~~ — **HECHO, 45/45 verde** (25-oct). La
   plataforma queda certificada para el segundo cliente. **Volver a correrlo
   antes de cada alta de cliente nuevo**, que es cuando importa
+- **Pasar al correo de la agencia las cuentas que siguen en uno personal.**
+  Hostinger ya está; faltan Namecheap, Cloudflare, Meta, Zernio y Groq
 - **Copias de seguridad fuera del servidor**: hoy son `Local`. Falta saber si
   el VPS tiene snapshots, y configurar un S3 en Coolify. **Es lo más urgente
   de esta lista**
