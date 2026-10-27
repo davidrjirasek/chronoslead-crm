@@ -21,6 +21,7 @@ export function TeamClient() {
   const [members, setMembers] = useState<Member[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [rol, setRol] = useState<"member" | "admin">("member");
   const [tempPassword, setTempPassword] = useState("");
   const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +55,7 @@ export function TeamClient() {
     const res = await fetch("/api/settings/team", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name, email, password: tempPassword }),
+      body: JSON.stringify({ name, email, password: tempPassword, rol }),
     }).catch(() => null);
     setSaving(false);
     if (!res?.ok) {
@@ -100,6 +101,22 @@ export function TeamClient() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="team-rol">Qué va a poder hacer</Label>
+            <select
+              id="team-rol"
+              value={rol}
+              onChange={(e) => setRol(e.target.value as "member" | "admin")}
+              className="h-9 w-full rounded-md border border-line bg-transparent px-3 text-sm"
+            >
+              <option value="member">Atender la Bandeja</option>
+              <option value="admin">Atender y configurar — administrador</option>
+            </select>
+            <p className="text-[11px] leading-snug text-text-3">
+              Un administrador puede cambiar el agente, las llaves y los
+              canales. Dáselo solo a quien tenga que configurar.
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="team-password">Contraseña temporal</Label>
@@ -153,8 +170,12 @@ export function TeamClient() {
               <p className="truncate text-sm font-medium">{m.name}</p>
               <p className="text-xs text-muted-foreground">{m.email}</p>
             </div>
-            <Badge variant={m.role === "owner" ? "default" : "secondary"}>
-              {m.role === "owner" ? "Propietario" : "Miembro"}
+            <Badge variant={m.role === "member" ? "secondary" : "default"}>
+              {m.role === "owner"
+                ? "Propietario"
+                : m.role === "admin"
+                  ? "Administrador"
+                  : "Miembro"}
             </Badge>
           </div>
         ))}

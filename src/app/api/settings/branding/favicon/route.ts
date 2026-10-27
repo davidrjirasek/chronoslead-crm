@@ -7,6 +7,7 @@ import {
 } from "@/lib/favicon";
 import { getBranding, saveBranding } from "@/server/branding";
 import { mediaFilePath, saveMediaFile } from "@/server/whatsapp/media";
+import { canConfigure } from "@/lib/auth/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export const dynamic = "force-dynamic";
  * es trabajo que no compra nada.
  */
 export const PUT = withAuth(async (session, req: Request) => {
-  if (session.role !== "owner") {
+  if (!canConfigure(session.role)) {
     return apiError(403, "forbidden", "Solo el propietario puede cambiar la marca");
   }
 
@@ -62,7 +63,7 @@ export const PUT = withAuth(async (session, req: Request) => {
 
 /** Quitar el subido y volver al generado de la marca. */
 export const DELETE = withAuth(async (session) => {
-  if (session.role !== "owner") {
+  if (!canConfigure(session.role)) {
     return apiError(403, "forbidden", "Solo el propietario puede cambiar la marca");
   }
 

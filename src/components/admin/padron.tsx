@@ -97,7 +97,7 @@ export function Padron({
             action={accionAlta}
             className="cl-superficie space-y-3 rounded-xl border border-line p-4 sm:p-5"
           >
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Campo
                 id="nombre"
                 etiqueta="Nombre del negocio"
@@ -115,7 +115,15 @@ export function Padron({
                 etiqueta="Correo del dueño"
                 ejemplo="dueno@sonrisa.com"
                 tipo="email"
-                ayuda="A este correo se asocia su cuenta."
+                ayuda="El cliente. Queda como propietario de la cuenta."
+              />
+              <Campo
+                id="correoSoporte"
+                etiqueta="Correo de soporte"
+                ejemplo="sara@creativo4dgroup.com"
+                tipo="email"
+                opcional
+                ayuda="Quien va a configurar esta instancia. Entra como administrador."
               />
             </div>
             {alta.error && <Aviso tono="error">{alta.error}</Aviso>}
@@ -155,17 +163,20 @@ function Campo({
   ejemplo,
   ayuda,
   tipo = "text",
+  opcional = false,
 }: {
   id: string;
   etiqueta: string;
   ejemplo: string;
   ayuda: string;
   tipo?: string;
+  /** 121 — El correo de soporte es opcional aquí y obligatorio en el procedimiento. */
+  opcional?: boolean;
 }) {
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{etiqueta}</Label>
-      <Input id={id} name={id} type={tipo} required placeholder={ejemplo} />
+      <Input id={id} name={id} type={tipo} required={!opcional} placeholder={ejemplo} />
       <p className="text-[11px] leading-snug text-text-3">{ayuda}</p>
     </div>
   );

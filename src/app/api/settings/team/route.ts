@@ -5,6 +5,7 @@ import { getAuth, runInternalSignup } from "@/lib/auth";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
+import { canConfigure } from "@/lib/auth/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -36,12 +37,19 @@ const createSchema = z.object({
   name: z.string().trim().min(1).max(120),
   email: z.string().trim().email(),
   password: z.string().min(8).max(128),
+  /**
+   * 121 — `member` atiende la Bandeja; `admin` además configura. El rol
+   * `owner` NO se ofrece a propósito: es el dueño de la cuenta y se fija al
+   * dar de alta. Sin este campo, un cliente que ya existe no tenía forma de
+   * sumar un administrador de soporte.
+   */
+  rol: z.enum(["member", "admin"]).default("member"),
 });
 
 /** Alta de cuenta de equipo (owner only): email + contraseña temporal (FR-061). */
 export const POST = withAuth(async (session, req: Request) => {
-  if (session.role !== "owner") {
-    return apiError(403, "forbidden", "Solo el propietario puede crear cuentas");
+  if (!canConfigure(session.role)) {
+    return apiError(403, "forbidden", "Hace falta ser propietario o administrador");
   }
   const body = await parseBody(req, createSchema);
   if (!body.ok) return body.response;
@@ -75,7 +83,7 @@ export const POST = withAuth(async (session, req: Request) => {
       id: newId("member"),
       organizationId: session.organizationId,
       userId: newUserId,
-      role: "member",
+      role: body.data.rol,
     })
     .onConflictDoNothing();
 
