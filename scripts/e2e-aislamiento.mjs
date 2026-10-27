@@ -395,6 +395,42 @@ async function main() {
   ok("el mismo evento por la puerta de A SÍ entra en A", entroEnA);
   ok("y no aparece en B", !(await contieneTexto(B, marcaLegitima)));
 
+  /**
+   * 121 — El punto ciego que este guion tuvo hasta el 27-oct-2026.
+   *
+   * Daba 45/45 mientras `/api/auth/organization/*` estaba abierta y resolvía
+   * por `session.activeOrganizationId` —la primera membresía del usuario— sin
+   * mirar el Host. Comprobado en vivo: con sesión en el subdominio de una
+   * organización, `remove-member` borró un miembro de OTRA.
+   *
+   * Un visto bueno falso es peor que un rojo. Si alguien quita el guardián, o
+   * la librería agrega rutas nuevas al actualizar, esto se pone colorado.
+   */
+  seccion("9b · La API de organización de Better Auth, tapiada");
+  for (const ruta of [
+    "remove-member",
+    "update-member-role",
+    "get-full-organization",
+    "set-active",
+  ]) {
+    const r = await pedir(A, `/api/auth/organization/${ruta}`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    ok(
+      `${ruta} responde 404`,
+      r.status === 404,
+      `recibido ${r.status} — esa ruta resuelve por la membresía activa, no por el Host`
+    );
+  }
+  // Y que no se haya cerrado de más: sin esto, nadie entra al producto.
+  const sesionViva = await pedir(A, "/api/auth/get-session", { method: "GET" });
+  ok(
+    "el resto de la autenticación sigue en pie",
+    sesionViva.status === 200,
+    `recibido ${sesionViva.status}`
+  );
+
   seccion("10 · Cerebro: una credencial por organización");
   if (!BOT_KEY) {
     console.log("  –  sin BOT_API_KEY: omitido");
