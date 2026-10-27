@@ -1228,6 +1228,48 @@ export const aiCredentials = pgTable(
   (t) => [uniqueIndex("ai_credentials_org_uq").on(t.organizationId)]
 );
 
+/**
+ * 122 — Cuántos tokens gastó cada organización.
+ *
+ * El proveedor manda el consumo en cada respuesta y hasta hoy se descartaba.
+ * No hace falta preguntarle nada a nadie: se guarda lo que ya llega.
+ *
+ * Una fila por INTENTO, no por turno. Un turno que falla el formato gasta
+ * hasta tres llamadas, y sin esa distinción el gasto real queda invisible
+ * justo donde más duele: lo que se paga por respuestas que se tiraron.
+ *
+ * Se guardan TOKENS y no plata a propósito. Los precios por modelo cambian
+ * seguido; una tabla de precios desactualizada miente con dos decimales, y
+ * eso es peor que no tenerla.
+ */
+export const aiUsage = pgTable(
+  "ai_usage",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    /** Qué pidió el gasto: el agente de un turno, o el juez del Laboratorio. */
+    proposito: text("proposito", { enum: ["agente", "juez"] }).notNull(),
+    /**
+     * Cómo terminó ese intento. `ok` es el que sirvió; el resto es gasto que
+     * no produjo una respuesta utilizable.
+     */
+    resultado: text("resultado", {
+      enum: ["ok", "sin_json", "no_cumple_esquema", "error"],
+    }).notNull(),
+    model: text("model").notNull(),
+    promptTokens: integer("prompt_tokens").notNull().default(0),
+    completionTokens: integer("completion_tokens").notNull().default(0),
+    totalTokens: integer("total_tokens").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    // El tablero pregunta siempre «cuánto gastó esta organización este mes».
+    index("ai_usage_org_fecha_idx").on(t.organizationId, t.createdAt),
+  ]
+);
+
 /* ============================================================
  * 021 — Despacho al cerebro
  * ============================================================ */
