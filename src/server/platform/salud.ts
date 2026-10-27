@@ -16,6 +16,12 @@
  * | 200 | bien |
  * | 503 | el dominio NO está en la lista de Coolify |
  * | nada | el servidor no contesta, o no hay red desde aquí |
+ *
+ * **Qué comprueba y qué no.** `/api/health` responde por la aplicación, no por
+ * la organización: un 200 dice «la dirección llega hasta acá», no «ese cliente
+ * existe y está sano». Alcanza para lo que esto busca —el dominio olvidado en
+ * Coolify, que muere en la puerta y no deja rastro—, y no hay que leerlo como
+ * más que eso.
  */
 import { baseDomain } from "@/server/tenant/edition";
 
@@ -38,8 +44,28 @@ export function interpretar(codigo: number | null): EstadoDeDireccion {
   return "otro";
 }
 
-export function direccionDe(slug: string, dominio: string): string {
-  return `https://${slug}.${dominio}/api/health`;
+/**
+ * El protocolo y el puerto salen de `APP_BASE_URL`, igual que en los enlaces
+ * de acceso (106). Armar siempre `https://…` sin puerto da la URL correcta en
+ * producción y una que no existe en desarrollo — y un panel que miente en
+ * rojo en la máquina de quien lo está construyendo es un panel al que se deja
+ * de mirar.
+ */
+export function direccionDe(
+  slug: string,
+  dominio: string,
+  appBaseUrl: string
+): string {
+  let protocolo = "https";
+  let puerto = "";
+  try {
+    const base = new URL(appBaseUrl);
+    protocolo = base.protocol.replace(":", "");
+    puerto = base.port ? `:${base.port}` : "";
+  } catch {
+    // Sin APP_BASE_URL utilizable: https y sin puerto, lo de producción.
+  }
+  return `${protocolo}://${slug}.${dominio}${puerto}/api/health`;
 }
 
 /**
@@ -54,12 +80,13 @@ export async function saludDeLasDirecciones(
   slugs: (string | null)[]
 ): Promise<Map<string, SaludDeCliente>> {
   const dominio = baseDomain();
+  const appBaseUrl = process.env.APP_BASE_URL ?? "";
   const utiles = slugs.filter((s): s is string => !!s?.trim());
 
   const resultados = await Promise.all(
     utiles.map(async (slug): Promise<SaludDeCliente> => {
       try {
-        const r = await fetch(direccionDe(slug, dominio), {
+        const r = await fetch(direccionDe(slug, dominio, appBaseUrl), {
           method: "GET",
           signal: AbortSignal.timeout(ESPERA_MS),
           cache: "no-store",
