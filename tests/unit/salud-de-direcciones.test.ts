@@ -1,5 +1,9 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { direccionDe, interpretar } from "@/server/platform/salud";
+
+const RAIZ = path.resolve(__dirname, "..", "..");
 
 /**
  * 123 — La comprobación de direcciones del panel.
@@ -54,5 +58,25 @@ describe("cómo se arma la dirección que se consulta", () => {
     expect(direccionDe("sonrisa", "chronoslead.com", "no-es-una-url")).toBe(
       "https://sonrisa.chronoslead.com/api/health"
     );
+  });
+});
+
+describe("qué cuenta «Sin tomar» (124)", () => {
+  const fuente = readFileSync(
+    path.join(RAIZ, "src", "server", "platform", "padron.ts"),
+    "utf8"
+  );
+
+  it("solo las escaladas que nadie tomó", () => {
+    // La primera versión contaba toda conversación escalada, así que el
+    // número no bajaba nunca por más que se leyeran. Lo detectó el dueño
+    // usándolo: leyó las cuatro y siguió diciendo cuatro.
+    expect(fuente).toMatch(/handoff_at" is not null[\s\S]{0,120}taken_at" is null/);
+  });
+
+  it("leer NO la saca de la cuenta", () => {
+    // Deliberado (119): si leer alcanzara, dos personas podrían leer la misma
+    // y cada una suponer que la atendió la otra.
+    expect(fuente).not.toMatch(/esperandoPersona[\s\S]{0,300}unread/i);
   });
 });

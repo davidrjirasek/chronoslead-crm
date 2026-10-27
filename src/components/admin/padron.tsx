@@ -624,11 +624,11 @@ function Supervision({
       />
 
       <Senal
-        rotulo="Esperando"
+        rotulo="Sin tomar"
         tono={s.esperandoPersona > 0 ? "aviso" : "bien"}
         valor={
           s.esperandoPersona === 0
-            ? "nadie"
+            ? "ninguna"
             : `${s.esperandoPersona} ${s.esperandoPersona === 1 ? "conversación" : "conversaciones"}`
         }
       />

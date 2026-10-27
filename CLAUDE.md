@@ -150,6 +150,14 @@ Necesita la app viva con `EDITION=cloud`, `BASE_DOMAIN=lvh.me`,
 > donde «se suele instalar» da falso negativo; ya costó una descarga al pedo el
 > 24-oct. Para saber si está corriendo: `lsof -nP -iTCP:5433 -sTCP:LISTEN`.
 >
+> **Matá el servidor de desarrollo antes de `build`.** Los dos escriben en
+> `.next` y se pisan: el build falla con errores de webpack que no tienen nada
+> que ver con el código, o —peor— el servidor queda corrupto y devuelve 500 en
+> todo mientras el build se ve bien. Y `pkill -f "next dev"` NO alcanza: mata
+> el envoltorio y deja vivo el proceso real. Usar `pkill -f "next-server"`
+> también, comprobar con `lsof -nP -iTCP:3000 -sTCP:LISTEN`, y si el servidor
+> arrancó en el 3001 es que quedó uno viejo en el 3000.
+>
 > **No lo corras tres veces seguidas.** El producto permite 10 inicios de
 > sesión cada 10 minutos por IP; a la segunda o tercera corrida el guion choca
 > con el 429 y avisa «esto NO es un fallo de aislamiento: no pude medir». Una
