@@ -56,6 +56,17 @@ const altaSchema = z.object({
     .trim()
     .min(1, "Falta el nombre del negocio.")
     .max(120, "El nombre no puede pasar de 120 caracteres."),
+  /**
+   * 121 — El correo de soporte, opcional en el código y obligatorio en el
+   * procedimiento. Entra como `admin`: configura todo, pero el dueño de la
+   * cuenta sigue siendo el cliente, que puede quitarlo cuando quiera.
+   */
+  correoSoporte: z
+    .string()
+    .trim()
+    .email("Ese correo de soporte no es válido: le falta el @ o lo que va después.")
+    .optional()
+    .or(z.literal("")),
   correo: z
     .string()
     .trim()
@@ -80,6 +91,7 @@ export async function altaDeCliente(
     slug: String(formData.get("slug") ?? "").toLowerCase(),
     nombre: formData.get("nombre"),
     correo: String(formData.get("correo") ?? "").toLowerCase(),
+    correoSoporte: String(formData.get("correoSoporte") ?? "").trim().toLowerCase(),
   });
   if (!datos.success) {
     // El primer problema, con su nombre. Listar los tres cuando falla uno hace
@@ -88,6 +100,13 @@ export async function altaDeCliente(
     return { error: primero?.message ?? "Revisá los datos.", aviso: null };
   }
   const { slug, nombre, correo } = datos.data;
+  const correoSoporte = datos.data.correoSoporte?.trim() || null;
+  if (correoSoporte && correoSoporte === correo) {
+    return {
+      error: "El correo de soporte tiene que ser distinto del correo del dueño.",
+      aviso: null,
+    };
+  }
 
   if (resolveTenantFromHost(`${slug}.ejemplo.test`, "ejemplo.test").kind !== "tenant") {
     return {
@@ -114,8 +133,19 @@ export async function altaDeCliente(
     .where(eq(schema.user.email, correo))
     .limit(1);
 
+  const soporte = correoSoporte
+    ? await db
+        .select({ id: schema.user.id })
+        .from(schema.user)
+        .where(eq(schema.user.email, correoSoporte))
+        .limit(1)
+    : [];
+
   const orgId = newId("organization");
   const userId = usuario[0]?.id ?? `usr_${newId("member").slice(4)}`;
+  const soporteId = correoSoporte
+    ? (soporte[0]?.id ?? `usr_${newId("member").slice(4)}`)
+    : null;
 
   await db.transaction(async (tx) => {
     await tx.insert(schema.organization).values({ id: orgId, name: nombre, slug });
@@ -141,6 +171,41 @@ export async function altaDeCliente(
       userId,
       role: "owner",
     });
+
+    /**
+     * 121 — El operador que va a configurar esta instancia, como `admin`.
+     *
+     * Va en la MISMA transacción que la organización: un alta a medias —con
+     * cliente y sin soporte— dejaría a alguien configurando a ciegas y no se
+     * notaría hasta el primer problema.
+     *
+     * Si ese correo ya es usuario (lo normal: el mismo operador atiende a
+     * varios clientes) se reutiliza, porque la sesión resuelve la membresía
+     * contra el Host. Un solo correo sirve para todos los clientes.
+     */
+    if (soporteId && correoSoporte) {
+      if (!soporte[0]) {
+        await tx.insert(schema.user).values({
+          id: soporteId,
+          name: correoSoporte,
+          email: correoSoporte,
+          emailVerified: false,
+        });
+        await tx.insert(schema.account).values({
+          id: `acc_${newId("member").slice(4)}`,
+          accountId: soporteId,
+          providerId: "credential",
+          userId: soporteId,
+          password: null,
+        });
+      }
+      await tx.insert(schema.member).values({
+        id: newId("member"),
+        organizationId: orgId,
+        userId: soporteId,
+        role: "admin",
+      });
+    }
     await tx.insert(schema.pipelineStage).values(
       SEED_STAGES.map((s, i) => ({
         id: newId("stage"),

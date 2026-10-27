@@ -1,5 +1,6 @@
 import { apiError, withAuth } from "@/lib/api";
 import { channelsStatus } from "@/server/channels/status";
+import { canConfigure } from "@/lib/auth/roles";
 import {
   ZERNIO_CHANNELS,
   ensureWebhookForOrg,
@@ -22,7 +23,7 @@ export const GET = withAuth(async (session) => {
   if (!haySociales()) return channelDisabledResponse();
   return Response.json({
     channels: await channelsStatus(session.organizationId),
-    canManage: session.role === "owner",
+    canManage: canConfigure(session.role),
   });
 });
 
@@ -33,7 +34,7 @@ export const GET = withAuth(async (session) => {
  */
 export const POST = withAuth(async (session) => {
   if (!haySociales()) return channelDisabledResponse();
-  if (session.role !== "owner") {
+  if (!canConfigure(session.role)) {
     return apiError(403, "forbidden", "Solo el propietario puede cambiar el webhook");
   }
   const r = await ensureWebhookForOrg(session.organizationId);

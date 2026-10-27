@@ -13,6 +13,7 @@ import {
 import { ensureWebhookForOrg } from "@/server/zernio/conexiones";
 import { accountHealth, zernioAccountName } from "@/server/zernio/cuentas";
 import { resolveZernioAccount } from "@/server/zernio/guardar";
+import { canConfigure } from "@/lib/auth/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,7 @@ const putSchema = z.object({
  */
 export const PUT = withAuth(async (session, req: Request) => {
   if (!isChannelEnabled("messenger")) return channelDisabledResponse();
-  if (session.role !== "owner") {
+  if (!canConfigure(session.role)) {
     return apiError(403, "forbidden", "Solo el propietario puede conectar la página");
   }
   const body = await parseBody(req, putSchema);

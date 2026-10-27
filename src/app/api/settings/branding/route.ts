@@ -4,6 +4,7 @@ import { getSessionOrNull } from "@/lib/auth/session";
 import { isValidHex, resolveAccentSet } from "@/lib/branding";
 import { CURRENCIES } from "@/lib/money";
 import { getBranding, saveBranding } from "@/server/branding";
+import { canConfigure } from "@/lib/auth/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ const putSchema = z.object({
 });
 
 export const PUT = withAuth(async (session, req: Request) => {
-  if (session.role !== "owner") {
+  if (!canConfigure(session.role)) {
     return apiError(403, "forbidden", "Solo el propietario puede cambiar la marca");
   }
   const body = await parseBody(req, putSchema);
