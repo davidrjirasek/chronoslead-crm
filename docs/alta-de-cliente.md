@@ -15,7 +15,8 @@ comercial de cada cliente **vive fuera de este repo**, que es público.
 |---|---|
 | Acceso al panel de superadmin (`admin.chronoslead.com`) | Crear el cliente |
 | Acceso a Coolify | El paso 2, el que se olvida |
-| El correo del dueño del cliente | Es su usuario |
+| **El correo de nuestro operador** | Queda como propietario, y es el único que puede configurar (paso 1) |
+| Los correos de la gente del cliente | Sus cuentas se crean en el paso 4 |
 | Un identificador acordado con el cliente | Es su dirección, y **cambiarlo después es mudanza** |
 
 ### El identificador (el «slug»)
