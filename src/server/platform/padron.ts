@@ -76,9 +76,23 @@ export async function listarPadron(): Promise<FilaDelPadron[]> {
         select max(m."created_at") from "message" m
         where m."organization_id" = "organization"."id" and m."direction" = 'in'
       )`,
+      /*
+       * 124 — Escaladas y que NADIE tomó todavía.
+       *
+       * La primera versión contaba toda conversación escalada, así que el
+       * número no bajaba nunca: leerla en la bandeja no la cambia, y eso es
+       * deliberado — si leer alcanzara, dos personas podrían leer la misma y
+       * cada una suponer que la atendió la otra (119).
+       *
+       * Lo que la saca de esta cuenta es que alguien apriete «la tomé yo», o
+       * que se reactive la IA. Las dos son decisiones explícitas; leer no lo
+       * es.
+       */
       esperandoPersona: sql<number>`(
         select count(*) from "conversation" c
-        where c."organization_id" = "organization"."id" and c."handoff_at" is not null
+        where c."organization_id" = "organization"."id"
+          and c."handoff_at" is not null
+          and c."taken_at" is null
       )`.mapWith(Number),
       estadoIa: sql<string | null>`(
         select a."status" from "ai_credentials" a
