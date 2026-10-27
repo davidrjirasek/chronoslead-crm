@@ -941,6 +941,74 @@ vencimiento y los restablecimientos.
 **Faltan Namecheap, Cloudflare, Meta, Zernio y Groq.** El orden lo da el daño:
 primero las que apagan el servicio si se pierden.
 
+### Copias de seguridad: las tres capas, cerradas (2026-10-27)
+
+El 25-oct se descubrió que **no había ninguna copia**. Hoy quedaron las tres:
+
+| Capa | Cada cuánto | Qué recupera |
+|---|---|---|
+| Local | 6 h | los datos |
+| **Cloudflare R2** | 6 h | los datos, aunque el servidor no exista |
+| **Snapshot de Hostinger** | semanal | la máquina entera, en 33 min |
+
+**R2**: bucket `chronoslead-backups`, token de cuenta acotado solo a ese
+bucket, retención 120 copias / 30 días / 2 GB. **Probado**: copia manual que
+llegó, verificada del lado de Cloudflare (carpeta `data/`, 6 operaciones de
+escritura, acceso público deshabilitado).
+
+**Los snapshots del VPS ya estaban activos** y nadie lo sabía — otro dato que
+vivía en un panel y no en el manual. Guarda solo los dos últimos.
+
+**No se compró la mejora a snapshots diarios** (~3,50 USD/mes): de los datos
+se ocupa R2 cada 6 h y la máquina casi no cambia. Lo único que se perdería con
+uno de 7 días son los cambios de configuración de esa semana — el dominio en
+Coolify de un cliente nuevo, dos minutos de rehacer.
+
+**Sigue pendiente probar una restauración.** Una copia que nadie restauró es
+una suposición.
+
+### PHP2Shell: no nos tocó, pero por poco (2026-10-27)
+
+CVE-2026-109618 y CVE-2026-109619, puntuación 9.2, **ejecución remota sin
+autenticar**, explotadas activamente (CISA KEV desde el 26-oct).
+
+**ChronosLead no usa PHP** — verificado, ni una línea. **Pero Coolify sí**
+(Laravel), y Coolify controla el servidor entero.
+
+Coolify parcheó en **v4.4.7** (21-oct, PHP 8.4.27). La instalación corre
+**v4.5.0** (23-oct), posterior, **con actualizaciones automáticas activadas**.
+O sea: protegido sin que nadie hiciera nada.
+
+**Lo que esto dejó a la vista, y es lo que importa:** el panel de Coolify es
+**alcanzable desde internet** en el puerto 8000 —comprobado desde fuera de la
+red del servidor—. Un panel PHP abierto, con una ejecución remota circulando,
+es hoy el riesgo más grande del sistema. Estaba anotado como «sin cifrar»;
+esto lo asciende a urgente.
+
+### El 1% intermitente no existe (2026-10-27)
+
+Una corrida anterior mostró 13 fallos repartidos en 33 minutos, que no
+coincidían con ningún cambio de contenedor. Se midió **2 horas seguidas sin
+desplegar nada: 7.200 consultas, CERO fallos.**
+
+Queda descartado: no hay inestabilidad de fondo. **Todas las fallas medidas
+están atadas a los despliegues.**
+
+### Corrección de método: se medía antes de tiempo (2026-10-27)
+
+Dos veces se informó «cero caídas» en un despliegue, y era falso. La
+comprobación se hacía al aparecer el commit nuevo — pero las interrupciones
+empiezan **después**:
+
+```
+fde934c: commit nuevo 14:14:55 · fallas desde 14:15:31 (36 s después) · 28 s
+473f95d: commit nuevo 17:45:23 · fallas desde 17:45:57 (34 s después) · 30 s
+```
+
+**No hubo ningún despliegue limpio.** La ventana es consistente: unos 30
+segundos, siempre después de que la versión nueva ya contesta, mientras el
+contenedor viejo se desarma y sigue recibiendo tráfico.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
@@ -960,9 +1028,12 @@ primero las que apagan el servicio si se pierden.
   antes de cada alta de cliente nuevo**, que es cuando importa
 - **Pasar al correo de la agencia las cuentas que siguen en uno personal.**
   Hostinger ya está; faltan Namecheap, Cloudflare, Meta, Zernio y Groq
-- **Copias de seguridad fuera del servidor**: hoy son `Local`. Falta saber si
-  el VPS tiene snapshots, y configurar un S3 en Coolify. **Es lo más urgente
-  de esta lista**
+- **URGENTE: cerrar el puerto 8000 de Coolify al público.** Hoy es alcanzable
+  desde internet. Es un panel PHP con control total del servidor, y acaba de
+  circular una ejecución remota sin autenticar. **Es lo más urgente de la
+  lista**
+- **Probar una restauración** sobre una base de prueba: las copias existen y
+  nunca se restauró ninguna
 - **El modelo contesta en prosa demasiado seguido**: dos rescates en una sola
   conversación, y cada uno cuesta 3× un turno normal. El rescate tapa el
   síntoma; la causa (el agente ve su propia voz en prosa en el historial) sigue

@@ -15,8 +15,9 @@ comercial de cada cliente **vive fuera de este repo**, que es público.
 |---|---|
 | Acceso al panel de superadmin (`admin.chronoslead.com`) | Crear el cliente |
 | Acceso a Coolify | El paso 2, el que se olvida |
-| **El correo de nuestro operador** | Queda como propietario, y es el único que puede configurar (paso 1) |
-| Los correos de la gente del cliente | Sus cuentas se crean en el paso 4 |
+| **El correo del cliente** | Queda como propietario de su cuenta (paso 1) |
+| **El correo de nuestro operador** | Entra como administrador y es quien configura (paso 1) |
+| Los correos de la gente del cliente | Los crea el propio cliente, cuando quiera |
 | Un identificador acordado con el cliente | Es su dirección, y **cambiarlo después es mudanza** |
 
 ### El identificador (el «slug»)
@@ -36,44 +37,51 @@ equipo todos los días y la que va en los materiales.
 
 ## 1 · Crear la organización
 
-En `admin.chronoslead.com`, el formulario de alta pide tres cosas:
+En `admin.chronoslead.com`, el formulario de alta pide cuatro cosas:
 
 | Campo | Qué va |
 |---|---|
 | Identificador | El slug acordado |
 | Nombre | El nombre comercial, como lo escribe el cliente |
-| Correo del dueño | **El correo de nuestro operador**, no el del cliente — ver abajo |
+| Correo del dueño | **El del cliente.** Queda como propietario de SU cuenta |
+| Correo de soporte | **El de nuestro operador.** Entra como administrador |
 
-Apretá alta. La organización queda creada.
+Apretá alta. La organización y los **dos usuarios** quedan creados de una vez.
 
-> **El correo que pongas acá decide quién puede configurar, y no se cambia
-> después con un clic.** El sistema tiene dos roles dentro de cada
-> organización, y la diferencia es grande:
->
-> | Rol | Qué puede |
-> |---|---|
-> | **Propietario** | Todo: llave de IA, agente, conocimiento, agenda, canales, y **crear usuarios de equipo** |
-> | **Miembro** | Solo atender la bandeja. **No configura nada** |
->
-> Quien se da de alta acá queda como **propietario**. Y **los usuarios que se
-> crean después desde Ajustes → Equipo entran siempre como miembros.**
->
-> Por eso va el correo de nuestro operador: ChronosLead se vende como servicio
-> gestionado —nosotros configuramos y ajustamos el agente—, y eso solo lo puede
-> hacer el propietario. Si el propietario fuera el cliente, nuestro equipo
-> entraría como miembro y **no podría tocar el agente**.
+### Por qué dos, y por qué cada uno en su lugar
 
-### Lo que esto implica, y hay que decírselo al cliente
+El sistema tiene tres roles dentro de cada organización:
+
+| Rol | Qué puede | Cuántos |
+|---|---|---|
+| **Propietario** | Todo, incluido crear cuentas de equipo | Uno: el cliente |
+| **Administrador** | Configurar: llave de IA, agente, conocimiento, agenda, canales | Los que hagan falta |
+| **Miembro** | Solo atender la bandeja | Los que hagan falta |
+
+**La cuenta es del cliente.** Sus conversaciones son suyas, y si algún día
+termina la relación, borra el usuario de soporte y se queda con todo. Una
+salida limpia es señal de un buen contrato.
+
+**Nuestro operador entra como administrador** porque ChronosLead se vende como
+servicio gestionado: nosotros configuramos y ajustamos el agente. Eso no lo
+puede hacer un miembro.
+
+> **Un mismo correo sirve para todos los clientes.** La sesión resuelve a qué
+> organización pertenece por el subdominio que se abre, así que
+> `sara@creativo4dgroup.com` puede estar en The Student Store y en Castel
+> Muebles a la vez y ver el CRM correcto en cada dirección. No hacen falta
+> alias ni correos distintos por cliente.
+
+### Decirle al cliente que tenemos acceso
 
 **Nuestro equipo queda con acceso permanente a las conversaciones de ese
 cliente.** Es lo que hace falta para darle soporte, y es correcto — pero
 **tiene que estar dicho en la propuesta o el contrato.** Un cliente que lo sabe
 de entrada no tiene problema; uno que lo descubre después, sí.
 
-**Y el cliente no va a poder sumar a su propia gente**: como los usuarios nuevos
-los crea el propietario, cada vez que quiera agregar a alguien de su equipo nos
-lo va a tener que pedir. Conviene advertirlo en el alta, preguntar de entrada
-cuántas personas suyas van a atender, y crearlas todas juntas en el paso 4.
+La ventaja de este modelo: **ese acceso tiene nombre propio y se ve.** El
+cliente entra a Ajustes → Equipo y ahí está, con el rol que tiene. No es un
+permiso escondido.
 
 > **El nombre se ve.** Aparece en la pantalla del cliente y en los correos.
 > «The Student Store» no es lo mismo que «Student Store»: escribilo como la
@@ -135,40 +143,45 @@ En el panel, al lado del cliente, **generá el enlace de acceso**.
 | Dura | **7 días** |
 | Se usa | **una sola vez** |
 
-Se lo mandás al dueño. Con ese enlace elige su contraseña y entra. Si se vence o
-ya lo usó, generás otro: no pasa nada.
+**Son dos enlaces, uno por usuario**: el del cliente y el de nuestro operador.
+Cada uno elige su propia contraseña. Si uno se vence o ya se usó, se genera
+otro: no pasa nada.
 
-> **No le mandes una contraseña.** El enlace existe justo para que nadie —ni vos—
-> tenga que manejar la contraseña del cliente.
+> **No le mandes una contraseña a nadie.** El enlace existe justo para que
+> nadie —ni vos— tenga que manejar la contraseña de otro.
+
+**Si el operador ya tiene cuenta de otro cliente, no necesita enlace:** entra
+con la misma contraseña de siempre, en la dirección de este cliente. Un correo
+sirve para todas las organizaciones donde es miembro.
 
 ---
 
-## 4 · Las cuentas: la nuestra y las del cliente
+## 4 · Primera entrada, y las cuentas del equipo del cliente
 
-El enlace del paso 3 lo usa **nuestro operador**, que es el propietario. Elige
-su contraseña y entra al CRM del cliente.
+**Nuestro operador entra** con su enlace (o con su contraseña de siempre, si ya
+tenía cuenta) y queda listo para configurar los pasos 5 a 10.
 
-**Antes de seguir, crear las cuentas de la gente del cliente.** En ese CRM:
-**Ajustes → Equipo → Crear cuenta de equipo**, una por persona que vaya a
-atender.
+**El cliente entra** con el suyo y elige su contraseña.
+
+### Las cuentas de la gente del cliente las crea él
+
+Como es el propietario, **puede sumar a su propio equipo sin pedirnos nada**:
+Ajustes → Equipo → Crear cuenta de equipo.
 
 | | |
 |---|---|
-| Qué pide | Nombre y correo |
+| Qué pide | Nombre, correo y qué va a poder hacer |
+| Los dos roles que puede dar | **Atender la Bandeja** (miembro) o **Atender y configurar** (administrador) |
 | Qué devuelve | Una contraseña temporal, **que se muestra UNA sola vez** |
-| Cómo se entrega | Se la pasás vos directamente. El sistema no manda correos |
-| Con qué rol entran | **Miembro**: atienden la bandeja, no configuran |
+| Cómo se entrega | Se la pasa él directamente. El sistema no manda correos |
 
 > **La contraseña temporal se muestra una vez y no se puede volver a ver.**
-> Copiala y entregala en el momento. Si se pierde, hay que crear la cuenta de
-> nuevo.
+> Hay que copiarla y entregarla en el momento.
 
-**Por qué se hace ahora y no después:** mientras el agente no esté encendido,
-las cuentas se crean con calma. Después, cada persona nueva es una
-interrupción.
-
-Si el cliente no sabe todavía cuántas personas van a atender, preguntalo acá:
-es más barato crear cinco cuentas hoy que una por semana durante un mes.
+**Conviene mostrarle esta pantalla durante el alta**, aunque todavía no sume a
+nadie. Que sepa que puede hacerlo solo evita que cada empleado nuevo sea una
+llamada a nosotros — y de paso ve ahí nuestro usuario de soporte, con su rol a
+la vista.
 
 ---
 
@@ -303,8 +316,9 @@ Qué revisar:
 [ ]  1 · Organización creada en admin.chronoslead.com
 [ ]  2 · Dominio agregado en Coolify Y DESPLEGADO  ← el que se olvida
 [ ]  2 · Comprobado: /api/health devuelve 200
-[ ]  3 · Enlace de primer acceso usado por NUESTRO operador (es el propietario)
-[ ]  4 · Cuentas del cliente creadas en Ajustes → Equipo, y contraseñas entregadas
+[ ]  3 · Dos enlaces de acceso generados: el del cliente y el de nuestro operador
+[ ]  4 · Los dos entraron y eligieron su contraseña
+[ ]  4 · Mostrada al cliente la pantalla de Equipo: puede sumar a su gente solo
 [ ]  4 · Avisado al cliente: tenemos acceso a sus conversaciones para dar soporte
 [ ]  5 · Llave de IA cargada y «Probar conexión» en verde
 [ ]  6 · Agente: nombre, tono, instrucciones, escalado, saludo
