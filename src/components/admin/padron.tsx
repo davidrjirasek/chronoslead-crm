@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { EstadoOrganizacion } from "@/lib/tenant/estado";
 import type { FilaDelPadron } from "@/server/platform/padron";
+import type { SaludDeCliente } from "@/server/platform/salud";
 import {
   CURRENCY_OPTIONS,
   DEFAULT_CURRENCY,
@@ -45,9 +46,12 @@ const fecha = new Intl.DateTimeFormat("es", {
 export function Padron({
   clientes,
   operador,
+  salud,
 }: {
   clientes: FilaDelPadron[];
   operador: string;
+  /** 123 — Estado de cada dirección, por slug. Vacío = no se pudo consultar. */
+  salud: Record<string, SaludDeCliente>;
 }) {
   const [alta, accionAlta, altaEnCurso] = useActionState(altaDeCliente, SIN_RESULTADO);
   const [abierto, setAbierto] = useState(false);
@@ -145,6 +149,7 @@ export function Padron({
                 <Cliente
                   key={c.id}
                   cliente={c}
+                  salud={c.slug ? salud[c.slug] : undefined}
                   abierto={expandido === c.id}
                   alternar={() => setExpandido((id) => (id === c.id ? null : c.id))}
                 />
@@ -217,10 +222,12 @@ function totalPorMoneda(pagos: FilaDelPadron["pagos"]): string {
  */
 function Cliente({
   cliente,
+  salud,
   abierto,
   alternar,
 }: {
   cliente: FilaDelPadron;
+  salud?: SaludDeCliente;
   abierto: boolean;
   alternar: () => void;
 }) {
@@ -255,6 +262,8 @@ function Cliente({
           <p className="text-[11px] uppercase tracking-wide text-text-4">Usuarios</p>
           <p className="text-text-2">{cliente.usuarios}</p>
         </div>
+
+        <Supervision cliente={cliente} salud={salud} />
 
         <Button
           type="button"
@@ -551,6 +560,145 @@ function Bloque({
       {children}
     </section>
   );
+}
+
+/**
+ * 123 — Lo que hay que mirar de un cliente sin abrir nada.
+ *
+ * Cuatro señales, ordenadas por urgencia real. La primera es la que más vale:
+ * una dirección que no responde significa, casi siempre, que al dar de alta se
+ * olvidó agregar el dominio en Coolify — y hoy eso se descubre cuando el
+ * cliente llama.
+ *
+ * Números agregados, nunca contenido: cuántas conversaciones esperan, no qué
+ * dicen.
+ */
+function Supervision({
+  cliente,
+  salud,
+}: {
+  cliente: FilaDelPadron;
+  salud?: SaludDeCliente;
+}) {
+  const s = cliente.supervision;
+  return (
+    <div className="flex basis-64 flex-wrap items-center gap-x-3 gap-y-1.5">
+      <Senal
+        rotulo="Dirección"
+        tono={
+          !salud
+            ? "neutro"
+            : salud.estado === "ok"
+              ? "bien"
+              : salud.estado === "sin_dominio"
+                ? "mal"
+                : "aviso"
+        }
+        valor={
+          !salud
+            ? "—"
+            : salud.estado === "ok"
+              ? "responde"
+              : salud.estado === "sin_dominio"
+                ? "falta en Coolify"
+                : salud.estado === "sin_respuesta"
+                  ? "sin respuesta"
+                  : `código ${salud.codigo}`
+        }
+      />
+
+      <Senal
+        rotulo="Llave de IA"
+        tono={
+          s.estadoIa === null ? "neutro" : s.estadoIa === "active" ? "bien" : "mal"
+        }
+        valor={
+          s.estadoIa === null
+            ? "sin configurar"
+            : s.estadoIa === "active"
+              ? "activa"
+              : s.estadoIa === "paused_no_credit"
+                ? "sin crédito"
+                : "rechazada"
+        }
+      />
+
+      <Senal
+        rotulo="Esperando"
+        tono={s.esperandoPersona > 0 ? "aviso" : "bien"}
+        valor={
+          s.esperandoPersona === 0
+            ? "nadie"
+            : `${s.esperandoPersona} ${s.esperandoPersona === 1 ? "conversación" : "conversaciones"}`
+        }
+      />
+
+      <Senal
+        rotulo="Tokens del mes"
+        tono="neutro"
+        valor={
+          s.tokensDelMes === 0
+            ? "sin uso"
+            : s.tokensDesperdiciados > 0
+              ? `${miles(s.tokensDelMes)} · ${miles(s.tokensDesperdiciados)} perdidos`
+              : miles(s.tokensDelMes)
+        }
+      />
+
+      <Senal
+        rotulo="Último mensaje"
+        tono={tonoPorAntiguedad(s.ultimaEntrante)}
+        valor={desdeCuando(s.ultimaEntrante)}
+      />
+    </div>
+  );
+}
+
+function Senal({
+  rotulo,
+  valor,
+  tono,
+}: {
+  rotulo: string;
+  valor: string;
+  tono: "bien" | "aviso" | "mal" | "neutro";
+}) {
+  const color =
+    tono === "bien"
+      ? "text-success-text"
+      : tono === "aviso"
+        ? "text-warning-text"
+        : tono === "mal"
+          ? "text-danger-text"
+          : "text-text-3";
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-wide text-text-4">{rotulo}</p>
+      <p className={`truncate text-xs font-medium ${color}`}>{valor}</p>
+    </div>
+  );
+}
+
+const miles = (n: number) => new Intl.NumberFormat("es-PY").format(n);
+
+/**
+ * Un cliente que hace días que no recibe un mensaje no está necesariamente
+ * roto, pero es lo primero que hay que mirar: o se le cayó un canal, o no lo
+ * está usando. Las dos cosas valen una llamada.
+ */
+function tonoPorAntiguedad(cuando: Date | null): "bien" | "aviso" | "neutro" {
+  if (!cuando) return "neutro";
+  const dias = (Date.now() - cuando.getTime()) / 86_400_000;
+  return dias <= 3 ? "bien" : "aviso";
+}
+
+function desdeCuando(cuando: Date | null): string {
+  if (!cuando) return "nunca";
+  const horas = (Date.now() - cuando.getTime()) / 3_600_000;
+  if (horas < 1) return "hace minutos";
+  if (horas < 24) return `hace ${Math.floor(horas)} h`;
+  const dias = Math.floor(horas / 24);
+  return `hace ${dias} ${dias === 1 ? "día" : "días"}`;
 }
 
 function Insignia({ estado }: { estado: EstadoOrganizacion }) {

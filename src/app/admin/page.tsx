@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { listarPadron } from "@/server/platform/padron";
+import { saludDeLasDirecciones } from "@/server/platform/salud";
 import { accesoAlPanel } from "@/server/platform/superadmin";
 import { Padron } from "@/components/admin/padron";
 import { SinPermiso } from "@/components/admin/sin-permiso";
@@ -23,5 +24,20 @@ export default async function AdminPage() {
   if (!acceso.ok) return <SinPermiso correo={acceso.correo} />;
 
   const clientes = await listarPadron();
-  return <Padron clientes={clientes} operador={acceso.sesion.correo} />;
+
+  /*
+   * 123 — La salud se consulta DESPUÉS del padrón y en paralelo entre sí: son
+   * peticiones de red, no base de datos. Nunca lanza, así que el panel abre
+   * aunque todas fallen — con las direcciones en gris, que es información
+   * honesta y no una pantalla de error.
+   */
+  const salud = await saludDeLasDirecciones(clientes.map((c) => c.slug));
+
+  return (
+    <Padron
+      clientes={clientes}
+      operador={acceso.sesion.correo}
+      salud={Object.fromEntries(salud)}
+    />
+  );
 }
