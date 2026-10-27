@@ -41,9 +41,38 @@ En `admin.chronoslead.com`, el formulario de alta pide tres cosas:
 |---|---|
 | Identificador | El slug acordado |
 | Nombre | El nombre comercial, como lo escribe el cliente |
-| Correo del dueño | El correo de quien va a ser dueño de la cuenta |
+| Correo del dueño | **El correo de nuestro operador**, no el del cliente — ver abajo |
 
 Apretá alta. La organización queda creada.
+
+> **El correo que pongas acá decide quién puede configurar, y no se cambia
+> después con un clic.** El sistema tiene dos roles dentro de cada
+> organización, y la diferencia es grande:
+>
+> | Rol | Qué puede |
+> |---|---|
+> | **Propietario** | Todo: llave de IA, agente, conocimiento, agenda, canales, y **crear usuarios de equipo** |
+> | **Miembro** | Solo atender la bandeja. **No configura nada** |
+>
+> Quien se da de alta acá queda como **propietario**. Y **los usuarios que se
+> crean después desde Ajustes → Equipo entran siempre como miembros.**
+>
+> Por eso va el correo de nuestro operador: ChronosLead se vende como servicio
+> gestionado —nosotros configuramos y ajustamos el agente—, y eso solo lo puede
+> hacer el propietario. Si el propietario fuera el cliente, nuestro equipo
+> entraría como miembro y **no podría tocar el agente**.
+
+### Lo que esto implica, y hay que decírselo al cliente
+
+**Nuestro equipo queda con acceso permanente a las conversaciones de ese
+cliente.** Es lo que hace falta para darle soporte, y es correcto — pero
+**tiene que estar dicho en la propuesta o el contrato.** Un cliente que lo sabe
+de entrada no tiene problema; uno que lo descubre después, sí.
+
+**Y el cliente no va a poder sumar a su propia gente**: como los usuarios nuevos
+los crea el propietario, cada vez que quiera agregar a alguien de su equipo nos
+lo va a tener que pedir. Conviene advertirlo en el alta, preguntar de entrada
+cuántas personas suyas van a atender, y crearlas todas juntas en el paso 4.
 
 > **El nombre se ve.** Aparece en la pantalla del cliente y en los correos.
 > «The Student Store» no es lo mismo que «Student Store»: escribilo como la
@@ -113,14 +142,32 @@ ya lo usó, generás otro: no pasa nada.
 
 ---
 
-## 4 · Primera entrada del cliente
+## 4 · Las cuentas: la nuestra y las del cliente
 
-El cliente abre el enlace, elige contraseña y cae en su CRM. Lo acompañamos en
-esta primera vuelta: lo que sigue (pasos 5 a 10) **se configura con él o por
-él**, según lo que se haya vendido.
+El enlace del paso 3 lo usa **nuestro operador**, que es el propietario. Elige
+su contraseña y entra al CRM del cliente.
 
-La guía de inicio de la app lo lleva por los cuatro primeros pasos. Nosotros
-igual revisamos todo lo de abajo antes de encender nada.
+**Antes de seguir, crear las cuentas de la gente del cliente.** En ese CRM:
+**Ajustes → Equipo → Crear cuenta de equipo**, una por persona que vaya a
+atender.
+
+| | |
+|---|---|
+| Qué pide | Nombre y correo |
+| Qué devuelve | Una contraseña temporal, **que se muestra UNA sola vez** |
+| Cómo se entrega | Se la pasás vos directamente. El sistema no manda correos |
+| Con qué rol entran | **Miembro**: atienden la bandeja, no configuran |
+
+> **La contraseña temporal se muestra una vez y no se puede volver a ver.**
+> Copiala y entregala en el momento. Si se pierde, hay que crear la cuenta de
+> nuevo.
+
+**Por qué se hace ahora y no después:** mientras el agente no esté encendido,
+las cuentas se crean con calma. Después, cada persona nueva es una
+interrupción.
+
+Si el cliente no sabe todavía cuántas personas van a atender, preguntalo acá:
+es más barato crear cinco cuentas hoy que una por semana durante un mes.
 
 ---
 
@@ -255,8 +302,9 @@ Qué revisar:
 [ ]  1 · Organización creada en admin.chronoslead.com
 [ ]  2 · Dominio agregado en Coolify Y DESPLEGADO  ← el que se olvida
 [ ]  2 · Comprobado: /api/health devuelve 200
-[ ]  3 · Enlace de primer acceso entregado al dueño
-[ ]  4 · El cliente entró y eligió su contraseña
+[ ]  3 · Enlace de primer acceso usado por NUESTRO operador (es el propietario)
+[ ]  4 · Cuentas del cliente creadas en Ajustes → Equipo, y contraseñas entregadas
+[ ]  4 · Avisado al cliente: tenemos acceso a sus conversaciones para dar soporte
 [ ]  5 · Llave de IA cargada y «Probar conexión» en verde
 [ ]  6 · Agente: nombre, tono, instrucciones, escalado, saludo
 [ ]  7 · Base de conocimiento: los datos duros NO en las instrucciones
