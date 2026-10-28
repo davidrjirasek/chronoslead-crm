@@ -41,6 +41,14 @@ export const SLUGS_RESERVADOS = new Set([
    * subdominio.
    */
   "coolify",
+  /**
+   * 127 — El formulario de onboarding vive en `onboarding.chronoslead.com`.
+   * Mismo riesgo que `coolify`: un cliente con ese identificador quedaría
+   * detrás del formulario y nunca podría entrar a su CRM. Lo señaló el dueño
+   * al elegir el subdominio, descartando `alta` —que ya es una puerta de la
+   * plataforma— justamente por no querer quemar nombres que harán falta.
+   */
+  "onboarding",
 ]);
 
 /**

@@ -120,4 +120,17 @@ describe("125 — el subdominio del panel de despliegue", () => {
       resolveTenantFromHost("coolify.chronoslead.com", "chronoslead.com").kind
     ).toBe("desconocido");
   });
+
+  it("«onboarding» está reservado: ahí vive el formulario de alta", () => {
+    // 127 — Mismo riesgo que `coolify`. Y se eligió `onboarding` en vez de
+    // `alta` porque `alta` YA es una puerta de la plataforma: el dueño
+    // rechazó quemar un nombre que hace falta para otra cosa.
+    expect(
+      resolveTenantFromHost("onboarding.chronoslead.com", "chronoslead.com").kind
+    ).toBe("desconocido");
+    // Y que no se confunda con la puerta que sí existe.
+    expect(
+      resolveTenantFromHost("alta.chronoslead.com", "chronoslead.com").kind
+    ).toBe("alta");
+  });
 });
