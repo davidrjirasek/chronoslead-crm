@@ -32,6 +32,15 @@ export const SLUGS_RESERVADOS = new Set([
   "blog",
   "docs",
   "panel",
+  /**
+   * 125 — El panel de despliegue vive en `coolify.chronoslead.com` (HTTPS por
+   * Cloudflare, en vez del puerto 8000 expuesto). Sin reservarlo, un cliente
+   * podría darse de alta con ese identificador: el proxy le daría prioridad al
+   * panel y ese cliente NUNCA podría entrar a su CRM, sin un error que lo
+   * explique. Lo detectó una pregunta del dueño sobre por qué va en un
+   * subdominio.
+   */
+  "coolify",
 ]);
 
 /**

@@ -109,3 +109,15 @@ describe("resolveTenantFromHost — lo que NO puede caer en un tenant", () => {
     });
   });
 });
+
+describe("125 — el subdominio del panel de despliegue", () => {
+  it("«coolify» está reservado: ahí vive el panel, no un cliente", () => {
+    // Coolify pasa a `coolify.chronoslead.com` con HTTPS, en vez del puerto
+    // 8000 expuesto. Sin reservarlo, ese cliente se crearía bien y NUNCA
+    // podría entrar: el proxy le da prioridad al panel y no hay error que lo
+    // explique. Lo detectó una pregunta del dueño sobre por qué va ahí.
+    expect(
+      resolveTenantFromHost("coolify.chronoslead.com", "chronoslead.com").kind
+    ).toBe("desconocido");
+  });
+});
