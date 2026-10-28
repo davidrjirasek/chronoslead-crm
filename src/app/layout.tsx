@@ -41,7 +41,10 @@ export async function generateMetadata(): Promise<Metadata> {
   const producto = productName([...enabledChannels()]);
   return {
     title: `${branding.name} — ${producto}`,
-    description: `${producto} con agente de IA y Laboratorio de auto-evaluación`,
+    // 129 — «asesor IA», no «agente»: es la palabra de la casa, y esta
+    // descripción es lo que se ve en Google y en la vista previa de WhatsApp
+    // al compartir el enlace.
+    description: `${producto} con asesor IA y Laboratorio de auto-evaluación`,
     // El `?v=` cambia con la marca: los navegadores guardan el favicon con una
     // insistencia notable y, sin eso, el logo nuevo tarda días en aparecer.
     icons: { icon: faviconHref(branding) },

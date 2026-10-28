@@ -85,7 +85,7 @@ const STEPS = [
   },
   {
     n: "2",
-    t: "El agente IA.",
+    t: "El asesor IA.",
     x: "Responde en segundos con el contexto de tu negocio y califica al lead.",
     d: "M12 3v3 M7 6h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z M9 11h.01 M15 11h.01 M9.5 14.5h5",
   },
@@ -128,8 +128,8 @@ const MODULES = [
     d: "M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7 M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7",
   },
   {
-    k: "Agente de IA",
-    t: "Un vendedor que nunca duerme",
+    k: "Asesor IA",
+    t: "Un asesor que no duerme",
     x: "Atiende, responde dudas, califica y agenda, 24/7 y con el tono de tu marca.",
     d: "M12 3v3 M7 6h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z M9 11h.01 M15 11h.01 M9.5 14.5h5",
   },
@@ -154,7 +154,7 @@ const MODULES = [
   {
     k: "WhatsApp Oficial",
     t: "Tu número, profesional y seguro",
-    x: "API oficial de Meta: varios agentes en un número, sin riesgo de bloqueo.",
+    x: "API oficial de Meta: varias personas de tu equipo en un número, sin riesgo de bloqueo.",
     d: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
   },
 ];
@@ -229,7 +229,7 @@ const IMPLEMENTACION = [
   {
     n: "02",
     t: "Configuración a medida.",
-    x: "Entrenamos tu agente, conectamos tus anuncios, tu calendario y tus horarios, y armamos tu pipeline y CRM.",
+    x: "Entrenamos tu asesor IA, conectamos tus anuncios, tu calendario y tus horarios, y armamos tu pipeline y CRM.",
   },
   {
     n: "03",
@@ -248,7 +248,7 @@ const NICHOS = [
     img: "/landing/rubro-restaurante.png",
     alt: "Cliente pidiendo por WhatsApp en un restaurante",
     t: "Restaurantes y delivery",
-    x: "Menú con precios dentro del chat, para que el cliente elija y el agente tome el pedido.",
+    x: "Menú con precios dentro del chat, para que el cliente elija y el asesor IA tome el pedido.",
   },
   {
     img: "/landing/rubro-inmobiliaria.png",
@@ -260,7 +260,7 @@ const NICHOS = [
     img: "/landing/rubro-educacion.png",
     alt: "Estudiante consultando por WhatsApp",
     t: "Educación",
-    x: "Carreras, cuotas y fechas de inscripción a mano del agente.",
+    x: "Carreras, cuotas y fechas de inscripción a mano del asesor IA.",
   },
   {
     img: "/landing/rubro-salud.png",
@@ -285,7 +285,7 @@ const FAQ = [
   },
   {
     q: "¿Cuánto tarda en estar funcionando?",
-    a: "El setup del agente, el calendario, el pipeline y el CRM lo hacemos nosotros. El único plazo que no depende de nosotros es la aprobación de WhatsApp Oficial por parte de Meta, que a veces tarda entre 20 y 25 días; mientras tanto avanzamos con todo lo demás.",
+    a: "El setup del asesor IA, el calendario, el pipeline y el CRM lo hacemos nosotros. El único plazo que no depende de nosotros es la aprobación de WhatsApp Oficial por parte de Meta, que a veces tarda entre 20 y 25 días; mientras tanto avanzamos con todo lo demás.",
   },
   {
     q: "¿Y si todavía no tengo anuncios?",
@@ -301,7 +301,7 @@ const FAQ = [
   },
   {
     q: "¿Quién me responde si escribo al WhatsApp de esta página?",
-    a: "Nuestro equipo comercial, directo. Es la mejor forma de contarte cómo el agente de IA atendería después a tus propios clientes.",
+    a: "Nuestro equipo comercial, directo. Es la mejor forma de contarte cómo el asesor IA atendería después a tus propios clientes.",
   },
   {
     q: "¿El precio que muestran es fijo?",
@@ -451,7 +451,7 @@ export function LandingPublica() {
                 <span className="text-primary">ventas</span>, ágil y a medida.
               </h1>
               <p className="mt-5 max-w-[500px] text-[15px] text-zinc-600 leading-relaxed sm:text-[16.5px]">
-                Un sistema completo —anuncios, agente de IA, agenda y seguimiento— hecho a la medida
+                Un sistema completo —anuncios, asesor IA, agenda y seguimiento— hecho a la medida
                 de tu negocio. Ágil, simple, y funcionando en días.
               </p>
               <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -909,7 +909,7 @@ export function LandingPublica() {
           <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
             <ul className="space-y-3">
               {[
-                "Agente de IA entrenado con tu negocio",
+                "Asesor IA entrenado con tu negocio",
                 "WhatsApp Oficial integrado (API de Meta)",
                 "Conexión de tus anuncios al WhatsApp",
                 "Calendario automático de citas",
