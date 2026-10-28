@@ -1225,6 +1225,60 @@ donde los tipos no miran. **Abrirlo y usarlo no es opcional.**
 componente de React y el repo no tiene arnés para eso. Si vuelve, el primer
 sospechoso son las dependencias de ese efecto.
 
+### Precios 2026 y el encuadre comercial (2026-10-28, spec 129)
+
+Los precios aprobados el 28-10 no estaban en ningún lado público ni en el
+asesor. Se corrigieron los dos.
+
+| | Decía | Dice |
+|---|---|---|
+| Landing | Desde ₲ 4.000.000 · setup ₲ 12.500.000 | Desde ₲ 6.500.000 · setup ₲ 12.000.000 |
+| Asesor | lo mismo, en tres lugares | los tres planes completos |
+
+**El riesgo no era el número, era la expectativa:** quien llegaba por la
+landing calculaba ₲ 4.000.000, y el plan que **sí incluye al asesor** cuesta
+6.500.000. Llegaba a la reunión 2,5 millones abajo.
+
+Entró también la condición que no estaba en ningún lado: **12 meses, setup
+bonificado; 6 meses, 6 cuotas sin intereses.**
+
+Y un cambio de encuadre mayor que los precios: lo que se vende es el
+**Sistema 4D**; ChronosLead es la **tecnología adentro**, no el producto. El
+asesor decía lo contrario. La landing dejó de hablar de «un CRM», que es
+justo lo que la regla comercial prohíbe vender.
+
+### Tres cosas que esto enseñó sobre el asesor (2026-10-28)
+
+**1 · Las instrucciones le pesan más que el conocimiento.** Las instrucciones
+decían «no inventes una solución más barata: hoy no existe una oferta
+definida para ese caso». Con el Plan Impulso ya cargado en el conocimiento, el
+asesor **seguía descartando prospectos**. El conocimiento es la fuente de
+verdad para los HECHOS; una orden de comportamiento la gana siempre. Al
+agregar un plan nuevo hay que revisar las dos superficies, no una.
+
+**2 · Se imita a sí mismo.** Probado en vivo: en la misma conversación donde
+antes había dicho «el agente IA» y había supuesto que el prospecto era un
+colegio, siguió diciendo las dos cosas **después** de corregir instrucciones y
+conocimiento. Lee su propia voz en el historial y la continúa. Es el mismo
+mecanismo que la respuesta en prosa (115). **Toda prueba de un cambio de
+configuración se hace en una conversación NUEVA, o no prueba nada.**
+
+**3 · Supone el rubro.** Sin que nadie se lo dijera, habló de matrículas y de
+campañas de admisiones. A una concesionaria le habría preguntado por
+matrículas. Se agregó una regla explícita de no suponer el rubro y preguntarlo.
+
+**Una corrección de criterio, del dueño:** la primera versión de la regla de
+lenguaje decía «nunca digas bot ni agente». Él la rechazó: si un cliente
+pregunta «¿sos un bot?», negarlo es mentir, y mentir ahí destruye la confianza
+justo cuando se está construyendo. Quedó como **preferencia** —se presenta
+como «asesor IA»— **con honestidad obligatoria** si le preguntan directamente.
+Probado en vivo: contesta «Sí, soy inteligencia artificial».
+
+> **El Laboratorio no sirve para probar contenido.** Corre personas fijas con
+> guiones genéricos —una pregunta el precio de un martillo— y las evalúa un
+> juez. Prueba comportamiento. Para verificar precios o encuadre, hay que
+> escribirle por WhatsApp.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
