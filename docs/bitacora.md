@@ -1009,6 +1009,59 @@ fde934c: commit nuevo 14:14:55 · fallas desde 14:15:31 (36 s después) · 28 s
 segundos, siempre después de que la versión nueva ya contesta, mientras el
 contenedor viejo se desarma y sigue recibiendo tráfico.
 
+### Coolify sale de internet (2026-10-28)
+
+El panel estaba en `http://2.25.159.85:8000`: puerto expuesto, sin cifrar, con
+control total del servidor. Era el riesgo número uno.
+
+**Kevin recomendó cerrar el puerto sin pantalla de autenticación.** Correcto
+para quien vive en una terminal; no para este caso: el dueño **no tiene acceso
+SSH ni lo usa**, así que cerrar el 8000 nos dejaba a los dos afuera, y el MCP
+—que se quería configurar— necesita justamente una URL pública con HTTPS.
+
+**Lo que se hizo**, y resolvió las tres cosas a la vez:
+
+1. `coolify.chronoslead.com`, HTTPS, **con escudo de Cloudflare**. El comodín
+   `*.chronoslead.com` ya existía y ya era proxied: no hubo que crear DNS
+2. Se verificó que el subdominio entra por el **443 vía Traefik**, no por el
+   8000 — la suposición que, de estar mal, nos dejaba afuera
+3. Firewall de Hostinger por API (niega todo por defecto): **solo 22, 80, 443
+   e ICMP**
+
+```
+ANTES                          AHORA
+6 puertos abiertos             3
+sin firewall                   niega por defecto
+IP del servidor visible        oculta tras Cloudflare
+contraseña en claro            cifrada
+```
+
+**Comprobado desde fuera, en el minuto:** landing, CRM del cliente y panel del
+operador en 200; `coolify.chronoslead.com` en 302; 8000, 6001 y 6002 cerrados;
+22, 80 y 443 abiertos. **Ningún cliente se enteró.**
+
+**IPv6**: no se pudo verificar desde la máquina del asistente (sin IPv6). Se
+comprobó desde un teléfono con datos móviles: el navegador se queda colgado
+sin respuesta, que es el comportamiento correcto de un DROP — no revela
+siquiera que haya algo escuchando.
+
+**Dos cosas que esto dejó a la vista:**
+
+- **La contraseña de Coolify no la tenía nadie.** Se descubrió al intentar
+  entrar por el subdominio. El recupero por correo está **desactivado** (SMTP y
+  Resend), así que la única vía habría sido la consola de Hostinger. Quedó
+  guardada en el gestor, y **configurar el correo de Coolify sigue pendiente**:
+  es el único sistema sin forma de recuperarse solo
+- **El servidor tiene 41 actualizaciones de sistema pendientes.** No se
+  aplicaron: pueden pedir reinicio y no era el momento
+
+### El campo «Wildcard domain» del servidor (2026-10-28)
+
+Visto de paso en la configuración del servidor en Coolify. **Si funciona como
+parece, eliminaría el paso 2 del manual de alta** —agregar a mano el dominio
+de cada cliente—, que es la trampa que más muerde en cada alta. Sin verificar.
+Es la mejora operativa más grande detectada hasta ahora.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
@@ -1028,10 +1081,11 @@ contenedor viejo se desarma y sigue recibiendo tráfico.
   antes de cada alta de cliente nuevo**, que es cuando importa
 - **Pasar al correo de la agencia las cuentas que siguen en uno personal.**
   Hostinger ya está; faltan Namecheap, Cloudflare, Meta, Zernio y Groq
-- **URGENTE: cerrar el puerto 8000 de Coolify al público.** Hoy es alcanzable
-  desde internet. Es un panel PHP con control total del servidor, y acaba de
-  circular una ejecución remota sin autenticar. **Es lo más urgente de la
-  lista**
+- **Configurar el correo en Coolify** (SMTP o Resend): hoy no hay recupero de
+  contraseña posible. Es el único sistema que no puede recuperarse solo
+- **Probar el «Wildcard domain» del servidor**: si funciona, elimina el paso 2
+  del alta
+- **41 actualizaciones de sistema** en el servidor, pueden pedir reinicio
 - **Probar una restauración** sobre una base de prueba: las copias existen y
   nunca se restauró ninguna
 - **El modelo contesta en prosa demasiado seguido**: dos rescates en una sola
