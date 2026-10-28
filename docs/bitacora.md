@@ -1055,6 +1055,37 @@ siquiera que haya algo escuchando.
 - **El servidor tiene 41 actualizaciones de sistema pendientes.** No se
   aplicaron: pueden pedir reinicio y no era el momento
 
+### El MCP de Coolify, conectado (2026-10-28)
+
+Claude ahora opera Coolify **sin navegador**: ver estado, leer registros,
+desplegar. Era el último lugar donde el dueño tenía que apretar botones.
+
+- Endpoint: `https://coolify.chronoslead.com/mcp` — la misma URL pública con
+  HTTPS que se creó al cerrar el 8000. Sin ese paso, esto no era posible
+- Token **Deploy + Read**, deliberadamente SIN *Root*, SIN *Write* y SIN
+  *Read sensitive data*: por eso `list_env_keys` devuelve los nombres de las
+  variables y no sus valores. **65 herramientas** disponibles con ese alcance
+- **El token caduca a los 30 días** (creado el 28-oct). Cuando caduque, el
+  servidor va a arrancar con `AUTH_HEADER_REJECTED` y hay que crear otro en
+  Coolify → Keys & Tokens → API tokens, con las mismas dos casillas
+
+**La trampa que costó el primer intento:** el token quedó **pegado dos veces**
+en `~/.claude.json` (100 caracteres en vez de 50, la segunda mitad idéntica a
+la primera) y Coolify respondía `401 Unauthenticated`. Lo que lo delató fue
+probar el token contra la API REST normal (`/api/v1/version`), no contra el
+MCP: al fallar las dos, quedó claro que el problema era la credencial y no el
+endpoint. **Al pegar un secreto a ciegas con `read -s`, verificar el largo
+antes de dar por bueno el «listo».**
+
+Dos detalles del camino, para la próxima:
+
+- Cloudflare responde **403 error 1010** a `urllib` de Python por su firma de
+  navegador. Las pruebas contra el dominio hay que hacerlas con `curl` y un
+  User-Agent normal
+- El archivo del MCP vive en `~/.claude.json`, **fuera del repo** — no se
+  versiona y no viaja a otra máquina. Y `.mcp.json`, que sí estaba versionado,
+  se quitó del repo: es público
+
 ### El campo «Wildcard domain» del servidor (2026-10-28)
 
 Visto de paso en la configuración del servidor en Coolify. **Si funciona como
@@ -1111,9 +1142,9 @@ Es la mejora operativa más grande detectada hasta ahora.
   `transcripcion.ts`; decisión pendiente por costo y por datos sensibles
 - **Reintentar al arrancar los entrantes sin respuesta**: hoy un mensaje que
   cae en la ventana de 6 s del despliegue se queda sin contestar para siempre
-- **Coolify está expuesto por HTTP sin cifrar** en el puerto 8000: la
-  contraseña del panel —control total del servidor— viaja en claro en cada
-  entrada. Ponerlo detrás de HTTPS
+- ~~**Coolify expuesto por HTTP sin cifrar** en el puerto 8000~~ — **HECHO**
+  (28-oct): está en `coolify.chronoslead.com`, HTTPS tras Cloudflare, y el
+  8000 cerrado en el firewall. Verificado desde fuera
 - `commitVerified:false` en el health: cosmético, Coolify no pasa
   `SOURCE_COMMIT` como build arg
 - ~~Revisión en móvil (375 px)~~ — **HECHO**: la revisó el dueño y está bien
