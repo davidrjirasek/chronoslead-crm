@@ -29,7 +29,10 @@ function comoTexto(v: unknown): string {
 }
 
 async function main() {
-  const llave = process.argv[2];
+  // `corepack pnpm cuestionario -- <llave>` deja el `--` en los argumentos y
+  // node lo pasa tal cual: sin filtrarlo, el guion buscaba un cuestionario con
+  // la llave "--" y decía que no existe, que parece el error del operador.
+  const llave = process.argv.slice(2).find((a) => a !== "--");
 
   if (!llave) {
     const todos = await listar();
@@ -91,7 +94,12 @@ async function main() {
   console.log("");
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// `process.exit(0)` explícito, como `provision.ts` y `acceso.ts`: la conexión
+// a la base queda abierta y sin esto el guion imprime y se cuelga hasta que
+// vence el tiempo de espera. Parece que falló cuando ya había terminado.
+main()
+  .then(() => process.exit(0))
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
