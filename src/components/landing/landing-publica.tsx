@@ -101,6 +101,17 @@ const STEPS = [
     x: "Queda agendada en tu calendario, con recordatorio automático al cliente.",
     d: "M8 2v4 M16 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z",
   },
+  /*
+   * 129 — El quinto paso faltaba en la landing y sí está en la propuesta
+   * comercial. Sin él, el recorrido terminaba en la cita y dejaba sin decir lo
+   * único que al dueño de un negocio le importa: que la venta se cierra.
+   */
+  {
+    n: "5",
+    t: "La venta.",
+    x: "Tu vendedor recibe el lead listo y el CRM lo sigue hasta el cierre.",
+    d: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M8.5 12.5l2.5 2.5 4.5-5",
+  },
 ];
 
 const MODULES = [
@@ -436,8 +447,8 @@ export function LandingPublica() {
                 Sistema de ventas 360 con IA · Desde Paraguay
               </p>
               <h1 className="mt-4 text-balance font-bold text-[32px] text-ink leading-[1.08] tracking-tight sm:text-[44px] sm:leading-[1.05]">
-                El CRM que se adapta a tu negocio.{" "}
-                <span className="text-primary">No al revés.</span>
+                El sistema que convierte tus consultas en{" "}
+                <span className="text-primary">ventas</span>, ágil y a medida.
               </h1>
               <p className="mt-5 max-w-[500px] text-[15px] text-zinc-600 leading-relaxed sm:text-[16.5px]">
                 Un sistema completo —anuncios, agente de IA, agenda y seguimiento— hecho a la medida
@@ -922,10 +933,15 @@ export function LandingPublica() {
                 Inversión de referencia
               </p>
               <p className="mt-3 font-extrabold text-[34px] leading-none sm:text-[38px]">
-                Desde ₲ 4.000.000<span className="font-bold text-[16px] text-white/60"> /mes</span>
+                Desde ₲ 6.500.000<span className="font-bold text-[16px] text-white/60"> /mes</span>
               </p>
               <p className="mt-2.5 font-semibold text-[13px] text-white/75">
-                Setup ₲ 12.500.000 · IVA incluido
+                Setup ₲ 12.000.000 · IVA incluido
+              </p>
+              <p className="mt-4 rounded-xl bg-white/[0.07] px-4 py-3 text-[12.5px] text-white/85 leading-relaxed">
+                <span className="font-bold text-white">Con contrato de 12 meses, el setup va
+                bonificado.</span>{" "}
+                Con contrato de 6 meses, se fracciona en 6 cuotas sin intereses.
               </p>
               <p className="mt-5 border-white/15 border-t pt-5 text-[12.5px] text-white/65 leading-relaxed">
                 El número final lo definimos sobre tu versión a medida, en el diagnóstico.
