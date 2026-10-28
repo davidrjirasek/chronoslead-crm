@@ -9,6 +9,41 @@ comercial de cada cliente **vive fuera de este repo**, que es público.
 
 ---
 
+## Paso 0 · El cuestionario, antes de crear nada
+
+Antes de este manual va el cuestionario de puesta en marcha:
+
+```
+https://onboarding.chronoslead.com
+```
+
+Se lo mandás al cliente y lo completa él, por secciones, pudiendo cortar y
+volver. Son diez secciones y unos veinte minutos.
+
+**Por qué va primero y no después:** varios pasos de acá abajo piden datos que
+solo tiene el cliente —el correo del propietario, el número de WhatsApp, los
+horarios de atención humana, cómo tiene que hablar el agente—. Empezar el alta
+sin esas respuestas es crear una cuenta vacía y volver a molestar al cliente
+tres veces.
+
+Lo más valioso es la sección 5: las diez consultas más frecuentes con la
+respuesta que dan hoy. De ahí sale casi toda la calidad del agente, y no se
+saca de ningún otro lado.
+
+**Para leer lo que contestaron:**
+
+```bash
+corepack pnpm cuestionario                 # quién completó y hasta dónde llegó
+corepack pnpm cuestionario -- <llave>      # las respuestas, legibles
+FORMATO=tsv corepack pnpm cuestionario -- <llave>   # para pegar en una planilla
+```
+
+> El enlace del formulario **es la credencial**: quien lo tiene puede ver y
+> seguir completando ese cuestionario. Mandáselo al cliente por un canal
+> privado, no lo publiques.
+
+---
+
 ## Antes de empezar
 
 | Hace falta | Para qué |
@@ -127,9 +162,20 @@ este caso, y por eso cuesta tanto diagnosticarlo si no se sabe.
 
 **Qué hacer:**
 
+**Desde el 28-oct esto lo puede hacer Claude** sin que nadie abra Coolify: hay
+un MCP conectado con permiso de escritura y despliegue. Pedíselo y listo.
+
+> **Lo único peligroso de este paso:** la lista de dominios se reemplaza
+> ENTERA. Hay que mandar los que ya estaban **más** el nuevo. Mandar solo el
+> nuevo deja sin dirección a todos los clientes que ya operan. Por eso se lee
+> la lista actual antes de tocarla, siempre.
+
+A mano, si hiciera falta:
+
 1. Entrá a Coolify → proyecto `chronos-lead` → entorno `production` →
    aplicación `chronoslead-crm`
-2. **Domains** → agregá `https://<slug>.chronoslead.com` a la lista
+2. **Domains** → agregá `https://<slug>.chronoslead.com` a la lista, sin quitar
+   ninguno de los que ya están
 3. Guardá y **desplegá** (en Coolify los dominios y las variables solo entran
    con un *deploy*, no con un *restart*)
 

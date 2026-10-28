@@ -1171,6 +1171,60 @@ Es la mejora operativa más grande detectada hasta ahora.
 > nota de arriba supone la buena. **No construir el alta sobre esto hasta
 > probarlo.**
 
+### El formulario de onboarding (2026-10-28, spec 127)
+
+`onboarding.chronoslead.com` — un cliente que **todavía no existe** completa el
+cuestionario de puesta en marcha por secciones, viendo cuánto le falta, y puede
+cortar y volver con su enlace.
+
+**Las tres decisiones que mandan sobre todo lo demás:**
+
+- **El enlace es la credencial.** Sin cuenta ni contraseña: un cliente que aún
+  no es cliente no debería registrarse para contarnos cómo trabaja. La llave va
+  en la URL —y no en una cookie— para que pueda seguir desde otro dispositivo.
+  No hay ninguna pantalla que liste formularios, así que tener una llave no
+  revela que existan otras
+- **Nunca crea cuentas.** El Principio VIII prohíbe el registro público y el
+  autoservicio. Esto recoge respuestas; el alta la hace una persona. Si alguna
+  vez el formulario termina creando la organización, eso es una **enmienda a la
+  constitución**, no una mejora
+- **La tabla no tiene `organization_id`,** y está declarado en el Constitution
+  Check para que nadie lo lea como un olvido: el registro existe antes que la
+  organización. Es capa de plataforma, como `organization` misma
+
+**El subdominio se eligió `onboarding` y no `alta`**, por decisión del dueño:
+`alta` ya es una puerta de la plataforma (`resolveTenantFromHost` devuelve
+`kind:"alta"`) y no quería quemar un nombre que hace falta para otra cosa.
+Quedó reservado además en `SLUGS_RESERVADOS`, como `coolify`.
+
+Por dentro se llama **`cuestionario`**, no `onboarding`: ese nombre ya era la
+guía de inicio DENTRO del CRM (`src/server/onboarding/guide.ts`). Dos cosas
+distintas con el mismo nombre se confunden sí o sí.
+
+### Lo que el gate NO atrapó (2026-10-28)
+
+Tres fallos reales, ninguno visto por `typecheck`, `lint`, 1332 pruebas ni
+`build`. **Los tres salieron abriendo el formulario en un navegador de verdad
+y completándolo como lo haría el cliente.**
+
+| Qué se veía | Qué era |
+|---|---|
+| Pantalla en blanco, «Application error: a client-side exception» | Un archivo `"use server"` **solo puede exportar funciones asíncronas**. Se exportaba también una constante y se importaba desde el componente. Compila callado y revienta en el navegador, **sin rastro en el registro del servidor** |
+| Al primer guardado saltaba de la sección 1 a la **3** | El efecto que avanza dependía de la llave; al llegar la llave nueva corría otra vez con el mismo estado y avanzaba dos veces. El servidor guardaba bien: era solo la pantalla, y eso lo hacía más difícil de ver |
+| Hidratación fallida en toda la página | El enlace para continuar se armaba con `window.location.origin` **durante el render**: el servidor dibujaba sin ese párrafo y el navegador con él |
+
+Y dos más en el guion de lectura, que se habían dado por hechos sin ejecutarlo:
+se quedaba colgado tres minutos después de imprimir —parecía que había
+fallado—, y se comía el separador `--`, así que buscaba la llave `"--"`.
+
+**La lección, concreta:** el gate del repo es necesario y no alcanza. Las cinco
+fallas estaban en fronteras —servidor/navegador, guion/intérprete— que es justo
+donde los tipos no miran. **Abrirlo y usarlo no es opcional.**
+
+**Sin prueba automática:** el salto doble de sección. Es comportamiento de un
+componente de React y el repo no tiene arnés para eso. Si vuelve, el primer
+sospechoso son las dependencias de ese efecto.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
