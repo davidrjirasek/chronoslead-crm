@@ -1271,6 +1271,64 @@ export const aiUsage = pgTable(
 );
 
 /* ============================================================
+ * 127 — Cuestionario de puesta en marcha (capa de plataforma)
+ * ============================================================ */
+
+/**
+ * Lo que un cliente contesta ANTES de ser cliente.
+ *
+ * **Esta tabla NO lleva `organization_id`, y es deliberado.** El registro
+ * existe antes que la organización: cuando alguien completa el cuestionario
+ * todavía no hay organización a la que pertenecer, y el alta es un paso
+ * manual posterior del operador. No es una tabla de dominio sino de la capa de
+ * plataforma (constitución, Principio VIII), igual que `organization` misma, y
+ * por eso tampoco pasa por `scoped()`: no hay tenant que exigir.
+ *
+ * Si alguien agrega aquí un `organization_id` «por consistencia», rompe el
+ * caso que justifica la tabla.
+ *
+ * Y el formulario **jamás crea la organización**: el Principio VIII prohíbe el
+ * registro público y el autoservicio. Recoge respuestas; el alta la hace una
+ * persona. Ver `specs/127-formulario-de-onboarding/spec.md`.
+ */
+export const cuestionarioRespuesta = pgTable(
+  "cuestionario_respuesta",
+  {
+    id: text("id").primaryKey(),
+    /**
+     * Lo que viaja en la URL (`/?k=…`) y hace de credencial: quien la tiene
+     * puede seguir completando. Va en la URL y no en una cookie para que el
+     * cliente pueda copiarla y continuar desde otro dispositivo.
+     */
+    llave: text("llave").notNull(),
+    /** El primer campo del formulario. Es lo que agrupa la planilla después. */
+    cliente: text("cliente").notNull(),
+    /** Quién lo está completando, para poder volver a preguntarle. */
+    contacto: text("contacto"),
+    correo: text("correo"),
+    /** Dónde quedó, para no hacerle empezar de nuevo. */
+    seccionActual: integer("seccion_actual").notNull().default(0),
+    /**
+     * `jsonb` y no una columna por pregunta: el cuestionario es CONTENIDO, no
+     * esquema. Con columnas, cada cambio de redacción —y va a cambiar con cada
+     * cliente— sería una migración. Lo que el esquema promete es «hay
+     * respuestas de este cliente», no qué se le preguntó.
+     */
+    respuestas: jsonb("respuestas").notNull().default({}),
+    /** `null` mientras está a medias. */
+    enviadoAt: timestamp("enviado_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    // Se busca SIEMPRE por la llave: es la única puerta de entrada.
+    uniqueIndex("cuestionario_respuesta_llave_idx").on(t.llave),
+    // Y el operador lista por cliente.
+    index("cuestionario_respuesta_cliente_idx").on(t.cliente, t.createdAt),
+  ]
+);
+
+/* ============================================================
  * 021 — Despacho al cerebro
  * ============================================================ */
 

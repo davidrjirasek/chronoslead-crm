@@ -109,3 +109,31 @@ describe("resolveTenantFromHost — lo que NO puede caer en un tenant", () => {
     });
   });
 });
+
+describe("125 — el subdominio del panel de despliegue", () => {
+  it("«coolify» está reservado: ahí vive el panel, no un cliente", () => {
+    // Coolify pasa a `coolify.chronoslead.com` con HTTPS, en vez del puerto
+    // 8000 expuesto. Sin reservarlo, ese cliente se crearía bien y NUNCA
+    // podría entrar: el proxy le da prioridad al panel y no hay error que lo
+    // explique. Lo detectó una pregunta del dueño sobre por qué va ahí.
+    expect(
+      resolveTenantFromHost("coolify.chronoslead.com", "chronoslead.com").kind
+    ).toBe("desconocido");
+  });
+
+  it("«onboarding» es su propia puerta, no un cliente", () => {
+    // 127 — El formulario de puesta en marcha. Se eligió `onboarding` en vez
+    // de `alta` porque `alta` YA es una puerta de la plataforma: el dueño
+    // rechazó quemar un nombre que hace falta para otra cosa.
+    expect(
+      resolveTenantFromHost("onboarding.chronoslead.com", "chronoslead.com").kind
+    ).toBe("onboarding");
+    // Y que no se confunda con la otra puerta.
+    expect(
+      resolveTenantFromHost("alta.chronoslead.com", "chronoslead.com").kind
+    ).toBe("alta");
+    // Está además en la lista de reservados, como segunda cerradura: nadie
+    // puede pedir ese identificador como slug.
+    expect(SLUGS_RESERVADOS.has("onboarding")).toBe(true);
+  });
+});

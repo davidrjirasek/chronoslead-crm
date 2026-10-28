@@ -1009,6 +1009,168 @@ fde934c: commit nuevo 14:14:55 · fallas desde 14:15:31 (36 s después) · 28 s
 segundos, siempre después de que la versión nueva ya contesta, mientras el
 contenedor viejo se desarma y sigue recibiendo tráfico.
 
+### Coolify sale de internet (2026-10-28)
+
+El panel estaba en `http://2.25.159.85:8000`: puerto expuesto, sin cifrar, con
+control total del servidor. Era el riesgo número uno.
+
+**Kevin recomendó cerrar el puerto sin pantalla de autenticación.** Correcto
+para quien vive en una terminal; no para este caso: el dueño **no tiene acceso
+SSH ni lo usa**, así que cerrar el 8000 nos dejaba a los dos afuera, y el MCP
+—que se quería configurar— necesita justamente una URL pública con HTTPS.
+
+**Lo que se hizo**, y resolvió las tres cosas a la vez:
+
+1. `coolify.chronoslead.com`, HTTPS, **con escudo de Cloudflare**. El comodín
+   `*.chronoslead.com` ya existía y ya era proxied: no hubo que crear DNS
+2. Se verificó que el subdominio entra por el **443 vía Traefik**, no por el
+   8000 — la suposición que, de estar mal, nos dejaba afuera
+3. Firewall de Hostinger por API (niega todo por defecto): **solo 22, 80, 443
+   e ICMP**
+
+```
+ANTES                          AHORA
+6 puertos abiertos             3
+sin firewall                   niega por defecto
+IP del servidor visible        oculta tras Cloudflare
+contraseña en claro            cifrada
+```
+
+**Comprobado desde fuera, en el minuto:** landing, CRM del cliente y panel del
+operador en 200; `coolify.chronoslead.com` en 302; 8000, 6001 y 6002 cerrados;
+22, 80 y 443 abiertos. **Ningún cliente se enteró.**
+
+**IPv6**: no se pudo verificar desde la máquina del asistente (sin IPv6). Se
+comprobó desde un teléfono con datos móviles: el navegador se queda colgado
+sin respuesta, que es el comportamiento correcto de un DROP — no revela
+siquiera que haya algo escuchando.
+
+**Dos cosas que esto dejó a la vista:**
+
+- **La contraseña de Coolify no la tenía nadie.** Se descubrió al intentar
+  entrar por el subdominio. El recupero por correo está **desactivado** (SMTP y
+  Resend), así que la única vía habría sido la consola de Hostinger. Quedó
+  guardada en el gestor, y **configurar el correo de Coolify sigue pendiente**:
+  es el único sistema sin forma de recuperarse solo
+- **El servidor tiene 41 actualizaciones de sistema pendientes.** No se
+  aplicaron: pueden pedir reinicio y no era el momento
+
+### El MCP de Coolify, conectado (2026-10-28)
+
+Claude ahora opera Coolify **sin navegador**: ver estado, leer registros,
+desplegar. Era el último lugar donde el dueño tenía que apretar botones.
+
+- Endpoint: `https://coolify.chronoslead.com/mcp` — la misma URL pública con
+  HTTPS que se creó al cerrar el 8000. Sin ese paso, esto no era posible
+- Token **Read + Write + Deploy**, deliberadamente SIN *Root* y SIN
+  *Read sensitive data*. Verificado campo por campo: los valores de las
+  variables de entorno **no vienen en la respuesta** (el campo `value` está
+  ausente, no vacío) y las llaves SSH privadas tampoco (`private_key`
+  ausente; solo pública y huella)
+- **El token caduca a los 30 días** (creado el 28-oct). Cuando caduque, el
+  servidor va a arrancar con `AUTH_HEADER_REJECTED` y hay que crear otro en
+  Coolify → Keys & Tokens → API tokens, con las mismas tres casillas
+
+**La trampa que costó el primer intento:** el token quedó **pegado dos veces**
+en `~/.claude.json` (100 caracteres en vez de 50, la segunda mitad idéntica a
+la primera) y Coolify respondía `401 Unauthenticated`. Lo que lo delató fue
+probar el token contra la API REST normal (`/api/v1/version`), no contra el
+MCP: al fallar las dos, quedó claro que el problema era la credencial y no el
+endpoint. **Al pegar un secreto a ciegas con `read -s`, verificar el largo
+antes de dar por bueno el «listo».** El guion que se usó la segunda vez
+comprueba el pegado doble, la forma y la respuesta de Coolify **antes** de
+escribir el archivo: si algo falla, no toca nada.
+
+**Dos límites del token con Write, que no son del token:**
+
+- **La API de Coolify prohíbe los ajustes del servidor.** `is_metrics_enabled`
+  devuelve `"This field is not allowed."`, y lo mismo vale para las
+  actualizaciones automáticas de seguridad. `manage_server` solo acepta
+  nombre, IP, puerto, usuario, llave, rol, proxy y tiempos. **Las métricas y
+  la seguridad del sistema operativo se encienden a mano en el panel, no hay
+  otra vía**
+- **El modo automático de Claude Code bloquea los borrados**, sin importar lo
+  que permita el token. Correcto: un borrado irreversible pasa por el dueño.
+  Para hacerlos hay que salir del modo automático
+
+### Se barrió la chatarra de Coolify (2026-10-28)
+
+Tres recursos apagados que contaban como «falla» en el tablero de Coolify sin
+ser nada. Un tablero que marca rojo permanente es un tablero que se deja de
+mirar — el mismo defecto que tenía la lista de pendientes.
+
+| Borrado | Qué era |
+|---|---|
+| app `chronoslead` | Del repo viejo `davidrjirasek/chronoslead`, rama `008-crm-piso-minimo-diseno`, creada el 18-sep. **Sin dominio**: inalcanzable. Cero volúmenes |
+| `evolution-api-myjhc…` | Pasarela de WhatsApp de prueba, 21-oct |
+| `evolution-chronoslead` | Ídem. Hoy el CRM habla directo con la API de Meta |
+
+Las dos `evolution` llevaban **tres volúmenes cada una**
+(`evolution-instances`, `postgres-data`, `evolution-redis`). Se borraron con
+sus volúmenes, con el OK explícito del dueño, porque
+`delete_unused_volumes: false` en el servidor: **los huérfanos no se limpian
+nunca solos.** Primero se informó «ninguna tiene volúmenes» y era falso —
+cierto para la app, falso para los servicios.
+
+**Comprobado en vivo:** los tres dominios en 200 después del borrado, y el
+resumen de infraestructura con **cero recursos en falla por primera vez**.
+
+**Lo que NO se tocó, y por qué:**
+
+- **`n8n`** — corriendo y sano, es del dueño y está en uso
+- **`chronos-lead-db`** — se sospechaba que era la base de la app vieja. No lo
+  era: adentro tiene la base **`otra_dimension`**, de otro proyecto del dueño,
+  creada el 17-sep. Corre sana, `is_public: false`, y **no tiene ninguna copia
+  de seguridad programada.** Decisión pendiente del dueño: si va a seguir,
+  merece el mismo plan de 6 horas + R2 que la de ChronosLead
+
+### Qué dice el servidor de sí mismo (2026-10-28)
+
+Leído con `get_server`, y corrige dos cosas que esta bitácora dejó sonando
+peor y mejor de lo que son:
+
+```
+41 actualizaciones pendientes · DE SEGURIDAD: 0 · ¿pide reinicio?: NO
+actualizaciones automáticas de seguridad: APAGADAS   ← el hueco real
+disco: vigilado, aviso al 80%, revisión diaria 23:00
+métricas (CPU/RAM/disco): APAGADAS  → no se pueden leer por API
+Traefik 3.6.25 · hay 3.7.16 (actualización menor)
+delete_unused_volumes: false · force_docker_cleanup: true al 80%
+wildcard_domain: VACÍO
+```
+
+- **Las 41 actualizaciones no eran urgentes**: ninguna de seguridad, ninguna
+  pide reinicio. Lo que sí importa es que **las automáticas están apagadas**:
+  cuando salga una que cuente, nadie la va a aplicar
+- **El disco no estaba a ciegas**: ya hay aviso al 80% y revisión diaria. Las
+  métricas apagadas impiden *leer* el número, no vigilarlo
+- **Traefik enruta todos los dominios de los clientes.** La subida a 3.7 va
+  después de dar de alta a los clientes nuevos, no antes
+
+Dos detalles del camino, para la próxima:
+
+- Cloudflare responde **403 error 1010** a `urllib` de Python por su firma de
+  navegador. Las pruebas contra el dominio hay que hacerlas con `curl` y un
+  User-Agent normal
+- El archivo del MCP vive en `~/.claude.json`, **fuera del repo** — no se
+  versiona y no viaja a otra máquina. Y `.mcp.json`, que sí estaba versionado,
+  se quitó del repo: es público
+
+### El campo «Wildcard domain» del servidor (2026-10-28)
+
+Visto de paso en la configuración del servidor en Coolify. **Si funciona como
+parece, eliminaría el paso 2 del manual de alta** —agregar a mano el dominio
+de cada cliente—, que es la trampa que más muerde en cada alta. Sin verificar.
+Es la mejora operativa más grande detectada hasta ahora.
+
+> **Al 28-oct el campo está VACÍO** (`wildcard_domain: null`, leído por el
+> MCP). Y la esperanza de arriba está **sin comprobar**: hay que confirmar si
+> el campo hace enrutado comodín de verdad —que Traefik acepte cualquier
+> subdominio— o si solo **autogenera un dominio por defecto al crear un
+> recurso nuevo**, que no resolvería nada. Son dos cosas muy distintas y la
+> nota de arriba supone la buena. **No construir el alta sobre esto hasta
+> probarlo.**
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
@@ -1028,10 +1190,11 @@ contenedor viejo se desarma y sigue recibiendo tráfico.
   antes de cada alta de cliente nuevo**, que es cuando importa
 - **Pasar al correo de la agencia las cuentas que siguen en uno personal.**
   Hostinger ya está; faltan Namecheap, Cloudflare, Meta, Zernio y Groq
-- **URGENTE: cerrar el puerto 8000 de Coolify al público.** Hoy es alcanzable
-  desde internet. Es un panel PHP con control total del servidor, y acaba de
-  circular una ejecución remota sin autenticar. **Es lo más urgente de la
-  lista**
+- **Configurar el correo en Coolify** (SMTP o Resend): hoy no hay recupero de
+  contraseña posible. Es el único sistema que no puede recuperarse solo
+- **Probar el «Wildcard domain» del servidor**: si funciona, elimina el paso 2
+  del alta
+- **41 actualizaciones de sistema** en el servidor, pueden pedir reinicio
 - **Probar una restauración** sobre una base de prueba: las copias existen y
   nunca se restauró ninguna
 - **El modelo contesta en prosa demasiado seguido**: dos rescates en una sola
@@ -1057,9 +1220,9 @@ contenedor viejo se desarma y sigue recibiendo tráfico.
   `transcripcion.ts`; decisión pendiente por costo y por datos sensibles
 - **Reintentar al arrancar los entrantes sin respuesta**: hoy un mensaje que
   cae en la ventana de 6 s del despliegue se queda sin contestar para siempre
-- **Coolify está expuesto por HTTP sin cifrar** en el puerto 8000: la
-  contraseña del panel —control total del servidor— viaja en claro en cada
-  entrada. Ponerlo detrás de HTTPS
+- ~~**Coolify expuesto por HTTP sin cifrar** en el puerto 8000~~ — **HECHO**
+  (28-oct): está en `coolify.chronoslead.com`, HTTPS tras Cloudflare, y el
+  8000 cerrado en el firewall. Verificado desde fuera
 - `commitVerified:false` en el health: cosmético, Coolify no pasa
   `SOURCE_COMMIT` como build arg
 - ~~Revisión en móvil (375 px)~~ — **HECHO**: la revisó el dueño y está bien

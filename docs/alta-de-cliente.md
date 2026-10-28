@@ -33,6 +33,25 @@ Es lo que va antes del punto: `creativo-4d-group`.chronoslead.com
 Elegilo con el cliente antes de crear nada. Es la dirección que va a usar su
 equipo todos los días y la que va en los materiales.
 
+### Identificadores que NO se aceptan, aunque el cliente insista
+
+**El sistema rechaza solo los que lo romperían** (`admin`, `api`, `coolify` y
+los demás reservados). El resto es criterio nuestro, y hay uno que conviene
+tener claro:
+
+> **No se registran marcas ajenas.** Ni `nike`, ni `chatgpt`, ni `claude`, ni
+> `hostinger`, ni el nombre de ningún producto que no sea del cliente.
+
+**El motivo no es cortesía: es exposición legal nuestra.** El dominio
+`chronoslead.com` es de Creativo 4D. Si alguien publica
+`nike.chronoslead.com`, **el reclamo por uso de marca le llega al dueño del
+dominio, no al cliente.**
+
+Si el cliente de verdad se llama así —existe una ferretería «Nike» en algún
+lado—, se usa una variante que no se confunda: `nike-py`, `ferreteria-nike`.
+Dos minutos de conversación, y evita un problema que no es técnico y no se
+arregla desplegando.
+
 ---
 
 ## 1 · Crear la organización

@@ -32,6 +32,23 @@ export const SLUGS_RESERVADOS = new Set([
   "blog",
   "docs",
   "panel",
+  /**
+   * 125 — El panel de despliegue vive en `coolify.chronoslead.com` (HTTPS por
+   * Cloudflare, en vez del puerto 8000 expuesto). Sin reservarlo, un cliente
+   * podría darse de alta con ese identificador: el proxy le daría prioridad al
+   * panel y ese cliente NUNCA podría entrar a su CRM, sin un error que lo
+   * explique. Lo detectó una pregunta del dueño sobre por qué va en un
+   * subdominio.
+   */
+  "coolify",
+  /**
+   * 127 — El formulario de onboarding vive en `onboarding.chronoslead.com`.
+   * Mismo riesgo que `coolify`: un cliente con ese identificador quedaría
+   * detrás del formulario y nunca podría entrar a su CRM. Lo señaló el dueño
+   * al elegir el subdominio, descartando `alta` —que ya es una puerta de la
+   * plataforma— justamente por no querer quemar nombres que harán falta.
+   */
+  "onboarding",
 ]);
 
 /**
@@ -48,6 +65,7 @@ export type TenantHost =
   | { kind: "landing" }
   | { kind: "admin" }
   | { kind: "alta" }
+  | { kind: "onboarding" }
   | { kind: "desconocido" };
 
 /**
@@ -89,6 +107,11 @@ export function resolveTenantFromHost(
   if (etiqueta === "www") return { kind: "landing" };
   if (etiqueta === "admin") return { kind: "admin" };
   if (etiqueta === "alta") return { kind: "alta" };
+  // 127 — El formulario de puesta en marcha. Va ANTES del filtro de reservados
+  // por el mismo motivo que `alta`: está en esa lista como segunda cerradura,
+  // y si solo estuviera ahí el host caería en «no existe» en vez de servir el
+  // formulario.
+  if (etiqueta === "onboarding") return { kind: "onboarding" };
   if (!SLUG_VALIDO.test(etiqueta) || SLUGS_RESERVADOS.has(etiqueta)) {
     return { kind: "desconocido" };
   }

@@ -47,3 +47,10 @@ scratch/
 
 # 104 — contraseñas iniciales del alta de clientes (modo 600)
 .provision/
+
+# 126 — Configuración de servidores MCP.
+# Suele llevar credenciales en una cabecera `Authorization`, y ESTE REPOSITORIO
+# ES PÚBLICO. Se detectó vacío el 28-oct pero sin ignorar: una trampa esperando
+# a que alguien agregue un servidor con token y lo publique sin darse cuenta.
+# Lo que necesite credenciales va en ~/.claude.json, fuera del repositorio.
+.mcp.json
