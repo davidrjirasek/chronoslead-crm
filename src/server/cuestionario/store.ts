@@ -1,7 +1,7 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
-import { SECCIONES, TOTAL_SECCIONES } from "./secciones";
+import { seccionesDe, totalDe, VARIANTE_POR_DEFECTO } from "./secciones";
 
 /**
  * 127 — El acceso a las respuestas del cuestionario.
@@ -17,6 +17,7 @@ export type Respuestas = Record<string, unknown>;
 export type Cuestionario = {
   llave: string;
   cliente: string;
+  variante: string;
   contacto: string | null;
   correo: string | null;
   seccionActual: number;
@@ -34,6 +35,7 @@ export async function leerPorLlave(llave: string): Promise<Cuestionario | null> 
     .select({
       llave: tabla.llave,
       cliente: tabla.cliente,
+      variante: tabla.variante,
       contacto: tabla.contacto,
       correo: tabla.correo,
       seccionActual: tabla.seccionActual,
@@ -53,6 +55,7 @@ export async function leerPorLlave(llave: string): Promise<Cuestionario | null> 
 
 export type Identidad = {
   cliente: string;
+  variante?: string;
   contacto?: string | null;
   correo?: string | null;
 };
@@ -67,6 +70,7 @@ export async function crear(identidad: Identidad): Promise<string> {
     id: newId("cuestionario"),
     llave,
     cliente: identidad.cliente.trim(),
+    variante: identidad.variante || VARIANTE_POR_DEFECTO,
     contacto: identidad.contacto?.trim() || null,
     correo: identidad.correo?.trim() || null,
     seccionActual: 0,
@@ -89,10 +93,11 @@ export async function crear(identidad: Identidad): Promise<string> {
  */
 export async function guardarSeccion(
   llave: string,
+  variante: string,
   indiceSeccion: number,
   respuestas: Respuestas
 ): Promise<void> {
-  const siguiente = Math.min(indiceSeccion + 1, TOTAL_SECCIONES - 1);
+  const siguiente = Math.min(indiceSeccion + 1, totalDe(variante) - 1);
   await getDb()
     .update(tabla)
     .set({
@@ -116,6 +121,7 @@ export async function marcarEnviado(llave: string): Promise<void> {
 export type EnLaLista = {
   llave: string;
   cliente: string;
+  variante: string;
   contacto: string | null;
   correo: string | null;
   seccionActual: number;
@@ -138,6 +144,7 @@ export async function listar(): Promise<EnLaLista[]> {
     .select({
       llave: tabla.llave,
       cliente: tabla.cliente,
+      variante: tabla.variante,
       contacto: tabla.contacto,
       correo: tabla.correo,
       seccionActual: tabla.seccionActual,
@@ -151,13 +158,13 @@ export async function listar(): Promise<EnLaLista[]> {
 
   return filas.map(({ respuestas, ...resto }) => ({
     ...resto,
-    contestadas: seccionesContestadas((respuestas ?? {}) as Respuestas),
+    contestadas: seccionesContestadas(resto.variante, (respuestas ?? {}) as Respuestas),
   }));
 }
 
 /** Cuántas secciones tienen al menos una respuesta escrita. */
-export function seccionesContestadas(respuestas: Respuestas): number {
-  return SECCIONES.filter((s) =>
+export function seccionesContestadas(variante: string, respuestas: Respuestas): number {
+  return seccionesDe(variante).filter((s) =>
     s.bloques.some(
       (b) => b.tipo !== "nota" && hayAlgo((respuestas as Record<string, unknown>)[b.id])
     )

@@ -5,12 +5,12 @@ import { useActionState, useCallback, useEffect, useMemo, useRef, useState } fro
 import { guardarSeccionAction } from "@/app/(cuestionario)/actions";
 import { ESTADO_INICIAL } from "@/server/cuestionario/estado";
 import {
-  MINUTOS_TOTALES,
-  SECCIONES,
-  TOTAL_SECCIONES,
+  minutosRestantes,
+  minutosTotalesDe,
+  seccionesDe,
+  totalDe,
   type Bloque,
   type Campo,
-  minutosRestantes,
 } from "@/server/cuestionario/secciones";
 
 /**
@@ -35,6 +35,7 @@ import {
 type Inicial = {
   llave: string;
   cliente: string;
+  variante: string;
   contacto: string | null;
   correo: string | null;
   seccionActual: number;
@@ -45,7 +46,20 @@ type Inicial = {
 /** -1 es la portada; 0..9 las secciones; TOTAL_SECCIONES, la despedida. */
 const PORTADA = -1;
 
-export function Formulario({ inicial }: { inicial: Inicial | null }) {
+export function Formulario({
+  inicial,
+  variante,
+}: {
+  inicial: Inicial | null;
+  /** La del enlace. Un cuestionario ya empezado manda la SUYA, no esta. */
+  variante: string;
+}) {
+  // La variante de un cuestionario existente no se puede cambiar desde la URL:
+  // si pudiera, bastaría editar el enlace para mover las preguntas de alguien.
+  const v = inicial?.variante ?? variante;
+  const SECCIONES = seccionesDe(v);
+  const TOTAL_SECCIONES = totalDe(v);
+  const MINUTOS_TOTALES = minutosTotalesDe(v);
   const [estado, enviar, pendiente] = useActionState(guardarSeccionAction, ESTADO_INICIAL);
 
   const [llave, setLlave] = useState(inicial?.llave ?? "");
@@ -103,7 +117,7 @@ export function Formulario({ inicial }: { inicial: Inicial | null }) {
     if (estado.llave) setLlave(estado.llave);
     setPaso((p) => Math.min(p + 1, TOTAL_SECCIONES));
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [estado]);
+  }, [estado, TOTAL_SECCIONES]);
 
   const fijar = useCallback((id: string, valor: unknown) => {
     setValores((v) => ({ ...v, [id]: valor }));
@@ -140,6 +154,8 @@ export function Formulario({ inicial }: { inicial: Inicial | null }) {
           identidad={identidad}
           setIdentidad={setIdentidad}
           onEmpezar={() => setPaso(0)}
+          total={TOTAL_SECCIONES}
+          minutos={MINUTOS_TOTALES}
         />
       </Marco>
     );
@@ -151,11 +167,12 @@ export function Formulario({ inicial }: { inicial: Inicial | null }) {
 
   return (
     <Marco>
-      <Avance paso={paso} />
+      <Avance paso={paso} variante={v} />
 
       <form action={enviar} className="mt-8">
         <input type="hidden" name="llave" value={llave} />
         <input type="hidden" name="seccion" value={paso} />
+        <input type="hidden" name="variante" value={v} />
         <input type="hidden" name="cliente" value={identidad.cliente} />
         <input type="hidden" name="contacto" value={identidad.contacto} />
         <input type="hidden" name="correo" value={identidad.correo} />
@@ -272,15 +289,15 @@ function Marco({ children }: { children: React.ReactNode }) {
  * El avance. Es un requisito, no un adorno: el cliente tiene que poder
  * contestar «cuánto me falta» de un vistazo, en todo momento.
  */
-function Avance({ paso }: { paso: number }) {
-  const hechas = paso;
-  const porcentaje = Math.round((hechas / TOTAL_SECCIONES) * 100);
-  const minutos = minutosRestantes(paso);
+function Avance({ paso, variante }: { paso: number; variante: string }) {
+  const total = totalDe(variante);
+  const porcentaje = Math.round((paso / total) * 100);
+  const minutos = minutosRestantes(variante, paso);
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-4">
         <p className="text-[13px] font-semibold text-foreground">
-          Sección {paso + 1} de {TOTAL_SECCIONES}
+          Sección {paso + 1} de {total}
         </p>
         <p className="font-mono text-[12.5px] text-muted-foreground tabular-nums">
           {minutos} min restantes
@@ -307,10 +324,14 @@ function Portada({
   identidad,
   setIdentidad,
   onEmpezar,
+  total,
+  minutos,
 }: {
   identidad: { cliente: string; contacto: string; correo: string };
   setIdentidad: (v: { cliente: string; contacto: string; correo: string }) => void;
   onEmpezar: () => void;
+  total: number;
+  minutos: number;
 }) {
   const listo = identidad.cliente.trim().length >= 2;
   return (
@@ -332,8 +353,8 @@ function Portada({
       {/* Lo que el dueño pidió que se sepa ANTES de empezar a escribir. */}
       <dl className="grid gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-3">
         {[
-          ["Secciones", String(TOTAL_SECCIONES)],
-          ["Tiempo estimado", `${MINUTOS_TOTALES} min`],
+          ["Secciones", String(total)],
+          ["Tiempo estimado", `${minutos} min`],
           ["Si lo cortan", "Sigue donde quedaron"],
         ].map(([t, v]) => (
           <div key={t} className="bg-background px-5 py-4">

@@ -10,7 +10,7 @@
  *   FORMATO=tsv corepack pnpm cuestionario -- <llave>   # para pegar en la planilla
  */
 import { leerPorLlave, listar, seccionesContestadas } from "@/server/cuestionario/store";
-import { SECCIONES, TOTAL_SECCIONES, camposDe } from "@/server/cuestionario/secciones";
+import { camposDe, seccionesDe, totalDe } from "@/server/cuestionario/secciones";
 
 function comoTexto(v: unknown): string {
   if (v === null || v === undefined) return "";
@@ -44,8 +44,8 @@ async function main() {
     for (const c of todos) {
       const estado = c.enviadoAt
         ? `enviado ${c.enviadoAt.toISOString().slice(0, 16).replace("T", " ")}`
-        : `a medias (sección ${c.seccionActual + 1} de ${TOTAL_SECCIONES})`;
-      console.log(`  ${c.cliente}`);
+        : `a medias (sección ${c.seccionActual + 1} de ${totalDe(c.variante)})`;
+      console.log(`  ${c.cliente}  [${c.variante}]`);
       console.log(`    llave:  ${c.llave}`);
       console.log(`    estado: ${estado}\n`);
     }
@@ -60,6 +60,7 @@ async function main() {
     return;
   }
 
+  const SECCIONES = seccionesDe(c.variante);
   const tsv = process.env.FORMATO === "tsv";
 
   if (tsv) {
@@ -78,7 +79,7 @@ async function main() {
   console.log(`  ${c.cliente}`);
   console.log(`  ${c.contacto ?? "sin contacto"} · ${c.correo ?? "sin correo"}`);
   console.log(
-    `  ${c.enviadoAt ? "ENVIADO" : "A MEDIAS"} · ${seccionesContestadas(c.respuestas)} de ${TOTAL_SECCIONES} secciones con respuestas`
+    `  ${c.enviadoAt ? "ENVIADO" : "A MEDIAS"} · ${seccionesContestadas(c.variante, c.respuestas)} de ${SECCIONES.length} secciones con respuestas`
   );
   console.log(`${"=".repeat(68)}`);
 

@@ -5,7 +5,12 @@ import { checkRateLimit } from "@/lib/rate-limit";
 // Un archivo "use server" solo puede exportar funciones asíncronas: el tipo
 // y la constante viven aparte (ver `estado.ts`).
 import { ESTADO_INICIAL, type EstadoGuardado } from "@/server/cuestionario/estado";
-import { SECCIONES, TOTAL_SECCIONES, camposDe } from "@/server/cuestionario/secciones";
+import {
+  camposDe,
+  esVariante,
+  seccionesDe,
+  VARIANTE_POR_DEFECTO,
+} from "@/server/cuestionario/secciones";
 import { crear, guardarSeccion, leerPorLlave, marcarEnviado } from "@/server/cuestionario/store";
 
 /**
@@ -25,7 +30,11 @@ const LIMITE_GUARDADO = { windowMs: 10 * 60_000, max: 120 };
 
 const entrada = z.object({
   llave: z.string().trim().max(64).optional(),
-  seccion: z.coerce.number().int().min(0).max(TOTAL_SECCIONES - 1),
+  // El techo real no es este número sino que la sección exista en la variante
+  // (más abajo). Zod solo evita que llegue algo absurdo.
+  seccion: z.coerce.number().int().min(0).max(40),
+  /** Qué juego de preguntas. Viene de la pantalla, que lo recibió del enlace. */
+  variante: z.string().trim().max(60).optional(),
   cliente: z.string().trim().min(2).max(120).optional(),
   contacto: z.string().trim().max(120).optional(),
   correo: z.string().trim().max(160).optional(),
@@ -44,6 +53,7 @@ export async function guardarSeccionAction(
     cliente: formData.get("cliente") || undefined,
     contacto: formData.get("contacto") || undefined,
     correo: formData.get("correo") || undefined,
+    variante: formData.get("variante") || undefined,
     datos: formData.get("datos") ?? "{}",
     final: formData.get("final") || undefined,
   });
@@ -58,7 +68,12 @@ export async function guardarSeccionAction(
     return { ...ESTADO_INICIAL, error: ERROR_GENERICO };
   }
 
-  const seccion = SECCIONES[parsed.data.seccion];
+  // Una variante inventada cae en la general, nunca en un error: el enlace lo
+  // arma una persona y un dedazo no debe dejar al cliente sin formulario.
+  const variante = esVariante(parsed.data.variante)
+    ? parsed.data.variante
+    : VARIANTE_POR_DEFECTO;
+  const seccion = seccionesDe(variante)[parsed.data.seccion];
   if (!seccion) return { ...ESTADO_INICIAL, error: ERROR_GENERICO };
 
   // Solo se exige lo marcado como obligatorio, y se devuelve QUÉ faltó: un
@@ -87,6 +102,7 @@ export async function guardarSeccionAction(
       }
       llave = await crear({
         cliente,
+        variante,
         contacto: parsed.data.contacto ?? null,
         correo: parsed.data.correo ?? null,
       });
@@ -94,13 +110,17 @@ export async function guardarSeccionAction(
       if (!checkRateLimit(`cuestionario-guardar:${llave}`, LIMITE_GUARDADO).allowed) {
         return { ...ESTADO_INICIAL, error: ERROR_GENERICO, llave };
       }
-      // Una llave inventada no debe crear nada ni decir si existe.
-      if (!(await leerPorLlave(llave))) {
-        return { ...ESTADO_INICIAL, error: ERROR_GENERICO };
+      // Una llave inventada no debe crear nada ni decir si existe. Y la
+      // variante que manda es la GUARDADA, no la que venga en el formulario:
+      // así nadie cambia las preguntas de un cuestionario ya empezado.
+      const guardado = await leerPorLlave(llave);
+      if (!guardado) return { ...ESTADO_INICIAL, error: ERROR_GENERICO };
+      if (guardado.variante !== variante) {
+        return { ...ESTADO_INICIAL, error: ERROR_GENERICO, llave };
       }
     }
 
-    await guardarSeccion(llave, parsed.data.seccion, respuestas);
+    await guardarSeccion(llave, variante, parsed.data.seccion, respuestas);
     if (parsed.data.final === "1") await marcarEnviado(llave);
 
     return { ok: true, error: null, llave, faltan: [] };

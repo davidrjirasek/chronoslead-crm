@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TOTAL_SECCIONES } from "@/server/cuestionario/secciones";
+import { totalDe } from "@/server/cuestionario/secciones";
 import type { EnLaLista } from "@/server/cuestionario/store";
 
 /**
@@ -35,7 +35,9 @@ export function ListaDeCuestionarios({ filas }: { filas: EnLaLista[] }) {
         </p>
       ) : (
         <ul className="mt-8 space-y-3">
-          {filas.map((f) => (
+          {filas.map((f) => {
+            const total = totalDe(f.variante);
+            return (
             <li key={f.llave}>
               <Link
                 href={`/admin/cuestionarios/${encodeURIComponent(f.llave)}`}
@@ -53,19 +55,20 @@ export function ListaDeCuestionarios({ filas }: { filas: EnLaLista[] }) {
                   <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
                     <div
                       className="h-full rounded-full bg-primary"
-                      style={{ width: `${(f.contestadas / TOTAL_SECCIONES) * 100}%` }}
+                      style={{ width: `${(f.contestadas / total) * 100}%` }}
                     />
                   </div>
                   <span className="font-mono text-[12px] text-muted-foreground tabular-nums">
-                    {f.contestadas}/{TOTAL_SECCIONES}
+                    {f.contestadas}/{total}
                   </span>
                 </div>
                 <p className="mt-2 text-[12px] text-muted-foreground">
                   Última actividad: {cuando(f.updatedAt)}
                 </p>
               </Link>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
     </main>

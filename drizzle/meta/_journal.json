@@ -211,6 +211,13 @@
       "when": 1793202082780,
       "tag": "0029_nostalgic_taskmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1793230039961,
+      "tag": "0030_crazy_scarecrow",
+      "breakpoints": true
     }
   ]
 }
