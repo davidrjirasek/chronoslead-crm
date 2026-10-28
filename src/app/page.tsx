@@ -44,16 +44,21 @@ export default async function Home({
       // La llave de la URL ES la credencial (spec 127): sin ella se empieza
       // uno nuevo; con una que no existe, también — así no se le confirma a
       // nadie qué llaves son válidas.
-      const k = searchParams ? (await searchParams).k : undefined;
+      const sp = searchParams ? await searchParams : {};
+      const k = sp.k;
+      const v = sp.v;
       const llave = typeof k === "string" ? k : "";
+      const variante = typeof v === "string" ? v : "";
       const guardado = llave ? await leerPorLlave(llave) : null;
       return (
         <Formulario
+          variante={variante}
           inicial={
             guardado
               ? {
                   llave: guardado.llave,
                   cliente: guardado.cliente,
+                  variante: guardado.variante,
                   contacto: guardado.contacto,
                   correo: guardado.correo,
                   seccionActual: guardado.seccionActual,

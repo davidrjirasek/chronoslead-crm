@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { SECCIONES, TOTAL_SECCIONES, camposDe } from "@/server/cuestionario/secciones";
+import { camposDe, seccionesDe, totalDe } from "@/server/cuestionario/secciones";
 import type { Cuestionario } from "@/server/cuestionario/store";
 
 /**
@@ -12,6 +12,9 @@ import type { Cuestionario } from "@/server/cuestionario/store";
  * sumado superficie que proteger.
  */
 export function DetalleDelCuestionario({ cuestionario }: { cuestionario: Cuestionario }) {
+  const SECCIONES = seccionesDe(cuestionario.variante);
+  const TOTAL_SECCIONES = totalDe(cuestionario.variante);
+
   const descargar = () => {
     const filas = [["Sección", "Pregunta", "Respuesta"]];
     for (const s of SECCIONES) {

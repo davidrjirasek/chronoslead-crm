@@ -1303,6 +1303,12 @@ export const cuestionarioRespuesta = pgTable(
     llave: text("llave").notNull(),
     /** El primer campo del formulario. Es lo que agrupa la planilla después. */
     cliente: text("cliente").notNull(),
+    /**
+     * 130 — Qué juego de preguntas ve este cuestionario. Se fija al crearlo y
+     * NO cambia después: si cambiara, a alguien que está completando se le
+     * moverían las preguntas debajo.
+     */
+    variante: text("variante").notNull().default("general"),
     /** Quién lo está completando, para poder volver a preguntarle. */
     contacto: text("contacto"),
     correo: text("correo"),
