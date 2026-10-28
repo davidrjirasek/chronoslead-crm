@@ -65,6 +65,7 @@ export type TenantHost =
   | { kind: "landing" }
   | { kind: "admin" }
   | { kind: "alta" }
+  | { kind: "onboarding" }
   | { kind: "desconocido" };
 
 /**
@@ -106,6 +107,11 @@ export function resolveTenantFromHost(
   if (etiqueta === "www") return { kind: "landing" };
   if (etiqueta === "admin") return { kind: "admin" };
   if (etiqueta === "alta") return { kind: "alta" };
+  // 127 — El formulario de puesta en marcha. Va ANTES del filtro de reservados
+  // por el mismo motivo que `alta`: está en esa lista como segunda cerradura,
+  // y si solo estuviera ahí el host caería en «no existe» en vez de servir el
+  // formulario.
+  if (etiqueta === "onboarding") return { kind: "onboarding" };
   if (!SLUG_VALIDO.test(etiqueta) || SLUGS_RESERVADOS.has(etiqueta)) {
     return { kind: "desconocido" };
   }

@@ -121,16 +121,19 @@ describe("125 — el subdominio del panel de despliegue", () => {
     ).toBe("desconocido");
   });
 
-  it("«onboarding» está reservado: ahí vive el formulario de alta", () => {
-    // 127 — Mismo riesgo que `coolify`. Y se eligió `onboarding` en vez de
-    // `alta` porque `alta` YA es una puerta de la plataforma: el dueño
+  it("«onboarding» es su propia puerta, no un cliente", () => {
+    // 127 — El formulario de puesta en marcha. Se eligió `onboarding` en vez
+    // de `alta` porque `alta` YA es una puerta de la plataforma: el dueño
     // rechazó quemar un nombre que hace falta para otra cosa.
     expect(
       resolveTenantFromHost("onboarding.chronoslead.com", "chronoslead.com").kind
-    ).toBe("desconocido");
-    // Y que no se confunda con la puerta que sí existe.
+    ).toBe("onboarding");
+    // Y que no se confunda con la otra puerta.
     expect(
       resolveTenantFromHost("alta.chronoslead.com", "chronoslead.com").kind
     ).toBe("alta");
+    // Está además en la lista de reservados, como segunda cerradura: nadie
+    // puede pedir ese identificador como slug.
+    expect(SLUGS_RESERVADOS.has("onboarding")).toBe(true);
   });
 });
