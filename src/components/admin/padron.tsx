@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { Check, ChevronDown, Copy, FileText, Link2, Plus } from "lucide-react";
+import Link from "next/link";
+import { Check, ChevronDown, ClipboardList, Copy, FileText, Link2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,16 +83,27 @@ export function Padron({
               <span className="font-mono text-[12px]">{operador}</span>
             </p>
           </div>
-          <Button type="button" onClick={() => setAbierto((v) => !v)}>
-            {abierto ? (
-              "Cancelar"
-            ) : (
-              <>
-                <Plus className="mr-1.5 h-4 w-4" strokeWidth={2.2} />
-                Nuevo cliente
-              </>
-            )}
-          </Button>
+          <div className="flex items-center gap-3">
+            {/* 128 — La salida del formulario de onboarding. Va acá porque es
+                el paso 0 del alta: se mira ANTES de crear al cliente. */}
+            <Link
+              href="/admin/cuestionarios"
+              className="inline-flex h-9 items-center rounded-lg border border-border-strong px-3.5 text-sm font-medium text-text transition hover:bg-bg-hover"
+            >
+              <ClipboardList className="mr-1.5 h-4 w-4" strokeWidth={2} />
+              Cuestionarios
+            </Link>
+            <Button type="button" onClick={() => setAbierto((v) => !v)}>
+              {abierto ? (
+                "Cancelar"
+              ) : (
+                <>
+                  <Plus className="mr-1.5 h-4 w-4" strokeWidth={2.2} />
+                  Nuevo cliente
+                </>
+              )}
+            </Button>
+          </div>
         </header>
 
         {abierto && (

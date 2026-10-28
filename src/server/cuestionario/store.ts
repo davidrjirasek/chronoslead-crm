@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { SECCIONES, TOTAL_SECCIONES } from "./secciones";
@@ -113,20 +113,46 @@ export async function marcarEnviado(llave: string): Promise<void> {
     .where(eq(tabla.llave, llave));
 }
 
-/** Para el guion de lectura del operador. No hay pantalla que liste esto. */
-export async function listar(): Promise<
-  { llave: string; cliente: string; seccionActual: number; enviadoAt: Date | null; createdAt: Date }[]
-> {
-  return getDb()
+export type EnLaLista = {
+  llave: string;
+  cliente: string;
+  contacto: string | null;
+  correo: string | null;
+  seccionActual: number;
+  contestadas: number;
+  enviadoAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+/**
+ * 128 — La lista para el panel del operador y para el guion.
+ *
+ * Trae `respuestas` entero para contar las secciones CONTESTADAS, que es más
+ * honesto que `seccion_actual`: alguien puede haber avanzado dejando preguntas
+ * en blanco. Con un cuestionario por cliente eso no pesa nada; si algún día
+ * son cientos, el conteo se hace en SQL y no acá.
+ */
+export async function listar(): Promise<EnLaLista[]> {
+  const filas = await getDb()
     .select({
       llave: tabla.llave,
       cliente: tabla.cliente,
+      contacto: tabla.contacto,
+      correo: tabla.correo,
       seccionActual: tabla.seccionActual,
+      respuestas: tabla.respuestas,
       enviadoAt: tabla.enviadoAt,
       createdAt: tabla.createdAt,
+      updatedAt: tabla.updatedAt,
     })
     .from(tabla)
-    .orderBy(tabla.createdAt);
+    .orderBy(desc(tabla.updatedAt));
+
+  return filas.map(({ respuestas, ...resto }) => ({
+    ...resto,
+    contestadas: seccionesContestadas((respuestas ?? {}) as Respuestas),
+  }));
 }
 
 /** Cuántas secciones tienen al menos una respuesta escrita. */
