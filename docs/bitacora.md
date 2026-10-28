@@ -1062,12 +1062,14 @@ desplegar. Era el último lugar donde el dueño tenía que apretar botones.
 
 - Endpoint: `https://coolify.chronoslead.com/mcp` — la misma URL pública con
   HTTPS que se creó al cerrar el 8000. Sin ese paso, esto no era posible
-- Token **Deploy + Read**, deliberadamente SIN *Root*, SIN *Write* y SIN
-  *Read sensitive data*: por eso `list_env_keys` devuelve los nombres de las
-  variables y no sus valores. **65 herramientas** disponibles con ese alcance
+- Token **Read + Write + Deploy**, deliberadamente SIN *Root* y SIN
+  *Read sensitive data*. Verificado campo por campo: los valores de las
+  variables de entorno **no vienen en la respuesta** (el campo `value` está
+  ausente, no vacío) y las llaves SSH privadas tampoco (`private_key`
+  ausente; solo pública y huella)
 - **El token caduca a los 30 días** (creado el 28-oct). Cuando caduque, el
   servidor va a arrancar con `AUTH_HEADER_REJECTED` y hay que crear otro en
-  Coolify → Keys & Tokens → API tokens, con las mismas dos casillas
+  Coolify → Keys & Tokens → API tokens, con las mismas tres casillas
 
 **La trampa que costó el primer intento:** el token quedó **pegado dos veces**
 en `~/.claude.json` (100 caracteres en vez de 50, la segunda mitad idéntica a
@@ -1075,7 +1077,75 @@ la primera) y Coolify respondía `401 Unauthenticated`. Lo que lo delató fue
 probar el token contra la API REST normal (`/api/v1/version`), no contra el
 MCP: al fallar las dos, quedó claro que el problema era la credencial y no el
 endpoint. **Al pegar un secreto a ciegas con `read -s`, verificar el largo
-antes de dar por bueno el «listo».**
+antes de dar por bueno el «listo».** El guion que se usó la segunda vez
+comprueba el pegado doble, la forma y la respuesta de Coolify **antes** de
+escribir el archivo: si algo falla, no toca nada.
+
+**Dos límites del token con Write, que no son del token:**
+
+- **La API de Coolify prohíbe los ajustes del servidor.** `is_metrics_enabled`
+  devuelve `"This field is not allowed."`, y lo mismo vale para las
+  actualizaciones automáticas de seguridad. `manage_server` solo acepta
+  nombre, IP, puerto, usuario, llave, rol, proxy y tiempos. **Las métricas y
+  la seguridad del sistema operativo se encienden a mano en el panel, no hay
+  otra vía**
+- **El modo automático de Claude Code bloquea los borrados**, sin importar lo
+  que permita el token. Correcto: un borrado irreversible pasa por el dueño.
+  Para hacerlos hay que salir del modo automático
+
+### Se barrió la chatarra de Coolify (2026-10-28)
+
+Tres recursos apagados que contaban como «falla» en el tablero de Coolify sin
+ser nada. Un tablero que marca rojo permanente es un tablero que se deja de
+mirar — el mismo defecto que tenía la lista de pendientes.
+
+| Borrado | Qué era |
+|---|---|
+| app `chronoslead` | Del repo viejo `davidrjirasek/chronoslead`, rama `008-crm-piso-minimo-diseno`, creada el 18-sep. **Sin dominio**: inalcanzable. Cero volúmenes |
+| `evolution-api-myjhc…` | Pasarela de WhatsApp de prueba, 21-oct |
+| `evolution-chronoslead` | Ídem. Hoy el CRM habla directo con la API de Meta |
+
+Las dos `evolution` llevaban **tres volúmenes cada una**
+(`evolution-instances`, `postgres-data`, `evolution-redis`). Se borraron con
+sus volúmenes, con el OK explícito del dueño, porque
+`delete_unused_volumes: false` en el servidor: **los huérfanos no se limpian
+nunca solos.** Primero se informó «ninguna tiene volúmenes» y era falso —
+cierto para la app, falso para los servicios.
+
+**Comprobado en vivo:** los tres dominios en 200 después del borrado, y el
+resumen de infraestructura con **cero recursos en falla por primera vez**.
+
+**Lo que NO se tocó, y por qué:**
+
+- **`n8n`** — corriendo y sano, es del dueño y está en uso
+- **`chronos-lead-db`** — se sospechaba que era la base de la app vieja. No lo
+  era: adentro tiene la base **`otra_dimension`**, de otro proyecto del dueño,
+  creada el 17-sep. Corre sana, `is_public: false`, y **no tiene ninguna copia
+  de seguridad programada.** Decisión pendiente del dueño: si va a seguir,
+  merece el mismo plan de 6 horas + R2 que la de ChronosLead
+
+### Qué dice el servidor de sí mismo (2026-10-28)
+
+Leído con `get_server`, y corrige dos cosas que esta bitácora dejó sonando
+peor y mejor de lo que son:
+
+```
+41 actualizaciones pendientes · DE SEGURIDAD: 0 · ¿pide reinicio?: NO
+actualizaciones automáticas de seguridad: APAGADAS   ← el hueco real
+disco: vigilado, aviso al 80%, revisión diaria 23:00
+métricas (CPU/RAM/disco): APAGADAS  → no se pueden leer por API
+Traefik 3.6.25 · hay 3.7.16 (actualización menor)
+delete_unused_volumes: false · force_docker_cleanup: true al 80%
+wildcard_domain: VACÍO
+```
+
+- **Las 41 actualizaciones no eran urgentes**: ninguna de seguridad, ninguna
+  pide reinicio. Lo que sí importa es que **las automáticas están apagadas**:
+  cuando salga una que cuente, nadie la va a aplicar
+- **El disco no estaba a ciegas**: ya hay aviso al 80% y revisión diaria. Las
+  métricas apagadas impiden *leer* el número, no vigilarlo
+- **Traefik enruta todos los dominios de los clientes.** La subida a 3.7 va
+  después de dar de alta a los clientes nuevos, no antes
 
 Dos detalles del camino, para la próxima:
 
@@ -1092,6 +1162,14 @@ Visto de paso en la configuración del servidor en Coolify. **Si funciona como
 parece, eliminaría el paso 2 del manual de alta** —agregar a mano el dominio
 de cada cliente—, que es la trampa que más muerde en cada alta. Sin verificar.
 Es la mejora operativa más grande detectada hasta ahora.
+
+> **Al 28-oct el campo está VACÍO** (`wildcard_domain: null`, leído por el
+> MCP). Y la esperanza de arriba está **sin comprobar**: hay que confirmar si
+> el campo hace enrutado comodín de verdad —que Traefik acepte cualquier
+> subdominio— o si solo **autogenera un dominio por defecto al crear un
+> recurso nuevo**, que no resolvería nada. Son dos cosas muy distintas y la
+> nota de arriba supone la buena. **No construir el alta sobre esto hasta
+> probarlo.**
 
 ### Pendiente
 
