@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { resolveTenantFromHost } from "@/lib/tenant/host";
@@ -224,9 +224,37 @@ export async function altaDeCliente(
   const { token } = await crearEnlace({ organizationId: orgId, userId, motivo: "alta" });
   const enlace = urlDeEnlace(slug, baseDomain(), token, process.env.APP_BASE_URL ?? "");
 
+  /**
+   * 133 — Si la cuenta de soporte se creó NUEVA, también necesita su enlace.
+   *
+   * El alta la creaba con `password: null` y no le generaba ninguno: quedaba
+   * una cuenta sin contraseña y sin forma de ponerle una. El operador se
+   * enteraba al intentar entrar y que lo devolviera al login sin decir nada.
+   * Pasó en el alta de The Student Store, el primer cliente real.
+   *
+   * Si el correo de soporte YA era usuario, no se toca: tiene su contraseña y
+   * generarle un enlace le invalidaría la que usa en los demás clientes.
+   */
+  const enlaceSoporte =
+    correoSoporte && !soporte[0]
+      ? urlDeEnlace(
+          slug,
+          baseDomain(),
+          (await crearEnlace({ organizationId: orgId, userId: soporteId!, motivo: "alta" }))
+            .token,
+          process.env.APP_BASE_URL ?? ""
+        )
+      : null;
+
   registrar(guardia.autor, "alta", orgId, slug);
   revalidatePath("/admin");
-  return { error: null, aviso: enlace };
+  // Los dos enlaces en el mismo aviso: el de soporte es para el operador y no
+  // se le manda al cliente. Van separados por una línea para que no se
+  // confundan al copiar.
+  return {
+    error: null,
+    aviso: enlaceSoporte ? `${enlace}\n\nSOPORTE (${correoSoporte}): ${enlaceSoporte}` : enlace,
+  };
 }
 
 const idSchema = z.object({ organizationId: z.string().trim().min(1) });
@@ -333,6 +361,16 @@ export async function enlaceDeAcceso(
   const datos = idSchema.safeParse({ organizationId: formData.get("organizationId") });
   if (!datos.success) return { error: "Cliente no indicado.", aviso: null };
 
+  /**
+   * 133 — A QUIÉN se le genera, explícito.
+   *
+   * Antes tomaba `.limit(1)` sobre los miembros sin filtrar por rol: devolvía
+   * al dueño o al administrador de soporte según cuál saliera primero de la
+   * base. Y como crear un enlace invalida el anterior de esa persona, se podía
+   * romper el acceso del cliente creyendo que uno se lo generaba a sí mismo.
+   */
+  const rol = formData.get("para") === "soporte" ? "admin" : "owner";
+
   const db = getDb();
   const filas = await db
     .select({
@@ -344,10 +382,23 @@ export async function enlaceDeAcceso(
       schema.organization,
       eq(schema.organization.id, schema.member.organizationId)
     )
-    .where(eq(schema.member.organizationId, datos.data.organizationId))
+    .where(
+      and(
+        eq(schema.member.organizationId, datos.data.organizationId),
+        eq(schema.member.role, rol)
+      )
+    )
     .limit(1);
   const fila = filas[0];
-  if (!fila) return { error: "Ese cliente no tiene todavía ningún usuario.", aviso: null };
+  if (!fila) {
+    return {
+      error:
+        rol === "admin"
+          ? "Este cliente no tiene cuenta de soporte. Se crea en el alta."
+          : "Ese cliente no tiene todavía ningún usuario.",
+      aviso: null,
+    };
+  }
 
   const { token } = await crearEnlace({
     organizationId: datos.data.organizationId,
@@ -361,6 +412,10 @@ export async function enlaceDeAcceso(
     process.env.APP_BASE_URL ?? ""
   );
 
-  registrar(guardia.autor, "enlace de acceso", datos.data.organizationId);
+  registrar(
+    guardia.autor,
+    `enlace de acceso (${rol === "admin" ? "soporte" : "dueño"})`,
+    datos.data.organizationId
+  );
   return { error: null, aviso: enlace };
 }
