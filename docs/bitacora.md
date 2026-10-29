@@ -1279,6 +1279,81 @@ Probado en vivo: contesta «Sí, soy inteligencia artificial».
 > juez. Prueba comportamiento. Para verificar precios o encuadre, hay que
 > escribirle por WhatsApp.
 
+### Decisiones de producto del 2026-10-29
+
+Salieron de leer los briefs de Colegio Cerritos y ZA Group. **Varias las
+corrigió el dueño y la suya era mejor.**
+
+**Una oportunidad por contacto se queda como está.** El esquema tiene
+`uniqueIndex("lead_contact_uq").on(contactId)`, y los dos briefs piden lo
+contrario: una familia con varios hijos, un cliente que compra propiedad y
+después climatización. La primera propuesta fue cambiar el modelo de datos.
+**El dueño propuso algo mejor:** una familia que inscribe tres hijos no son
+tres conversiones, es **una familia que convirtió con tres unidades**. Separar
+las dos medidas es más correcto, no solo más barato:
+
+```
+conversión   8 familias de 30 entrevistas   ← la oportunidad
+volumen      10 hijos inscriptos            ← un campo de la ficha
+```
+
+Contar 10 conversiones daría 33% de cierre en vez de 27%: un número que miente.
+
+**No se cambia cómo se cuentan las ventas.** Resultados usa
+`selectDistinctOn(leadId)`: toma el último desenlace de cada oportunidad en el
+período, así que una recompra cuenta una vez. Cambiarlo movería el significado
+de un número que el dueño ya mira, para todos los clientes. Con el modelo de
+arriba no hace falta.
+
+> Y aunque se quisiera: «cuántas» se puede (un cruce más en la consulta),
+> «cuánto» no. El monto sale del lead ACTUAL y no hay histórico por evento;
+> contar dos ventas duplicaría esa cifra.
+
+**Varios pipelines: evaluado y pospuesto.** No existe el concepto; las etapas
+cuelgan de la organización. Pasar a `organización → pipelines → etapas` toca
+el esquema, el tablero, Resultados y el agente: uno o dos días con riesgo
+sobre el embudo que los clientes ya usan. Forma pedida por el dueño para
+cuando se haga: **nace con uno, y se pueden crear más con nombre propio.**
+
+**Se esquiva con instancias separadas por unidad de negocio**, que además dan
+embudo, agente y número propios:
+
+| | |
+|---|---|
+| Colegio Cerritos | Una instancia. Extracurriculares y Campus como dato de la ficha |
+| **EDI Cerritos** | **Aparte.** Tiene su propio número, sus tarifas y inscripciones todo el año |
+| ZA Group | **Una sola**: su brief exige un número único para las tres unidades, y un número pertenece a una instancia |
+
+El colegio deriva a EDI por conocimiento, igual que Fourdy deriva al número de
+clientes. No hay que construir nada.
+
+**Los briefs de los clientes reemplazan al cuestionario.** Los dos traen
+tarifas, cronogramas, reglas de conversación y respuestas modelo: son el
+cuestionario ya contestado, y mejor. Mandárselo sería pedirles lo que ya
+dieron.
+
+### La atribución, encendida (2026-10-29)
+
+`ATRIBUCION=on` en Coolify y desplegado. Antes estaba apagada **sin que nadie
+lo supiera**, y el dueño iba a lanzar anuncios al día siguiente.
+
+Dos cosas distintas que conviene no confundir:
+
+| | Estado |
+|---|---|
+| **Ver de qué anuncio llegó cada persona** (la tarjeta en la bandeja) | Siempre funcionó. No depende de la bandera (018) |
+| **Reportarle a Meta quién convirtió** | Era lo que estaba apagado |
+
+Sin lo segundo, Meta optimiza hacia lo único que ve —que alguien abra el
+chat— y entrega el público más barato de hacer escribir, que rara vez compra.
+
+**Falta un dato y no se pudo obtener:** el ID del dataset. El Administrador de
+eventos de la cuenta muestra solo un origen de tipo app; el dataset de
+mensajería es el de la cuenta de WhatsApp y se obtiene con
+`POST {waba_id}/dataset`, que necesita el token de WhatsApp — cifrado en
+producción. **WABA de producción: 3979964855646808.** Hasta que se pegue el id
+en Ajustes → Anuncios, el interruptor está encendido pero no reporta nada.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
