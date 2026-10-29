@@ -1354,6 +1354,55 @@ mensajería es el de la cuenta de WhatsApp y se obtiene con
 producción. **WABA de producción: 3979964855646808.** Hasta que se pegue el id
 en Ajustes → Anuncios, el interruptor está encendido pero no reporta nada.
 
+### El primer cliente real: The Student Store (2026-10-29)
+
+`the-student-store.chronoslead.com`. Alta hecha por el dueño desde el panel,
+con el subdominio agregado en Coolify por el MCP — **el paso 2 sin que nadie
+abriera Coolify**, por primera vez.
+
+**Verificado entrando de verdad:** el operador entró con su cuenta de soporte
+y vio el CRM **vacío** de ese cliente, no el suyo. Es el aislamiento
+funcionando fuera del guion de pruebas, con una persona real.
+
+### Dos fallos que solo aparecen con un cliente real (2026-10-29, specs 133 y 134)
+
+Ninguno dio error. El alta dijo que todo salió bien, las 1341 pruebas también,
+y se descubrieron cuando una persona intentó entrar.
+
+**1 · La cuenta de soporte nacía sin forma de entrar.** El alta la creaba con
+`password: null` y solo le generaba enlace al dueño: una cuenta sin contraseña
+y sin manera de ponerle una. El operador lo vio porque la pantalla lo devolvía
+al login **sin decir nada** — correcto por seguridad (decir «existe pero no sos
+miembro» confirmaría que el cliente existe), pero indistinguible de una
+contraseña mal escrita.
+
+**2 · «Generar enlace» era una ruleta.** Tomaba `.limit(1)` sobre los miembros
+sin filtrar por rol: devolvía al dueño o al soporte según cuál saliera primero
+de la base. Y como crear un enlace **invalida el anterior de esa persona**, se
+podía dejar afuera al cliente creyendo que uno se lo generaba a sí mismo.
+Ahora son dos botones y cada uno dice a quién.
+
+**3 · La pantalla no decía de quién era la cuenta** (134). Decía «elige una
+contraseña» y el nombre de la organización, nada más. Lo preguntó el dueño:
+«fijo contraseña, ¿pero para qué usuario?». Importa más para el cliente que
+para el operador: una empresa con varias personas no sabe cuál de sus correos
+quedó como dueño.
+
+> **El patrón, por tercer día seguido:** lo que el gate no ve está en las
+> fronteras —servidor/navegador, alta/acceso, sistema/persona—. Las tres veces
+> apareció usándolo, no compilando.
+
+### Las pruebas no se corren junto al `build` (2026-10-29)
+
+Dos veces en el día el gate dio rojo sin que nada estuviera roto: 5 pruebas
+fallando por tiempo, con el `build` compitiendo por la máquina. Corridas solas,
+1341 de 1341. El `build` tardó 2,4 minutos en vez de 80 segundos — la máquina
+estaba saturada.
+
+**Un gate que miente en rojo es tan dañino como uno que miente en verde:** la
+próxima vez uno le cree menos. Corré `test` y `build` por separado, y el
+aislamiento con el servidor levantado y nada más encima.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
