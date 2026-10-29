@@ -66,6 +66,34 @@ export function AdsClient() {
   const [stages, setStages] = useState<Stage[]>([]);
   const [activity, setActivity] = useState<ActivityRow[] | null>(null);
   const [datasetId, setDatasetId] = useState("");
+  const [buscandoDataset, setBuscandoDataset] = useState(false);
+  const [avisoDataset, setAvisoDataset] = useState<string | null>(null);
+
+  /**
+   * 135 — Pide el conjunto de datos y rellena el campo. NO guarda: guardar lo
+   * decide la persona, como con cualquier otro campo de esta pantalla.
+   */
+  async function obtenerDataset() {
+    setBuscandoDataset(true);
+    setAvisoDataset(null);
+    try {
+      const res = await fetch("/api/settings/capi/dataset", { method: "POST" });
+      const cuerpo = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAvisoDataset(
+          cuerpo?.error?.message ??
+            "No se pudo obtener el conjunto de datos. Podés pegar el ID a mano."
+        );
+        return;
+      }
+      setDatasetId(String(cuerpo.datasetId ?? ""));
+    } catch {
+      setAvisoDataset("No se pudo contactar al servidor. Probá de nuevo.");
+    } finally {
+      setBuscandoDataset(false);
+    }
+  }
+
   const [token, setToken] = useState("");
   const [qualifiedStageId, setQualifiedStageId] = useState("");
   const [saving, setSaving] = useState(false);
@@ -166,16 +194,33 @@ export function AdsClient() {
 
           <div className="space-y-1.5">
             <Label htmlFor="capi-dataset">ID del dataset</Label>
-            <Input
-              id="capi-dataset"
-              value={datasetId}
-              onChange={(e) => setDatasetId(e.target.value)}
-              placeholder="1708105527110154"
-            />
+            <div className="flex items-center gap-2">
+              <Input
+                id="capi-dataset"
+                value={datasetId}
+                onChange={(e) => setDatasetId(e.target.value)}
+                placeholder="1708105527110154"
+              />
+              {/* 135 — Este número no se puede conseguir por la interfaz de
+                  Meta: el Administrador de eventos muestra píxeles web, y el
+                  de WhatsApp puede no existir todavía. El CRM lo pide con el
+                  token que el negocio ya conectó. */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void obtenerDataset()}
+                disabled={buscandoDataset}
+              >
+                {buscandoDataset ? "Buscando…" : "Obtener el mío"}
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground">
-              Administrador de eventos de Meta → tu conjunto de datos. Suele ser
-              el de tu propia cuenta de WhatsApp.
+              Es el conjunto de datos de tu propia cuenta de WhatsApp. Si ya la
+              conectaste, «Obtener el mío» lo trae solo.
             </p>
+            {avisoDataset ? (
+              <p className="text-xs text-destructive">{avisoDataset}</p>
+            ) : null}
           </div>
 
           <div className="space-y-1.5">
