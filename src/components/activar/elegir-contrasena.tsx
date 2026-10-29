@@ -20,10 +20,13 @@ const MIN = 8;
 export function ElegirContrasena({
   token,
   motivo,
+  correo,
   nombreOrganizacion,
 }: {
   token: string;
   motivo: "alta" | "recuperacion";
+  /** 134 — De quién es la cuenta. Sin esto, quien abre el enlace no lo sabe. */
+  correo: string;
   nombreOrganizacion: string;
 }) {
   const router = useRouter();
@@ -73,6 +76,16 @@ export function ElegirContrasena({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* 134 — De QUIÉN es la cuenta, antes del formulario. Quien abre el
+            enlace no tenía forma de saberlo: una empresa con varias personas
+            no sabe cuál de sus correos quedó como dueño, y el operador que se
+            genera uno para soporte no ve si acertó de cliente. */}
+        <p className="rounded-lg border bg-bg-subtle px-3.5 py-2.5 text-sm text-text-2">
+          Vas a elegir la contraseña de{" "}
+          <span className="font-mono font-semibold text-foreground">{correo}</span>
+          <span className="text-text-3"> · {nombreOrganizacion}</span>
+        </p>
+
         <p className="text-sm text-text-3">
           {motivo === "alta"
             ? "Elige la contraseña con la que vas a entrar. Solo la sabrás tú: ni siquiera quien te dio de alta puede verla."

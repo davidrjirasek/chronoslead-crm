@@ -31,6 +31,7 @@ export default async function ActivarPage({
     <ElegirContrasena
       token={token}
       motivo={enlace.motivo}
+      correo={enlace.correo}
       nombreOrganizacion={enlace.nombreOrganizacion}
     />
   );

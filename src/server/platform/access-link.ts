@@ -65,6 +65,13 @@ export type EnlaceValido = {
   userId: string;
   motivo: MotivoEnlace;
   nombreOrganizacion: string;
+  /**
+   * 134 — De QUIÉN es la cuenta. La pantalla de elegir contraseña no lo decía,
+   * y quien abre el enlace no tiene forma de saberlo: una empresa con varias
+   * personas no sabe cuál de sus correos quedó como dueño, y el operador que
+   * genera uno para soporte tampoco ve si acertó.
+   */
+  correo: string;
 };
 
 /**
@@ -87,6 +94,7 @@ export async function validarEnlace(
       motivo: schema.accessLink.motivo,
       expiresAt: schema.accessLink.expiresAt,
       nombreOrganizacion: schema.organization.name,
+      correo: schema.user.email,
       paidThrough: schema.organization.paidThrough,
       suspendedAt: schema.organization.suspendedAt,
       suspendedReason: schema.organization.suspendedReason,
@@ -96,6 +104,7 @@ export async function validarEnlace(
       schema.organization,
       eq(schema.organization.id, schema.accessLink.organizationId)
     )
+    .innerJoin(schema.user, eq(schema.user.id, schema.accessLink.userId))
     .where(
       and(
         eq(schema.accessLink.tokenHash, hashDe(token)),
@@ -118,6 +127,7 @@ export async function validarEnlace(
     userId: fila.userId,
     motivo: fila.motivo,
     nombreOrganizacion: fila.nombreOrganizacion,
+    correo: fila.correo,
   };
 }
 
