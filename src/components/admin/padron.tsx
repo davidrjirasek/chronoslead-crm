@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
+import { Salir } from "@/components/admin/salir";
 import { Check, ChevronDown, ClipboardList, Copy, FileText, Link2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,6 +94,7 @@ export function Padron({
               <ClipboardList className="mr-1.5 h-4 w-4" strokeWidth={2} />
               Cuestionarios
             </Link>
+            <Salir />
             <Button type="button" onClick={() => setAbierto((v) => !v)}>
               {abierto ? (
                 "Cancelar"

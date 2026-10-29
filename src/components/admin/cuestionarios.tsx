@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Salir } from "@/components/admin/salir";
 import { totalDe } from "@/server/cuestionario/secciones";
 import type { EnLaLista } from "@/server/cuestionario/store";
 
@@ -20,12 +21,12 @@ export function ListaDeCuestionarios({ filas }: { filas: EnLaLista[] }) {
             <span className="font-mono">onboarding.chronoslead.com</span>
           </p>
         </div>
-        <Link
-          href="/"
-          className="text-[13.5px] font-medium text-primary hover:underline"
-        >
-          ← Clientes
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/" className="text-[13.5px] font-medium text-primary hover:underline">
+            ← Clientes
+          </Link>
+          <Salir />
+        </div>
       </header>
 
       {filas.length === 0 ? (
