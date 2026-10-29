@@ -1364,6 +1364,13 @@ abriera Coolify**, por primera vez.
 y vio el CRM **vacío** de ese cliente, no el suyo. Es el aislamiento
 funcionando fuera del guion de pruebas, con una persona real.
 
+**Hasta dónde llegó el alta, para no leerlo de más:** están los pasos 0 a 4
+—cuestionario enviado, organización creada, dominio en Coolify, enlace
+entregado y primera entrada—. **La instancia existe; el cliente todavía no
+atiende a nadie.** Faltan la llave de IA, el agente, su conocimiento, la
+agenda, el conector de reunión, los canales, el Laboratorio y encenderlo:
+ocho de los doce pasos.
+
 ### Dos fallos que solo aparecen con un cliente real (2026-10-29, specs 133 y 134)
 
 Ninguno dio error. El alta dijo que todo salió bien, las 1341 pruebas también,
