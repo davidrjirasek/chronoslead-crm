@@ -446,15 +446,29 @@ function Acciones({ cliente }: { cliente: FilaDelPadron }) {
 
         <Bloque
           titulo="Enlace de acceso"
-          ayuda="Para que el dueño elija una contraseña nueva. Sirve una vez, caduca a los 7 días e invalida el anterior."
+          ayuda="Para elegir una contraseña nueva. Sirve una vez, caduca a los 7 días e invalida el anterior de esa persona. Por eso hay que elegir para quién."
           accion={
-            <form action={accionEnlace}>
-              <input type="hidden" name="organizationId" value={cliente.id} />
-              <Button type="submit" size="sm" variant="outline" disabled={enlaceEnCurso}>
-                <Link2 className="mr-1.5 h-4 w-4" strokeWidth={2} />
-                {enlaceEnCurso ? "Generando…" : "Generar enlace"}
-              </Button>
-            </form>
+            /* 133 — Dos botones, no uno. Antes generaba para «el primer
+               miembro» y podía romperle el acceso al cliente creyendo que uno
+               se lo generaba a sí mismo. */
+            <div className="flex items-center gap-2">
+              <form action={accionEnlace}>
+                <input type="hidden" name="organizationId" value={cliente.id} />
+                <input type="hidden" name="para" value="dueno" />
+                <Button type="submit" size="sm" variant="outline" disabled={enlaceEnCurso}>
+                  <Link2 className="mr-1.5 h-4 w-4" strokeWidth={2} />
+                  {enlaceEnCurso ? "Generando…" : "Para el dueño"}
+                </Button>
+              </form>
+              <form action={accionEnlace}>
+                <input type="hidden" name="organizationId" value={cliente.id} />
+                <input type="hidden" name="para" value="soporte" />
+                <Button type="submit" size="sm" variant="outline" disabled={enlaceEnCurso}>
+                  <Link2 className="mr-1.5 h-4 w-4" strokeWidth={2} />
+                  Para soporte
+                </Button>
+              </form>
+            </div>
           }
         >
           {enlace.aviso ? (
