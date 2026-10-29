@@ -1403,6 +1403,37 @@ estaba saturada.
 próxima vez uno le cree menos. Corré `test` y `build` por separado, y el
 aislamiento con el servidor levantado y nada más encima.
 
+### La atribución, completa (2026-10-29, spec 135)
+
+La cadena estaba rota en tres puntos y cada uno escondía al siguiente:
+
+1. **El interruptor estaba apagado** y nadie lo sabía, con anuncios por lanzar
+2. **El ID del conjunto de datos no se podía conseguir.** Buscado en la cuenta
+   real del dueño: el Administrador de eventos muestra píxeles web, y el
+   conector de anuncios devolvió dos píxeles viejos de otros proyectos. El
+   conjunto de WhatsApp **no existía todavía**
+3. El campo quedaba vacío, así que el interruptor encendido no reportaba nada
+
+**La solución fue sacarle el trabajo a la persona.** `POST {waba_id}/dataset`
+es idempotente y el CRM ya tiene las dos piezas —`waba_id` y token— desde que
+el negocio conectó WhatsApp. Un botón, y el campo se llena solo.
+
+**No es Embedded Signup**: ninguna ventana de Meta, ninguna cuenta ajena, y
+**no hace falta el estatus de Tech Provider**. Lo preguntó el dueño y vale
+dejarlo escrito, porque las dos cosas se parecen de lejos.
+
+**El riesgo que la spec 016 dejaba abierto no se dio:** esa spec asume permiso
+para PUBLICAR en el dataset, y crearlo podía pedir otro. Probado en vivo con la
+cuenta real: **el token sí alcanza.** Vale para todos los clientes.
+
+**Un fallo encontrado leyendo la salida de una prueba que pasaba.** La prueba
+comprobaba que el token no viajara en la RESPUESTA, y pasaba. Al lado, en la
+consola, el mensaje de error de Meta lo imprimía entero en el registro —
+prohibido por el Principio I. Ahora se tapa dejando los últimos cuatro.
+
+> **«En verde» no es «está bien».** Mirar solo el contador de pruebas habría
+> dejado pasar un secreto a los registros.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
