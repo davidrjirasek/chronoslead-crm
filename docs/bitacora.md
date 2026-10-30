@@ -1484,6 +1484,61 @@ grupo —en Cerritos, de 4.º en adelante, donde está el foco 2027 con BTI y
 turno tarde— y el otro se deriva a una persona. Sin capacidad perdida y sin
 prometer horarios que no existen.
 
+### La agenda por recurso ya existe — en un paquete de Kevin (2026-10-29)
+
+Lo que 130 evaluó en «dos o tres días» **ya está construido**, por el autor del
+código base, sobre una versión casi hermana de la nuestra.
+
+**Dónde:** `vocero-verticales-1.3.zip`, el arnés que Kevin usó en un webinar
+para levantar barbería, spa, comida e inmobiliaria. Lo compartió el dueño el
+29-oct. **El original está en `~/Downloads/`: conviene moverlo a
+`~/Documents/ChronosLead/`, porque Descargas se limpia.**
+
+**Qué trae el CRM de ese paquete, que el nuestro no:**
+
+```
+agenda_resource           el barbero, la cabina — o el director de admisiones
+agenda_service            servicio con duración, precio y descripción
+agenda_resource_service   qué recurso ofrece qué servicio
+booking.resource_id       la cita apunta a un recurso
+unique(org, coalesce(resource_id,''), scheduled_at)
+```
+
+Esa última restricción es exactamente el problema de Cerritos: **una cita por
+recurso y horario**, así que una directora ocupada el martes a las 10 no tacha
+el martes a las 10 del otro director.
+
+Y la puerta del cerebro ya lo contempla:
+`GET /api/bot/availability?…&service=&resource=`, con sus errores propios
+(`service_required`, `unknown_resource`, `resource_not_offering_service`).
+
+**No está publicado.** Se revisaron las ~110 ramas del repositorio público de
+Kevin: **cero coincidencias** de `agenda_resource`. Solo vive en ese zip.
+
+| | |
+|---|---|
+| Versión del CRM del paquete | **1.5.0** |
+| La nuestra | **1.6.0** |
+| `upstream/main` | 2.6.1 — y **115 commits** que no tenemos |
+
+Ser casi hermanas es lo que convierte «dos o tres días» en algo mucho menor.
+
+**Licencia MIT, y permiso explícito.** El dueño habló con Kevin el 29-oct: se
+puede usar y adaptar. Igual corresponde conservar su atribución, como ya hace
+el resto del fork.
+
+**Diferencia de arquitectura a tener presente:** en los verticales el agente es
+un servicio FastAPI aparte («Nea») con su propia base, y habla con el CRM por
+`/api/bot/*`. Nuestro agente es in-process. Pero **las tablas de agenda viven
+en el CRM**, que es la parte que interesa.
+
+**Siguiente paso, antes de tocar nada:** medir qué archivos hay que traer y qué
+conflictos genera contra nuestra 1.6.0. Una hora, y deja decidir con números.
+
+**Falta revisar del mismo paquete:** el inventario de propiedades con foto de
+la inmobiliaria, que es el banco de imágenes que piden Cerritos, The Student
+Store y Castel Muebles.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
