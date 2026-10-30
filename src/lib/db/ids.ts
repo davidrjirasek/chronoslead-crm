@@ -16,6 +16,7 @@ const prefixes = {
   agentProfile: "agp",
   accessLink: "alk",
   payment: "pay",
+  teamAudit: "tau",
   kbEntry: "kb",
   template: "tpl",
   testRun: "run",

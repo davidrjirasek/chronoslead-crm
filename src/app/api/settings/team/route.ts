@@ -6,6 +6,8 @@ import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
 import { canConfigure } from "@/lib/auth/roles";
+import { agregarAlEquipo } from "@/server/equipo/gobierno";
+import { isCloud } from "@/server/tenant/edition";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +55,28 @@ export const POST = withAuth(async (session, req: Request) => {
   }
   const body = await parseBody(req, createSchema);
   if (!body.ok) return body.response;
+
+  /**
+   * 136 — En plataforma el alta es UNIFICADA y la gobierna la regla de rangos.
+   *
+   * Lo de abajo siempre llama a `signUpEmail`, así que con un correo que ya
+   * tiene cuenta responde 409: un cliente con dos empresas no podía poner a su
+   * empleado en la segunda. Acá, si la persona ya existe, se crea solo la
+   * membresía y entra con la contraseña que ya usa.
+   *
+   * Sin `EDITION=cloud` sigue el camino de upstream, intacto.
+   */
+  if (isCloud()) {
+    const r = await agregarAlEquipo(session, {
+      ...body.data,
+      rol: body.data.rol ?? "member",
+    });
+    if (!r.ok) return apiError(r.estado, r.codigo, r.mensaje);
+    return Response.json(
+      { ok: true, creada: r.creada, email: r.email },
+      { status: 201 }
+    );
+  }
 
   const auth = getAuth();
   let newUserId: string;

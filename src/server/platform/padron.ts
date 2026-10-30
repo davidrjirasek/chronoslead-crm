@@ -303,3 +303,51 @@ export function registrar(
       (detalle ? ` · ${detalle}` : "")
   );
 }
+
+/**
+ * 136 — Los miembros de cada organización, para que el superadmin elija A QUIÉN
+ * le genera el enlace de acceso.
+ *
+ * Antes `enlaceDeAcceso` filtraba por rol y hacía `.limit(1)` SIN `ORDER BY`:
+ * con dos administradores devolvía uno indeterminado. Y como generar un enlace
+ * invalida el anterior de esa persona, se le podía romper el acceso a un
+ * compañero creyendo que uno se lo generaba a sí mismo.
+ *
+ * Va aparte de `listarPadron()` a propósito: aquella consulta ya carga cinco
+ * subconsultas literales y sumarle un join de miembros la volvería frágil por
+ * una lista que se lee de a una organización por vez.
+ */
+export type MiembroDelPadron = {
+  memberId: string;
+  nombre: string;
+  correo: string;
+  rol: string;
+};
+
+export async function miembrosDeCartera(): Promise<
+  Record<string, MiembroDelPadron[]>
+> {
+  const db = getDb();
+  const filas = await db
+    .select({
+      organizationId: schema.member.organizationId,
+      memberId: schema.member.id,
+      rol: schema.member.role,
+      nombre: schema.user.name,
+      correo: schema.user.email,
+    })
+    .from(schema.member)
+    .innerJoin(schema.user, eq(schema.member.userId, schema.user.id))
+    .orderBy(schema.member.organizationId, schema.user.email);
+
+  const porOrg: Record<string, MiembroDelPadron[]> = {};
+  for (const f of filas) {
+    (porOrg[f.organizationId] ??= []).push({
+      memberId: f.memberId,
+      nombre: f.nombre,
+      correo: f.correo,
+      rol: f.rol,
+    });
+  }
+  return porOrg;
+}

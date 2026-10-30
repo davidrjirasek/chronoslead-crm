@@ -1511,3 +1511,52 @@ export const payment = pgTable(
     index("payment_org_cobrado_idx").on(t.organizationId, t.cobradoEn),
   ]
 );
+
+/* ============================================================
+ * 136 — Bitácora del equipo
+ * ============================================================ */
+
+/**
+ * Quién hizo qué sobre quién, dentro de una organización.
+ *
+ * La constitución prohíbe el correo transaccional, así que no hay forma de
+ * AVISARLE a nadie que lo quitaron del equipo o que le generaron un enlace. Sin
+ * aviso, la transparencia es la única defensa: esto se muestra en Ajustes →
+ * Equipo, para que el cliente vea el movimiento aunque nadie se lo notifique.
+ *
+ * Reemplaza al `registrar()` del panel de superadmin, que era un `console.info`
+ * sin tabla: el único registro de quién generó qué enlace vivía en los logs del
+ * contenedor, que rotan y que el cliente no puede consultar.
+ *
+ * `actorId` es null cuando actuó un superadmin de la plataforma: no es miembro
+ * de la organización, y su correo queda en `actorEtiqueta`.
+ */
+export const teamAudit = pgTable(
+  "team_audit",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    /** Quién actuó. Null ⇒ superadmin de plataforma. */
+    actorId: text("actor_id").references(() => user.id, { onDelete: "set null" }),
+    /** Nombre o correo del actor AL MOMENTO del hecho; sobrevive a su baja. */
+    actorEtiqueta: text("actor_etiqueta").notNull(),
+    accion: text("accion", {
+      enum: ["alta", "agregado", "baja", "rol", "enlace"],
+    }).notNull(),
+    /** Sobre quién. Null si la persona fue borrada después. */
+    objetivoId: text("objetivo_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    /** Correo del objetivo al momento del hecho; sobrevive a su baja. */
+    objetivoEtiqueta: text("objetivo_etiqueta").notNull(),
+    /** Contexto legible: el rol anterior y el nuevo, por ejemplo. */
+    detalle: text("detalle"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    // La bitácora de un cliente, del movimiento más reciente al más viejo.
+    index("team_audit_org_fecha_idx").on(t.organizationId, t.createdAt),
+  ]
+);

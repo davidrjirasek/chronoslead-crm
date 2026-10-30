@@ -73,16 +73,22 @@ describe("el alta crea los dos usuarios", () => {
   });
 
   it("y el soporte como administrador, no como propietario", () => {
-    expect(fuente).toMatch(/userId: soporteId,\s*\n\s*role: "admin"/);
+    // 136 — Ahora son VARIOS y los arma `sumarSoporte`, que fija el rol.
+    const soporte = readFileSync(
+      path.join(RAIZ, "src", "server", "equipo", "soporte.ts"),
+      "utf8"
+    );
+    expect(soporte).toMatch(/role: "admin"/);
+    expect(soporte).not.toMatch(/role: "owner"/);
   });
 
   it("los dos en la MISMA transacción: un alta a medias no sirve", () => {
     const tx = fuente.slice(
       fuente.indexOf("await db.transaction"),
-      fuente.indexOf("const { token } = await crearEnlace")
+      fuente.indexOf("const avisoDueno")
     );
     expect(tx).toContain('role: "owner"');
-    expect(tx).toContain('role: "admin"');
+    expect(tx).toContain("sumarSoporte(tx, orgId, correosSoporte)");
   });
 
   it("el correo de soporte es opcional en el código", () => {
@@ -91,8 +97,9 @@ describe("el alta crea los dos usuarios", () => {
     expect(fuente).toMatch(/correoSoporte:[\s\S]{0,200}\.optional\(\)/);
   });
 
-  it("y no puede ser el mismo que el del dueño", () => {
-    expect(fuente).toContain("correoSoporte === correo");
+  it("y ninguno puede ser el mismo que el del dueño", () => {
+    // 136 — Con varios, la comprobación es sobre la lista entera.
+    expect(fuente).toContain("correosSoporte.includes(correo)");
   });
 });
 
