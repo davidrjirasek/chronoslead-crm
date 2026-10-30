@@ -84,8 +84,8 @@ describe("el alta no reparte llaves de más (136)", () => {
   });
 
   it("y si ya tenía cuenta, el panel lo dice en vez de dar un enlace", () => {
-    expect(acciones).toContain("YA TIENE CUENTA");
-    expect(acciones).toContain("con su contraseña de siempre");
+    expect(acciones).toContain("ya tiene cuenta. Entra en");
+    expect(acciones).toContain("No hay enlace que mandar.");
   });
 });
 
@@ -118,5 +118,39 @@ describe("soporte de la agencia (136)", () => {
   it("el panel ofrece el bloque, porque desde el cliente no se puede", () => {
     expect(panel).toContain("Soporte de la agencia");
     expect(panel).toContain('name="correos"');
+  });
+});
+
+/**
+ * 136 — Los dos fallos que aparecieron creando los siete clientes reales.
+ *
+ * Ninguno lo agarró el gate: no había un solo test que ejercitara la validación
+ * del alta ni la forma del resultado. Son el mismo tipo de hueco que la 133.
+ */
+describe("el alta, probada contra sus dos fallos en producción (136)", () => {
+  it("el esquema NO valida el campo de soporte como un solo correo", () => {
+    // Tenía `.email()` ahí: pegar los cuatro correos del equipo daba «le falta
+    // el @». El campo acepta una lista; validarla es trabajo de
+    // primerCorreoInvalido, que además dice CUÁL está mal.
+    const campo = acciones.slice(
+      acciones.indexOf("correoSoporte: z"),
+      acciones.indexOf("correo: z")
+    );
+    expect(campo).not.toContain(".email(");
+  });
+
+  it("devuelve un mensaje por línea, cada uno con su destinatario", () => {
+    // Salía todo pegado con UN botón de copiar: mandar el blob entero es
+    // repartirle a cada persona las llaves de las demás.
+    expect(acciones).toMatch(/const lineas: string\[\]/);
+    expect(acciones).toContain("DUEÑO (");
+    expect(acciones).toContain("SOPORTE (");
+    expect(acciones).toMatch(/lineas\.join\("\\n"\)/);
+  });
+
+  it("el panel le pone a cada mensaje su propio botón", () => {
+    expect(panel).toContain("function MensajesParaCopiar");
+    expect(panel).toContain("function MensajeParaCopiar");
+    expect(panel).toMatch(/texto\s*\n?\s*\.split\("\\n"\)/);
   });
 });

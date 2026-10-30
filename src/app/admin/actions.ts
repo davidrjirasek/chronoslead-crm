@@ -68,12 +68,16 @@ const altaSchema = z.object({
    * procedimiento. Entra como `admin`: configura todo, pero el dueño de la
    * cuenta sigue siendo el cliente, que puede quitarlo cuando quiera.
    */
-  correoSoporte: z
-    .string()
-    .trim()
-    .email("Ese correo de soporte no es válido: le falta el @ o lo que va después.")
-    .optional()
-    .or(z.literal("")),
+  /**
+   * 136 — Una LISTA de correos, no uno. Se valida después de partirla, en
+   * `primerCorreoInvalido`, que señala cuál está mal por su nombre.
+   *
+   * Tenía `.email()` acá y eso rechazaba la lista entera: el campo pasó a
+   * aceptar varios pero el esquema seguía exigiendo uno, así que pegar los
+   * cuatro correos del equipo daba «le falta el @». Se descubrió creando el
+   * primer cliente en producción — ningún test ejercitaba esta validación.
+   */
+  correoSoporte: z.string().trim().optional().or(z.literal("")),
   correo: z
     .string()
     .trim()
@@ -272,20 +276,27 @@ export async function altaDeCliente(
   // Los dos enlaces en el mismo aviso: el de soporte es para el operador y no
   // se le manda al cliente. Van separados por una línea para que no se
   // confundan al copiar.
-  const avisoDueno =
-    enlace ??
-    `YA TIENE CUENTA (${correo}): entra en ${slug}.${baseDomain()} con su contraseña de siempre. No hay enlace que mandar.`;
-  const yaTenian = soportes
-    .filter((x) => !x.nuevo)
-    .map((x) => x.correo);
-  const notaSoporte =
-    yaTenian.length > 0
-      ? `\n\nSOPORTE que YA tenía cuenta (entra con la de siempre): ${yaTenian.join(", ")}`
-      : "";
-  return {
-    error: null,
-    aviso: [avisoDueno, ...enlacesSoporte].join("\n\n") + notaSoporte,
-  };
+  /**
+   * 136 — Un mensaje por línea, cada uno con el nombre de a quién va.
+   *
+   * Salía todo pegado en un bloque con UN botón de copiar, así que no se podía
+   * mandarle a cada persona solo lo suyo sin editarlo a mano — y lo suyo es un
+   * enlace que fija su contraseña. El panel parte estas líneas y le pone a cada
+   * una su propio botón.
+   */
+  const lineas: string[] = [
+    enlace
+      ? `DUEÑO (${correo}): ${enlace}`
+      : `DUEÑO (${correo}): ya tiene cuenta. Entra en ${slug}.${baseDomain()} con su contraseña de siempre. No hay enlace que mandar.`,
+    ...enlacesSoporte,
+    ...soportes
+      .filter((x) => !x.nuevo)
+      .map(
+        (x) =>
+          `SOPORTE (${x.correo}): ya tenía cuenta. Entra con su contraseña de siempre.`
+      ),
+  ];
+  return { error: null, aviso: lineas.join("\n") };
 }
 
 const idSchema = z.object({ organizationId: z.string().trim().min(1) });

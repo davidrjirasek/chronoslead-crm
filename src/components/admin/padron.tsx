@@ -148,7 +148,19 @@ export function Padron({
               />
             </div>
             {alta.error && <Aviso tono="error">{alta.error}</Aviso>}
-            {alta.aviso && <EnlaceDeAcceso url={alta.aviso} motivo="alta" />}
+            {alta.aviso && (
+              <div className="space-y-2 rounded-lg border border-brand-soft bg-brand-tint/40 p-3">
+                <p className="text-xs font-semibold text-brand-text">
+                  Cliente creado. Mandale a cada uno lo suyo:
+                </p>
+                <MensajesParaCopiar texto={alta.aviso} />
+                <p className="text-[11px] leading-snug text-text-3">
+                  Los enlaces sirven una sola vez y caducan a los 7 días, así que
+                  da igual el canal por el que los mandes. Cada persona elige su
+                  contraseña: nadie más la conoce.
+                </p>
+              </div>
+            )}
             <Button type="submit" disabled={altaEnCurso}>
               {altaEnCurso ? "Creando…" : "Crear cliente"}
             </Button>
@@ -483,17 +495,7 @@ function Acciones({
             </form>
           }
         >
-          {soporte.aviso ? (
-            <ul className="space-y-1 rounded-lg border border-brand-soft bg-brand-tint p-3 text-xs text-brand-text">
-              {soporte.aviso.split("\n").map((linea, i) => (
-                <li key={i} className="break-all">
-                  {linea}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <span />
-          )}
+          {soporte.aviso ? <MensajesParaCopiar texto={soporte.aviso} /> : <span />}
         </Bloque>
 
         <Bloque
@@ -893,4 +895,82 @@ function etiquetaDeRol(rol: string): string {
   if (rol === "owner") return "Propietario";
   if (rol === "admin") return "Administrador";
   return "Miembro";
+}
+
+/**
+ * 136 — Un bloque por mensaje, cada uno con SU botón de copiar.
+ *
+ * Antes el resultado del alta salía entero en un solo bloque con un botón: para
+ * mandarle a cada persona lo suyo había que editarlo a mano, y lo suyo suele ser
+ * un enlace que fija su contraseña. Mandar el blob entero es repartir las llaves
+ * de todos. Lo detectó el dueño creando los siete clientes.
+ */
+function MensajesParaCopiar({ texto }: { texto: string }) {
+  const lineas = texto
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lineas.length === 0) return <span />;
+  return (
+    <div className="space-y-2">
+      {lineas.map((linea, i) => (
+        <MensajeParaCopiar key={i} texto={linea} />
+      ))}
+    </div>
+  );
+}
+
+function MensajeParaCopiar({ texto }: { texto: string }) {
+  const [copiado, setCopiado] = useState(false);
+  const [manual, setManual] = useState(false);
+
+  useEffect(() => {
+    if (!copiado) return;
+    const t = setTimeout(() => setCopiado(false), 2500);
+    return () => clearTimeout(t);
+  }, [copiado]);
+
+  async function copiar() {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("sin portapapeles");
+      await navigator.clipboard.writeText(texto);
+      setCopiado(true);
+    } catch {
+      setManual(true);
+    }
+  }
+
+  // Un enlace vivo merece más atención visual que un «ya tiene cuenta».
+  const llevaEnlace = texto.includes("://");
+
+  return (
+    <div
+      className={`flex flex-wrap items-center gap-2 rounded-lg border p-2.5 ${
+        llevaEnlace ? "border-brand-soft bg-brand-tint" : "border-line"
+      }`}
+    >
+      <code className="min-w-0 flex-1 select-all break-all text-[11px] leading-snug">
+        {texto}
+      </code>
+      <Button type="button" size="sm" variant={llevaEnlace ? "default" : "outline"} onClick={() => void copiar()}>
+        {copiado ? (
+          <>
+            <Check className="mr-1.5 h-4 w-4" strokeWidth={2.4} />
+            Copiado
+          </>
+        ) : (
+          <>
+            <Copy className="mr-1.5 h-4 w-4" strokeWidth={2} />
+            Copiar
+          </>
+        )}
+      </Button>
+      {manual && (
+        <p className="w-full text-[11px] text-text-3">
+          Este navegador no deja copiar solo sin conexión cifrada. Tocá el texto
+          para seleccionarlo y copialo con Cmd+C.
+        </p>
+      )}
+    </div>
+  );
 }

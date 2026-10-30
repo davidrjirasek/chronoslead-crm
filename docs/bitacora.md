@@ -1726,6 +1726,35 @@ Ahora usa un usuario descartable por corrida y lo borra al final: `✅ y la
 corrida deja el equipo de B como lo encontró`. La base de desarrollo se limpió a
 mano de la membresía intrusa y de cuatro usuarios de corridas viejas.
 
+#### Dos fallos que solo aparecieron con las altas reales (2026-10-30)
+
+Creando los siete clientes en producción, el mismo día del despliegue:
+
+1. **La validación del alta seguía exigiendo UN correo de soporte.** El campo
+   pasó a aceptar varios y el manejo se escribió para una lista, pero el esquema
+   de Zod —que corre ANTES— conservaba `.email()`: pegar los cuatro correos del
+   equipo daba «Ese correo de soporte no es válido: le falta el @». No se creó
+   nada a medias; el formulario rechazó y listo.
+2. **Todo el resultado salía en un bloque con un solo botón de copiar.** Lo
+   notó el dueño: para mandarle a cada persona lo suyo había que editarlo a
+   mano, y lo suyo suele ser un enlace que FIJA su contraseña. Mandar el bloque
+   entero es repartirle a cada uno las llaves de los demás.
+
+**Ninguno lo atrapó el gate, y el motivo es el mismo:** no había un solo test
+que ejercitara la validación del alta ni la forma de su resultado. Los tests de
+esa zona comprobaban el texto del código, no su comportamiento. Es el mismo
+hueco de la 133, en otro lugar.
+
+**Se arregló sin desplegar de urgencia:** las siete altas se hicieron con UN
+correo de soporte y los otros tres se sumaron con el bloque «Soporte de la
+agencia», que sí acepta la lista. Mismo estado final, sin corte extra. El
+arreglo viajó después, con calma.
+
+Ahora el alta devuelve **una línea por persona, con su destinatario**
+(`DUEÑO (correo): …`, `SOPORTE (correo): …`) y el panel le pone a cada una su
+propio botón; las que llevan enlace vivo salen resaltadas y las informativas en
+gris, para distinguir de un vistazo qué hay que mandar.
+
 #### Pendiente de esta spec
 
 - **La tabla `member` NO tiene índice único sobre (organización, usuario).** Se
