@@ -547,6 +547,289 @@ async function main() {
   const htmlApex = await apex.text();
   ok("la raíz del apex es la landing", apex.status === 200 && htmlApex.includes("ChronosLead"));
 
+  seccion("14 · Gobierno del equipo (136)");
+  /*
+   * La regla: nadie actúa sobre un rango igual o superior al suyo.
+   *
+   * Se comprueba LLAMANDO LAS RUTAS, no mirando la pantalla. Esconder el botón
+   * no protege nada: el botón solo redacta un pedido, y ese pedido se repite a
+   * mano cambiándole el identificador. Si la regla viviera solo en el dibujo,
+   * un administrador podría generar el enlace del propietario, consumirlo y
+   * quedarse con la cuenta — y consumirlo BORRA las sesiones de la víctima.
+   *
+   * ORDEN: primero lo que se hace con la sesión de B, porque la 12 consumió un
+   * enlace de A y eso le borró las sesiones. El reingreso de A va después y
+   * sirve para dos cosas de una sola vez —recupera la cookie Y comprueba que
+   * sumarlo al equipo de B no le tocó la contraseña—, que con el límite de 10
+   * inicios cada 10 minutos no es un detalle.
+   */
+  /*
+   * ORDEN: la 12 consumió un enlace de A y eso le borró las sesiones, así que
+   * lo primero es volver a entrar. Con el límite de 10 inicios cada 10 minutos,
+   * cada login se gasta a conciencia.
+   */
+  const reingresoA = await entrar(A);
+  if (reingresoA === 429) abortarPorLimite();
+  ok(
+    "A vuelve a entrar tras usar su enlace de acceso",
+    reingresoA === 200,
+    `recibido ${reingresoA}`
+  );
+
+  const equipoB = await pedir(B, "/api/settings/team");
+  ok("B ve su propio equipo", equipoB.status === 200, `recibido ${equipoB.status}`);
+  const miembrosB = equipoB.status === 200 ? (await equipoB.json()).members : [];
+  const duenoB = miembrosB.find((m) => m.role === "owner");
+
+  /*
+   * Alta unificada: la misma persona en dos empresas. Es el caso que estaba
+   * roto —la ruta siempre llamaba a signUpEmail y respondía 409—, y es el de un
+   * cliente dueño de dos negocios con un empleado en los dos.
+   *
+   * Se usa un usuario DESCARTABLE creado en esta corrida, nunca el dueño de A.
+   * Sumar al dueño de A al equipo de B lo volvería miembro de las dos para
+   * siempre, y entonces su cookie pasaría a valer en el host de B —con toda
+   * razón, es lo que el producto promete— rompiendo las comprobaciones 2 y 6,
+   * que miden a propósito el caso de alguien que NO es de la otra. Ya pasó: una
+   * corrida dejó la fixture contaminada y las tres fallaron en la siguiente.
+   */
+  const EN_DOS = `dosempresas-${RUN}@e2e.test`;
+  const naceEnA = await pedir(A, "/api/settings/team", {
+    method: "POST",
+    body: JSON.stringify({
+      name: "Trabaja en las dos",
+      email: EN_DOS,
+      password: `Dos-${RUN}`,
+      rol: "member",
+    }),
+  });
+  ok("se crea una persona en A", naceEnA.status === 201, `recibido ${naceEnA.status}`);
+
+  const sumadaEnB = await pedir(B, "/api/settings/team", {
+    method: "POST",
+    body: JSON.stringify({
+      name: "Trabaja en las dos",
+      email: EN_DOS,
+      password: `Ignorada-${RUN}`,
+      rol: "member",
+    }),
+  });
+  ok(
+    "y se puede sumar a la otra empresa, sin cuenta nueva",
+    sumadaEnB.status === 201,
+    `recibido ${sumadaEnB.status} — este era el 409 que rompía el caso de dos empresas`
+  );
+  if (sumadaEnB.status === 201) {
+    const cuerpo = await sumadaEnB.json();
+    ok(
+      "se avisa que NO se le creó una cuenta nueva",
+      cuerpo.creada === false,
+      `creada=${cuerpo.creada}`
+    );
+  }
+  const repetida = await pedir(B, "/api/settings/team", {
+    method: "POST",
+    body: JSON.stringify({
+      name: "Trabaja en las dos",
+      email: EN_DOS,
+      password: `Ignorada-${RUN}`,
+      rol: "member",
+    }),
+  });
+  ok("sumarla dos veces no la duplica", repetida.status === 409, `recibido ${repetida.status}`);
+
+  // Y se la saca de B, para no dejar la fixture sucia para la próxima corrida.
+  const equipoBTrasAlta = await pedir(B, "/api/settings/team");
+  const enB = (await equipoBTrasAlta.json()).members?.find((m) => m.email === EN_DOS);
+  if (enB) {
+    const limpieza = await pedir(B, `/api/settings/team/${enB.id}`, { method: "DELETE" });
+    ok(
+      "y la corrida deja el equipo de B como lo encontró",
+      limpieza.status === 200,
+      `recibido ${limpieza.status}`
+    );
+  }
+
+  const equipoA = await pedir(A, "/api/settings/team");
+  const miembrosA = equipoA.status === 200 ? (await equipoA.json()).members : [];
+  const duenoA = miembrosA.find((m) => m.role === "owner");
+  ok("A ve su propio equipo", Boolean(duenoA), `recibido ${equipoA.status}`);
+
+  if (duenoB) {
+    /*
+     * Lo más importante de la sección: un identificador de OTRO cliente tiene
+     * que dar lo mismo que uno inventado. Distinguirlos ya sería una fuga —le
+     * diría al dueño de A que ese id existe en B.
+     */
+    const bajaAjena = await pedir(A, `/api/settings/team/${duenoB.id}`, { method: "DELETE" });
+    ok(
+      "A no puede quitar un miembro de B",
+      bajaAjena.status === 404,
+      `recibido ${bajaAjena.status} — un id ajeno debe dar 404, igual que uno inventado`
+    );
+    const rolAjeno = await pedir(A, `/api/settings/team/${duenoB.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ rol: "member" }),
+    });
+    ok(
+      "A no puede cambiarle el rol a un miembro de B",
+      rolAjeno.status === 404,
+      `recibido ${rolAjeno.status}`
+    );
+    const enlaceAjeno = await pedir(A, `/api/settings/team/${duenoB.id}/enlace`, {
+      method: "POST",
+    });
+    ok(
+      "A no puede generar el enlace de un miembro de B",
+      enlaceAjeno.status === 404,
+      `recibido ${enlaceAjeno.status}`
+    );
+    const inventado = await pedir(A, "/api/settings/team/mem_noexiste/enlace", {
+      method: "POST",
+    });
+    ok(
+      "y un id inventado responde exactamente lo mismo",
+      inventado.status === enlaceAjeno.status,
+      `inventado ${inventado.status} vs ajeno ${enlaceAjeno.status} — distinguirlos filtra`
+    );
+  }
+
+  if (duenoA) {
+    const auto = await pedir(A, `/api/settings/team/${duenoA.id}`, { method: "DELETE" });
+    ok("nadie se puede quitar a sí mismo", auto.status === 403, `recibido ${auto.status}`);
+    const autoRol = await pedir(A, `/api/settings/team/${duenoA.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ rol: "member" }),
+    });
+    ok("ni cambiarse el rol a sí mismo", autoRol.status === 403, `recibido ${autoRol.status}`);
+  }
+
+  /*
+   * La escalada que motivó la regla, medida de verdad: un administrador real,
+   * con sesión propia, intentando tomar la cuenta del propietario.
+   */
+  const ADMIN_EQUIPO = {
+    slug: A.slug,
+    correo: `admin-equipo-${RUN}@e2e.test`,
+    contrasena: `Equipo-${RUN}`,
+  };
+  const altaAdmin = await pedir(A, "/api/settings/team", {
+    method: "POST",
+    body: JSON.stringify({
+      name: "Administrador de prueba",
+      email: ADMIN_EQUIPO.correo,
+      password: ADMIN_EQUIPO.contrasena,
+      rol: "admin",
+    }),
+  });
+  ok(
+    "el propietario puede nombrar un administrador",
+    altaAdmin.status === 201,
+    `recibido ${altaAdmin.status}`
+  );
+
+  const entradaAdmin = await entrar(ADMIN_EQUIPO);
+  if (entradaAdmin === 429) abortarPorLimite();
+  ok("ese administrador puede entrar", entradaAdmin === 200, `recibido ${entradaAdmin}`);
+
+  if (entradaAdmin === 200 && duenoA) {
+    const enlaceDueno = await pedir(
+      ADMIN_EQUIPO,
+      `/api/settings/team/${duenoA.id}/enlace`,
+      { method: "POST" }
+    );
+    ok(
+      "un administrador NO puede generar el enlace del propietario",
+      enlaceDueno.status === 403,
+      `recibido ${enlaceDueno.status} — con esto se tomaba la cuenta`
+    );
+
+    const bajaDueno = await pedir(ADMIN_EQUIPO, `/api/settings/team/${duenoA.id}`, {
+      method: "DELETE",
+    });
+    ok(
+      "un administrador NO puede quitar al propietario",
+      bajaDueno.status === 403,
+      `recibido ${bajaDueno.status}`
+    );
+
+    const degradar = await pedir(ADMIN_EQUIPO, `/api/settings/team/${duenoA.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ rol: "member" }),
+    });
+    ok(
+      "un administrador NO puede degradar al propietario",
+      degradar.status === 403,
+      `recibido ${degradar.status}`
+    );
+
+    const fabricarPar = await pedir(ADMIN_EQUIPO, "/api/settings/team", {
+      method: "POST",
+      body: JSON.stringify({
+        name: "Par fabricado",
+        email: `par-${RUN}@e2e.test`,
+        password: `Par-${RUN}`,
+        rol: "admin",
+      }),
+    });
+    ok(
+      "un administrador NO puede fabricar otro administrador",
+      fabricarPar.status === 403,
+      `recibido ${fabricarPar.status} — si no, esquiva la regla creando un par`
+    );
+
+    // Y que no se haya cerrado de más: sobre un rango MENOR sí puede actuar.
+    const sobreMiembro = await pedir(A, "/api/settings/team", {
+      method: "POST",
+      body: JSON.stringify({
+        name: "Miembro de prueba",
+        email: `miembro-${RUN}@e2e.test`,
+        password: `Miembro-${RUN}`,
+        rol: "member",
+      }),
+    });
+    const equipoTrasAlta = await pedir(A, "/api/settings/team");
+    const nuevo = (await equipoTrasAlta.json()).members.find(
+      (m) => m.email === `miembro-${RUN}@e2e.test`
+    );
+    ok("se creó un miembro para probar el camino feliz", sobreMiembro.status === 201 && Boolean(nuevo));
+    if (nuevo) {
+      const enlaceMiembro = await pedir(
+        ADMIN_EQUIPO,
+        `/api/settings/team/${nuevo.id}/enlace`,
+        { method: "POST" }
+      );
+      ok(
+        "un administrador SÍ puede destrabar a un miembro de Bandeja",
+        enlaceMiembro.status === 200,
+        `recibido ${enlaceMiembro.status} — si no, el cliente sigue dependiendo de nosotros`
+      );
+      const bajaMiembro = await pedir(ADMIN_EQUIPO, `/api/settings/team/${nuevo.id}`, {
+        method: "DELETE",
+      });
+      ok(
+        "y SÍ puede quitarlo del equipo",
+        bajaMiembro.status === 200,
+        `recibido ${bajaMiembro.status}`
+      );
+      const trasBaja = await pedir(A, "/api/settings/team");
+      const sigue = (await trasBaja.json()).members.some((m) => m.id === nuevo.id);
+      ok("la baja lo saca de la lista", !sigue);
+    }
+  }
+
+  // La bitácora es de cada cliente: los movimientos de B no se ven desde A.
+  const bitacoraA = await pedir(A, "/api/settings/team/bitacora");
+  ok("A puede leer su bitácora", bitacoraA.status === 200, `recibido ${bitacoraA.status}`);
+  if (bitacoraA.status === 200) {
+    const texto = JSON.stringify((await bitacoraA.json()).movimientos ?? []);
+    ok(
+      "y no contiene ningún movimiento de B",
+      !texto.includes(B.correo),
+      "apareció el correo del dueño de B en la bitácora de A"
+    );
+  }
+
   console.log(`\n${comprobaciones - fallos}/${comprobaciones} comprobaciones correctas.`);
   if (fallos > 0) {
     console.log(`\n❌ ${fallos} fallo(s). NADA está Hecho hasta que esto esté verde.\n`);

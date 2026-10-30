@@ -218,6 +218,13 @@
       "when": 1793230039961,
       "tag": "0030_crazy_scarecrow",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793363919974,
+      "tag": "0031_striped_bloodstrike",
+      "breakpoints": true
     }
   ]
 }

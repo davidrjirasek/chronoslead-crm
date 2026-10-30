@@ -3,12 +3,12 @@
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { Salir } from "@/components/admin/salir";
-import { Check, ChevronDown, ClipboardList, Copy, FileText, Link2, Plus } from "lucide-react";
+import { Check, ChevronDown, ClipboardList, Copy, FileText, Link2, Plus, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { EstadoOrganizacion } from "@/lib/tenant/estado";
-import type { FilaDelPadron } from "@/server/platform/padron";
+import type { FilaDelPadron, MiembroDelPadron } from "@/server/platform/padron";
 import type { SaludDeCliente } from "@/server/platform/salud";
 import {
   CURRENCY_OPTIONS,
@@ -18,6 +18,7 @@ import {
 import {
   altaDeCliente,
   enlaceDeAcceso,
+  sumarSoporteACliente,
   marcarPago,
   reactivarCliente,
   suspenderCliente,
@@ -49,11 +50,14 @@ export function Padron({
   clientes,
   operador,
   salud,
+  miembros,
 }: {
   clientes: FilaDelPadron[];
   operador: string;
   /** 123 — Estado de cada dirección, por slug. Vacío = no se pudo consultar. */
   salud: Record<string, SaludDeCliente>;
+  /** 136 — Los miembros de cada organización, por id, para elegir a quién. */
+  miembros: Record<string, MiembroDelPadron[]>;
 }) {
   const [alta, accionAlta, altaEnCurso] = useActionState(altaDeCliente, SIN_RESULTADO);
   const [abierto, setAbierto] = useState(false);
@@ -137,11 +141,10 @@ export function Padron({
               />
               <Campo
                 id="correoSoporte"
-                etiqueta="Correo de soporte"
-                ejemplo="sara@creativo4dgroup.com"
-                tipo="email"
+                etiqueta="Correos de soporte"
+                ejemplo="david@… , dan@… , sara@…"
                 opcional
-                ayuda="Quien va a configurar esta instancia. Entra como administrador."
+                ayuda="Quiénes van a configurar esta instancia. Uno o varios, separados por coma. Entran como administradores. A los que ya tengan cuenta no se les manda enlace: entran con su contraseña de siempre."
               />
             </div>
             {alta.error && <Aviso tono="error">{alta.error}</Aviso>}
@@ -166,6 +169,7 @@ export function Padron({
                   salud={c.slug ? salud[c.slug] : undefined}
                   abierto={expandido === c.id}
                   alternar={() => setExpandido((id) => (id === c.id ? null : c.id))}
+                  miembros={miembros[c.id] ?? []}
                 />
               ))}
             </ul>
@@ -239,11 +243,13 @@ function Cliente({
   salud,
   abierto,
   alternar,
+  miembros,
 }: {
   cliente: FilaDelPadron;
   salud?: SaludDeCliente;
   abierto: boolean;
   alternar: () => void;
+  miembros: MiembroDelPadron[];
 }) {
   return (
     <li>
@@ -294,16 +300,26 @@ function Cliente({
         </Button>
       </div>
 
-      {abierto && <Acciones cliente={cliente} />}
+      {abierto && <Acciones cliente={cliente} miembros={miembros} />}
     </li>
   );
 }
 
 /** El panel de acciones, a todo el ancho: aquí sí hay sitio para explicar. */
-function Acciones({ cliente }: { cliente: FilaDelPadron }) {
+function Acciones({
+  cliente,
+  miembros,
+}: {
+  cliente: FilaDelPadron;
+  miembros: MiembroDelPadron[];
+}) {
   const [pago, accionPago, pagoEnCurso] = useActionState(marcarPago, SIN_RESULTADO);
   const [susp, accionSusp, suspEnCurso] = useActionState(suspenderCliente, SIN_RESULTADO);
   const [reac, accionReac, reacEnCurso] = useActionState(reactivarCliente, SIN_RESULTADO);
+  const [soporte, accionSoporte, soporteEnCurso] = useActionState(
+    sumarSoporteACliente,
+    SIN_RESULTADO
+  );
   const [enlace, accionEnlace, enlaceEnCurso] = useActionState(
     enlaceDeAcceso,
     SIN_RESULTADO
@@ -311,7 +327,7 @@ function Acciones({ cliente }: { cliente: FilaDelPadron }) {
 
   const suspendidoAMano =
     cliente.estado.estado === "suspendida" && cliente.estado.motivo === "manual";
-  const error = pago.error ?? susp.error ?? reac.error ?? enlace.error;
+  const error = pago.error ?? susp.error ?? reac.error ?? enlace.error ?? soporte.error;
 
   return (
     <div className="space-y-4 border-t border-line bg-brand-tint/50 px-4 py-4">
@@ -445,30 +461,78 @@ function Acciones({ cliente }: { cliente: FilaDelPadron }) {
         </Bloque>
 
         <Bloque
+          titulo="Soporte de la agencia"
+          ayuda="Suma gente nuestra como administradora de este cliente. Uno o varios correos, separados por coma. A quien ya tenga cuenta se la reutiliza: entra con su contraseña de siempre. Queda anotado en la bitácora que el cliente ve."
+          accion={
+            /* 136 — Desde adentro del cliente NO se puede: la regla de rangos
+               impide que un administrador nombre administradores. Superadmin
+               está por encima del propietario, así que acá sí corresponde. */
+            <form action={accionSoporte} className="flex items-center gap-2">
+              <input type="hidden" name="organizationId" value={cliente.id} />
+              <input
+                name="correos"
+                required
+                placeholder="correo, correo, correo"
+                aria-label="Correos de soporte"
+                className="h-8 w-[20rem] rounded-md border border-line bg-transparent px-2 text-xs"
+              />
+              <Button type="submit" size="sm" variant="outline" disabled={soporteEnCurso}>
+                <UserPlus className="mr-1.5 h-4 w-4" strokeWidth={2} />
+                {soporteEnCurso ? "Sumando…" : "Sumar"}
+              </Button>
+            </form>
+          }
+        >
+          {soporte.aviso ? (
+            <ul className="space-y-1 rounded-lg border border-brand-soft bg-brand-tint p-3 text-xs text-brand-text">
+              {soporte.aviso.split("\n").map((linea, i) => (
+                <li key={i} className="break-all">
+                  {linea}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <span />
+          )}
+        </Bloque>
+
+        <Bloque
           titulo="Enlace de acceso"
           ayuda="Para elegir una contraseña nueva. Sirve una vez, caduca a los 7 días e invalida el anterior de esa persona. Por eso hay que elegir para quién."
           accion={
-            /* 133 — Dos botones, no uno. Antes generaba para «el primer
-               miembro» y podía romperle el acceso al cliente creyendo que uno
-               se lo generaba a sí mismo. */
-            <div className="flex items-center gap-2">
-              <form action={accionEnlace}>
+            /* 136 — A quién, por nombre. Antes eran dos botones por ROL, y con
+               dos administradores `.limit(1)` sin `ORDER BY` devolvía uno
+               indeterminado: se le podía romper el acceso a un compañero. Los
+               miembros de Bandeja, además, no tenían forma de recibir uno. */
+            miembros.length === 0 ? (
+              <span className="text-xs text-text-3">
+                Este cliente todavía no tiene usuarios.
+              </span>
+            ) : (
+              <form action={accionEnlace} className="flex items-center gap-2">
                 <input type="hidden" name="organizationId" value={cliente.id} />
-                <input type="hidden" name="para" value="dueno" />
+                <select
+                  name="memberId"
+                  defaultValue=""
+                  required
+                  aria-label="A quién se le genera el enlace"
+                  className="h-8 max-w-[18rem] rounded-md border border-line bg-transparent px-2 text-xs"
+                >
+                  <option value="" disabled>
+                    Elegí a quién…
+                  </option>
+                  {miembros.map((m) => (
+                    <option key={m.memberId} value={m.memberId}>
+                      {m.correo} · {etiquetaDeRol(m.rol)}
+                    </option>
+                  ))}
+                </select>
                 <Button type="submit" size="sm" variant="outline" disabled={enlaceEnCurso}>
                   <Link2 className="mr-1.5 h-4 w-4" strokeWidth={2} />
-                  {enlaceEnCurso ? "Generando…" : "Para el dueño"}
+                  {enlaceEnCurso ? "Generando…" : "Generar"}
                 </Button>
               </form>
-              <form action={accionEnlace}>
-                <input type="hidden" name="organizationId" value={cliente.id} />
-                <input type="hidden" name="para" value="soporte" />
-                <Button type="submit" size="sm" variant="outline" disabled={enlaceEnCurso}>
-                  <Link2 className="mr-1.5 h-4 w-4" strokeWidth={2} />
-                  Para soporte
-                </Button>
-              </form>
-            </div>
+            )
           }
         >
           {enlace.aviso ? (
@@ -822,4 +886,11 @@ function EnlaceDeAcceso({
       )}
     </div>
   );
+}
+
+/** 136 — El rol como lo lee un humano, para el selector del enlace. */
+function etiquetaDeRol(rol: string): string {
+  if (rol === "owner") return "Propietario";
+  if (rol === "admin") return "Administrador";
+  return "Miembro";
 }

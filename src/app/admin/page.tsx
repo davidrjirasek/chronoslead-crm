@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { listarPadron } from "@/server/platform/padron";
+import { listarPadron, miembrosDeCartera } from "@/server/platform/padron";
 import { saludDeLasDirecciones } from "@/server/platform/salud";
 import { accesoAlPanel } from "@/server/platform/superadmin";
 import { Padron } from "@/components/admin/padron";
@@ -24,6 +24,8 @@ export default async function AdminPage() {
   if (!acceso.ok) return <SinPermiso correo={acceso.correo} />;
 
   const clientes = await listarPadron();
+  // 136 — Para elegir A QUIÉN se le genera el enlace de acceso, por nombre.
+  const miembros = await miembrosDeCartera();
 
   /*
    * 123 — La salud se consulta DESPUÉS del padrón y en paralelo entre sí: son
@@ -38,6 +40,7 @@ export default async function AdminPage() {
       clientes={clientes}
       operador={acceso.sesion.correo}
       salud={Object.fromEntries(salud)}
+      miembros={miembros}
     />
   );
 }

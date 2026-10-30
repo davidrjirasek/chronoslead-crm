@@ -1616,6 +1616,126 @@ El análisis completo, en `~/Documents/ChronosLead/analisis-agenda-de-recursos.m
 **Pendiente de verificación humana:** no se corrió nada del código de Kevin.
 Las líneas están contadas y el esquema leído; el comportamiento no se probó.
 
+### Gobierno del equipo (2026-10-30, spec 136)
+
+Salió de una pregunta del dueño mirando Ajustes → Equipo de The Student Store:
+«si agrego a Dan como administrador, ¿tiene lo mismo que yo?». Sí lo tenía —y
+al tirar del hilo apareció que ese panel y el de superadmin se venían arreglando
+«de a poquito». Se pidió una auditoría antes de seguir parchando.
+
+**La causa, en una línea:** ese panel se diseñó para Vocero —un negocio, un
+dueño, dos operadores, sin personal externo y sin correo— y el fork le cambió
+las cuatro premisas sin que el panel cambiara. No había modelo; había
+acumulación.
+
+#### Lo que la auditoría encontró
+
+| # | Hallazgo | Por qué importaba |
+|---|---|---|
+| 1 | **No existía quitar a un miembro.** En ningún lado: ni panel de equipo, ni superadmin, ni base | Un empleado que renuncia conservaba acceso a la Bandeja para siempre. Único recurso: suspender la organización entera |
+| 2 | **Un `admin` podía apropiarse de la cuenta del `owner`**: generaba su enlace de acceso, lo consumía y le fijaba contraseña. Consumirlo BORRA las sesiones de la víctima | Toma de control limpia, inmediata y sin rastro |
+| 3 | `owner` no tenía ninguna facultad exclusiva: `canConfigure` lo igualaba a `admin` | La insignia «Propietario» prometía una autoridad que el código no respaldaba |
+| 4 | `registrar()` era un `console.info` sin tabla | El único registro de quién generó qué enlace vivía en los logs del contenedor |
+| 5 | `POST /api/settings/team` siempre creaba usuario: con un correo existente, 409 | Un cliente con dos empresas no podía poner a su empleado en la segunda |
+| 6 | Ese 409 confirmaba si un correo estaba registrado | Enumeración de cuentas. **Se acepta**: quien la ejerce es un administrador ya autenticado y queda en la bitácora |
+| 7 | El alta generaba enlace para el dueño **siempre**, sin la guarda que la 133 le puso a soporte | Fernando Barreto es propietario de seis organizaciones con un correo. Cada alta le dejaba vivo un enlace capaz de fijarle la contraseña — y abría las seis, no solo la nueva |
+| 8 | El alta aceptaba **un** correo de soporte | La agencia son cuatro personas, y sumarlas desde adentro choca con la regla de rangos |
+
+#### La regla, una sola
+
+> **Nadie actúa sobre un rango igual o superior al suyo.**
+
+`owner` 3 · `admin` 2 · `member` 1, en `src/lib/auth/rangos.ts` —en `lib/`
+porque lo consultan los dos lados—. Cierra los hallazgos 2 y 3 juntos. Un
+administrador tampoco puede **nombrar** administradores: si pudiera, esquivaría
+la regla fabricándose un par.
+
+Consecuencia aceptada: **el bloqueo del propietario siempre escala a
+superadmin.** Es correcto — quien destrabe a la máxima autoridad de una cuenta
+tiene que estar por encima de ella.
+
+#### Qué quedó
+
+| | Dónde |
+|---|---|
+| Rangos y la regla | `src/lib/auth/rangos.ts` |
+| Operaciones del equipo | `src/server/equipo/gobierno.ts` |
+| Soporte de la agencia (varios correos) | `src/server/equipo/soporte.ts` |
+| Quitar, cambiar rol, enlace, bitácora, mis organizaciones | 4 rutas nuevas del fork |
+| Alta unificada | +32 líneas sobre el archivo de upstream, tras `isCloud()` |
+| Tabla `team_audit` | migración `0031`, **puramente aditiva** |
+
+**Decisiones que conviene no deshacer:**
+
+- **Quitar es quitar la MEMBRESÍA, nunca la persona.** Borrar el usuario dejaría
+  las conversaciones huérfanas y lo sacaría de las otras organizaciones donde
+  trabaja: es el mismo usuario. Quitar sí le borra las sesiones abiertas — si
+  no, el que acabás de sacar sigue adentro hasta que se le venza.
+- **La invitación con aceptación se descartó**, aunque la tabla `invitation`
+  exista y esté conectada al plugin de Better Auth. Solo funcionaría con gente
+  que ya tiene cuenta —es la única que puede entrar a ver el aviso—, así que no
+  reemplaza al alta directa: le agrega un paso al único caso que estaba roto. Un
+  empleador que suma a su empleado no le pide permiso. **Esa tabla queda muerta
+  a propósito.**
+- **La transparencia reemplaza al consentimiento:** cada persona ve a qué
+  organizaciones pertenece, y la bitácora del equipo es visible para el cliente.
+  Sin correo transaccional (lo prohíbe la constitución), es la única forma de
+  enterarse de un cambio que uno no hizo.
+- **Todo detrás de `EDITION=cloud`.** El panel de equipo es de upstream;
+  amontonarle un sistema de identidad multitenant sería conflicto permanente.
+
+#### El panel de superadmin
+
+`enlaceDeAcceso` filtraba por rol y hacía `.limit(1)` **sin `ORDER BY`**: con dos
+administradores devolvía uno indeterminado, y como generar invalida el anterior
+de esa persona, se le podía romper el acceso a un compañero. Los miembros de
+Bandeja, además, no podían recibir ninguno. Ahora se elige **por persona**, de
+una lista con nombre, correo y rol.
+
+Bloque nuevo **«Soporte de la agencia»**: suma varios correos como `admin` a un
+cliente que ya existe. Era la única forma de resolver The Student Store, creada
+antes de que esto existiera, sin pedirle al propietario que administrara nuestro
+equipo.
+
+#### Cómo se probó
+
+- 1374 tests unitarios, incluidos 10 del modelo de rangos y 4 de la lista de
+  correos. Seis tests de la 133 reescritos: pedían el panel de dos botones
+- **Examen de aislamiento: 76/76**, con 24 comprobaciones nuevas. Todas llaman
+  las rutas DIRECTAMENTE, no miran la pantalla: esconder el botón no protege
+  nada, porque el pedido se repite a mano cambiándole el identificador
+- Las que importan: un administrador no puede generar el enlace del propietario,
+  ni quitarlo, ni degradarlo, ni fabricar otro administrador; un `memberId` de
+  otro cliente responde **404, igual que uno inventado** —distinguirlos ya sería
+  una fuga—; y el camino feliz, que un administrador **sí** destraba y quita a
+  un miembro de Bandeja (una regla que cierra de más también está rota)
+- Verificado a mano en `lvh.me` con el navegador: panel de equipo, panel de la
+  contraseña con copiar y aviso, bitácora plegable, y los dos bloques nuevos de
+  superadmin
+
+#### Una trampa que costó una corrida
+
+La primera versión del examen sumaba **el dueño de A** al equipo de B para
+probar el caso de dos empresas. Eso lo volvió miembro de las dos **para
+siempre**, y a partir de ahí su cookie pasó a valer en el host de B —con toda
+razón, es lo que el producto promete— rompiendo las comprobaciones 2 y 6, que
+miden a propósito el caso de alguien que NO es de la otra. Tres fallos que
+parecían del producto y eran de la prueba.
+
+Ahora usa un usuario descartable por corrida y lo borra al final: `✅ y la
+corrida deja el equipo de B como lo encontró`. La base de desarrollo se limpió a
+mano de la membresía intrusa y de cuatro usuarios de corridas viejas.
+
+#### Pendiente de esta spec
+
+- **La tabla `member` NO tiene índice único sobre (organización, usuario).** Se
+  comprueba en el código, pero nada en la base lo impide. Agregarlo es lo
+  correcto y no se hizo: si hubiera filas duplicadas en producción, la migración
+  falla al arrancar el contenedor y la app no levanta. Necesita primero una
+  consulta a producción y, si hay duplicados, una migración que los junte
+- **Ceder la propiedad no existe.** Decisión del dueño del 30-oct: poco
+  frecuente, se atiende caso por caso desde superadmin cuando un cliente lo pida
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
