@@ -1491,8 +1491,8 @@ código base, sobre una versión casi hermana de la nuestra.
 
 **Dónde:** `vocero-verticales-1.3.zip`, el arnés que Kevin usó en un webinar
 para levantar barbería, spa, comida e inmobiliaria. Lo compartió el dueño el
-29-oct. **El original está en `~/Downloads/`: conviene moverlo a
-`~/Documents/ChronosLead/`, porque Descargas se limpia.**
+29-oct. ~~El original está en `~/Downloads/`~~ — **movido el 30-oct a
+`~/Documents/ChronosLead/`**, porque Descargas se limpia.
 
 **Qué trae el CRM de ese paquete, que el nuestro no:**
 
@@ -1532,12 +1532,89 @@ un servicio FastAPI aparte («Nea») con su propia base, y habla con el CRM por
 `/api/bot/*`. Nuestro agente es in-process. Pero **las tablas de agenda viven
 en el CRM**, que es la parte que interesa.
 
-**Siguiente paso, antes de tocar nada:** medir qué archivos hay que traer y qué
-conflictos genera contra nuestra 1.6.0. Una hora, y deja decidir con números.
+~~**Siguiente paso, antes de tocar nada:** medir qué archivos hay que traer y
+qué conflictos genera contra nuestra 1.6.0.~~ — **HECHO el 30-oct**, con los
+números en la entrada siguiente.
 
-**Falta revisar del mismo paquete:** el inventario de propiedades con foto de
-la inmobiliaria, que es el banco de imágenes que piden Cerritos, The Student
-Store y Castel Muebles.
+~~**Falta revisar del mismo paquete:** el inventario de propiedades con foto de
+la inmobiliaria~~ — **revisado el 30-oct: no conviene traerlo.** Ver la entrada
+siguiente.
+
+### La agenda de recursos, medida con números (2026-10-30)
+
+La hora de análisis que pedía la entrada anterior. **Se leyó el paquete de
+Kevin en una carpeta temporal aislada y no se copió ni una línea al repo** —
+instrucción expresa del dueño. `git status` limpio al terminar, verificado.
+
+**Lo primero: los números en crudo eran falsos.** Los archivos de Kevin tienen
+fines de línea de Windows (CRLF), así que un `diff` normal marca *todo* el
+archivo como distinto. Medido con `diff --strip-trailing-cr -w`:
+
+| Archivo compartido | Líneas reales |
+|---|---|
+| `agenda/availability.ts` | **0 — idéntico** |
+| `agenda/agent.ts` | 6 |
+| `agenda/offers.ts` | 17 |
+| `components/bookings/agenda-list.tsx` | 21 |
+| `agenda/spread.ts` | 24 |
+| `agenda/queries.ts` | 38 |
+| `agenda/http.ts` | 41 |
+| `agenda/context.ts` | 55 |
+| `api/bot/availability/route.ts` | 150 |
+| `agenda/service.ts` | **531** |
+| | **733 en total** |
+
+Que `availability.ts` sea idéntico importa: **el motor que calcula los huecos
+no se toca.** Los recursos se resuelven alrededor de él.
+
+Más 17 archivos nuevos (2.585 líneas), que no generan conflicto porque no
+existen acá: `agenda/{catalog,catalog-admin,catalog-query,catalog-schemas,
+resource-availability,resource-booking,errors,etapas}.ts`,
+`components/settings/catalogo-client.tsx` (688),
+`api/agenda/{resources,services,catalog,regreso}`, `api/bot/catalog`,
+`lib/resource-colors.ts`.
+
+**Dos hallazgos que abaratan el port:**
+
+1. **Sus tres tablas nuevas ya traen `organization_id`.** No hay que
+   retrofitearlas al aislamiento.
+2. **Las columnas nuevas de `booking` son opcionales.** `resource_id` en NULL
+   da `coalesce(resource_id,'') = ''`, con lo que el índice único es
+   **exactamente el de hoy**. Un cliente que no cargue recursos no nota nada
+   → cabe detrás de bandera, apagada por defecto (ADR-001).
+
+De las 531 líneas de `service.ts`: 485 agrega, 46 quita. **Las 46 no
+desaparecen** — mueve `BookingError` a `errors.ts` y el detector de
+`unique_violation` a `resource-booking.ts`. Y **ninguna de esas 46 menciona
+`scoped()`, `organizationId` ni `orgId`**: el trabajo de aislamiento no corre
+riesgo en la fusión.
+
+Los solapes que un índice no puede ver (una cita de 60 min que pisa la de las
+17:30) los cierra él con `pg_advisory_xact_lock` por recurso.
+
+**El inventario con fotos de la inmobiliaria: NO conviene traerlo.** Son 5.733
+líneas en 22 archivos — un CRM de inmobiliaria entero (ficha, matching contra
+requisitos del comprador, panel de coincidencias en la bandeja). Lo que de
+verdad hace falta para Cerritos, The Student Store y Castel Muebles es mandar
+imágenes y PDF, y para eso ya tenemos las dos piezas:
+
+- `media_asset` **ya está en nuestro esquema**
+- `src/server/inbox/send.ts` **ya manda `document` e `image`** (línea 522)
+
+Falta que el agente decida mandarlo y un lugar donde el cliente cargue los
+archivos. Cientos de líneas, no 5.733.
+
+**Decisión del dueño (30-oct): se trae la agenda de recursos, DESPUÉS de las
+altas.** Razón: Cerritos todavía no opera, así que las dos directoras no son
+un problema hoy; las altas sí están frenando clientes que ya pagaron. El port
+va por el carril completo —toca el esquema— y se despliega con la bandera
+**apagada**, prendiéndola solo en Cerritos.
+
+El análisis completo, en `~/Documents/ChronosLead/analisis-agenda-de-recursos.md`
+(y su PDF). El zip ya está en `~/Documents/ChronosLead/`, fuera de Descargas.
+
+**Pendiente de verificación humana:** no se corrió nada del código de Kevin.
+Las líneas están contadas y el esquema leído; el comportamiento no se probó.
 
 ### Pendiente
 
@@ -1596,3 +1673,8 @@ Store y Castel Muebles.
 - ~~Revisión en móvil (375 px)~~ — **HECHO**: la revisó el dueño y está bien
   (24-oct). Estaba marcada «pendiente de verificación humana» porque Claude no
   podía probarla; la verificación humana es él, y la dio.
+- **Traer la agenda de recursos del paquete de Kevin** — medida y decidida el
+  30-oct (ver la entrada de ese día). Va **después de las altas**, por decisión
+  del dueño. Carril completo: toca el esquema. Se despliega con la bandera
+  apagada y se prende solo en Cerritos. 17 archivos nuevos, 8 compartidos a
+  fusionar (`service.ts` es el único serio), 1 migración aditiva
