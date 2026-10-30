@@ -1441,6 +1441,49 @@ prohibido por el Principio I. Ahora se tapa dejando los últimos cuatro.
 > **«En verde» no es «está bien».** Mirar solo el contador de pruebas habría
 > dejado pasar un secreto a los registros.
 
+### Varias agendas por instancia — evaluado, no hecho (2026-10-29)
+
+Lo pidió Colegio Cerritos: **dos directores de admisiones**, uno para Inicial
+a 3.º y otro de 4.º en adelante, **con el mismo horario**. La entrevista
+preadmisional tiene que caer con el que corresponde al grado.
+
+**Hoy no se puede:**
+
+```sql
+uniqueIndex("calendar_settings_org_uq").on(organizationId)  -- UNA agenda
+```
+
+Y `booking` no guarda a quién se asigna. Peor: la disponibilidad es
+`horarios − citas`, sin concepto de capacidad, así que **una cita el martes a
+las 10 con una directora tacha el martes a las 10 del otro director**. Con dos
+personas de horario idéntico, se pierde la mitad de la capacidad justo en
+temporada de admisiones.
+
+**Dos atajos considerados y descartados, con su motivo:**
+
+| Atajo | Por qué no |
+|---|---|
+| Anotar el director en la **ficha** y que el agente la lea | La ficha es de una FAMILIA, no del calendario. Para saber si un director está libre habría que leer todas las fichas y reconstruir dos calendarios a mano. Y da igual: `slot_taken` se lanza en el servidor **antes** de que el agente opine |
+| **Capacidad 2** por hueco | Rompe apenas dos familias del mismo grupo piden el mismo horario: las dos irían a la misma directora |
+
+**No hay media solución correcta.** El problema es que la disponibilidad se
+calcula por organización y acá hay que calcularla por persona.
+
+**Lo que haría falta:** una tabla de agendas por organización —horarios,
+conector y enlace propios—, `booking` apuntando a una, el cálculo de huecos
+por agenda, la pantalla de ajustes y el mapa de huecos que ve el agente. Más
+la migración que mete la configuración actual en una agenda «principal».
+**Dos o tres días, ciclo completo.**
+
+**Y no es solo Cerritos:** un consultorio con dos profesionales, una
+inmobiliaria con dos asesores, una clínica con varias especialidades. Es la
+misma función.
+
+**Mientras tanto, sin construir nada:** la agenda automática atiende un solo
+grupo —en Cerritos, de 4.º en adelante, donde está el foco 2027 con BTI y
+turno tarde— y el otro se deriva a una persona. Sin capacidad perdida y sin
+prometer horarios que no existen.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
