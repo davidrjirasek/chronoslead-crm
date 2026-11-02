@@ -74,6 +74,10 @@ export default async function Home({
     // login dejaba al operador en «esta instancia no existe», porque la raíz
     // buscaba una organización que ese Host no tiene.
     if (host.kind === "admin") redirect("/admin");
+    // 138 — En `cuentas.*` la raíz ES el lanzador, por el mismo motivo que en
+    // `admin.*`: sin esto el login dejaría a la persona en «esta instancia no
+    // existe», porque la raíz busca una organización que ese Host no tiene.
+    if (host.kind === "cuentas") redirect("/cuentas");
     if (host.kind !== "tenant") return <InstanciaInexistente />;
   }
   const session = await getSessionOrNull();

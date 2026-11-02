@@ -818,6 +818,38 @@ async function main() {
     }
   }
 
+  /*
+   * 138 — El lanzador: una lista pública de clientes regalaría la cartera, así
+   * que la puerta es la sesión. Y la lista sale de las MEMBRESÍAS de quien
+   * entró: A no puede ver las de B por ahí.
+   */
+  const CUENTAS = `http://cuentas.${BASE_DOMAIN}:${PUERTO}`;
+  const sinSesion = await fetch(`${CUENTAS}/cuentas`, { redirect: "manual" });
+  ok(
+    "el lanzador sin sesión NO muestra nada: manda al login",
+    sinSesion.status >= 300 && sinSesion.status < 400,
+    `recibido ${sinSesion.status} — una lista pública expondría la cartera entera`
+  );
+  const textoSinSesion = await sinSesion.text();
+  ok(
+    "y no filtra ningún nombre de cliente en el camino",
+    !textoSinSesion.includes(A.slug) && !textoSinSesion.includes(B.slug),
+    "apareció el identificador de un cliente en la respuesta sin sesión"
+  );
+
+  // Con la cookie de A, solo lo de A. La cookie es host-only: no viaja sola a
+  // `cuentas.`, así que se manda explícita para medir el peor caso.
+  const comoA = await fetch(`${CUENTAS}/cuentas`, {
+    headers: A.cookie ? { cookie: A.cookie } : {},
+    redirect: "manual",
+  });
+  const textoComoA = await comoA.text();
+  ok(
+    "el lanzador nunca muestra el cliente de otro",
+    !textoComoA.includes(B.slug),
+    "apareció el identificador de B en el lanzador visto con la sesión de A"
+  );
+
   // La bitácora es de cada cliente: los movimientos de B no se ven desde A.
   const bitacoraA = await pedir(A, "/api/settings/team/bitacora");
   ok("A puede leer su bitácora", bitacoraA.status === 200, `recibido ${bitacoraA.status}`);

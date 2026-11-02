@@ -1755,7 +1755,91 @@ Ahora el alta devuelve **una línea por persona, con su destinatario**
 propio botón; las que llevan enlace vivo salen resaltadas y las informativas en
 gris, para distinguir de un vistazo qué hay que mandar.
 
-#### Pendiente de esta spec
+#### Revocar accesos y el lanzador (2026-11-02, specs 137 y 138)
+
+Las dos salieron de preguntas del dueño el mismo día, y la primera destapó un
+agujero que el gobierno del equipo del 30-oct había dejado abierto.
+
+#### 137 · Sumar sin poder quitar
+
+Al preguntar «¿dónde creo y elimino admins?», la respuesta fue que **no se
+podía eliminar**. Las seis acciones del panel de plataforma sumaban y ninguna
+quitaba.
+
+**Lo que eso significaba:** la regla de rangos impide que un administrador toque
+a otro administrador, así que cuando alguien de la agencia se va, **nadie de la
+agencia puede sacarlo**. El único con rango es el propietario de cada cuenta —
+o sea, había que pedirle a Fernando que echara a nuestra propia empleada de sus
+ocho empresas. Al revés.
+
+Es el espejo exacto del hallazgo #1 de la 136, del otro lado del mostrador.
+
+`quitarComoPlataforma()` en `src/server/equipo/gobierno.ts`, con la acción
+`quitarSoporteDeCliente` en el panel. Decisiones:
+
+- **Al propietario no se lo quita desde ahí.** Dejaría la cuenta sin dueño y las
+  conversaciones sin a quién pertenecer. Si alguna vez hace falta, es una
+  decisión distinta y no se resuelve con un botón.
+- **Borra la membresía, nunca la persona**: conserva su historial y sus otros
+  clientes.
+- **Le cierra las sesiones abiertas.** Sin eso sigue adentro hasta que se le
+  venza la sesión —medido: **7 días**—, que es justo cuando más importa que
+  salga.
+
+#### 138 · El lanzador, en `cuentas.chronoslead.com`
+
+Nadie puede recordar la dirección de cada cliente. Con nueve ya molesta; con
+cincuenta es imposible, y el equipo de soporte entra a todas.
+
+**El diseño se discutió en tres vueltas y las dos primeras estaban mal:**
+
+1. *Selector adentro del CRM* — descartado por el dueño: solo sirve si ya estás
+   adentro de alguno, y lo que falta es el punto de entrada del día.
+2. *Página pública con la lista* — propuesta del dueño, descartada por mí:
+   **una lista sin sesión le regala la cartera a cualquiera** que escriba la
+   dirección. Quiénes son tus clientes es información comercial.
+3. *Lista en el navegador, sin login* — el dueño encontró el fallo: la memoria
+   local es **por dispositivo**, así que su celular arrancaría vacío y una
+   máquina nueva también.
+
+Lo que decidió la discusión fue **medir cuánto dura una sesión**: 7 días. Eso
+convirtió la «doble contraseña» de una molestia constante en **una vez por
+semana por dispositivo**, y volvió preferible la lista en el servidor, que está
+completa en todos lados.
+
+> **Lo que NO se hizo, y por qué:** un pase de un solo uso entre hosts (entrás a
+> `cuentas.` y de ahí al cliente sin volver a escribir). Es la mejor
+> experiencia y es también lo único que abriría una puerta entre hosts — hoy las
+> sesiones están encerradas ahí a propósito, y es el segundo candado del
+> aislamiento. Se hace el día que esa contraseña semanal moleste de verdad, con
+> el tiempo que merece.
+
+`cuentas` queda **reservado y además es una puerta propia**: doble cerradura,
+como `alta` y `onboarding`. Si alguien borrara la rama del resolvedor, el host
+caería en «no existe» en vez de caer en un cliente llamado «cuentas».
+
+Las puertas de entrada pasaron de dos a tres, así que el contexto del login dejó
+de ser un booleano y pasó a ser un valor de tres estados: dos booleanos sueltos
+permiten combinaciones que no existen.
+
+#### Cómo se probó
+
+1395 tests y **aislamiento 79/79**, con tres comprobaciones nuevas. La que
+importa: `el lanzador nunca muestra el cliente de otro`. Es la única superficie
+nueva y se mide llamando la ruta, no mirando la pantalla.
+
+> **Un test de la suite es inestable:** falló una vez y pasó en la corrida
+> siguiente sin tocar nada. No es de lo nuevo —los archivos de 137 y 138 pasan
+> siempre—, pero queda anotado: un rojo intermitente enseña a ignorar el rojo.
+
+#### Al desplegar
+
+**`cuentas.chronoslead.com` tiene que entrar en Coolify.** Sin eso la dirección
+contesta 503 y la aplicación ni se entera — el paso 2 del manual, el que se
+olvida. Dominio primero, despliegue después: uno solo trae el código y aplica el
+dominio.
+
+### Pendiente de esta spec
 
 - **La tabla `member` NO tiene índice único sobre (organización, usuario).** Se
   comprueba en el código, pero nada en la base lo impide. Agregarlo es lo

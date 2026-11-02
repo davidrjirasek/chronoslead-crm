@@ -475,3 +475,71 @@ export async function misOrganizaciones(userId: string) {
     .where(and(eq(schema.member.userId, userId)))
     .orderBy(schema.organization.name);
 }
+
+/* ------------------------------------------------------------------ *
+ * Quitar desde la plataforma
+ * ------------------------------------------------------------------ */
+
+/**
+ * 137 — Quitar a alguien del equipo de un cliente, desde el panel de
+ * plataforma.
+ *
+ * Faltaba, y el agujero era concreto: la regla de rangos impide que un
+ * administrador toque a otro administrador, así que cuando alguien de la
+ * agencia se va, NADIE de la agencia puede sacarlo. El único con rango para
+ * hacerlo es el propietario de cada cuenta — o sea, había que pedirle al
+ * cliente que echara a nuestro propio empleado de su empresa. Al revés.
+ *
+ * Superadmin no tiene límite de rango: está por encima del propietario. Lo que
+ * sí respeta es que **al propietario no se lo quita**, porque dejaría la cuenta
+ * sin dueño y las conversaciones sin a quién pertenecer. Esa baja, si alguna
+ * vez hace falta, es una decisión distinta y no se resuelve con un botón.
+ *
+ * Como toda baja, borra la MEMBRESÍA y no la persona: conserva su historial y
+ * no la saca de los otros clientes donde trabaja.
+ */
+export async function quitarComoPlataforma(input: {
+  organizationId: string;
+  memberId: string;
+  actorEtiqueta: string;
+}): Promise<{ ok: true; correo: string } | FalloEquipo> {
+  const destino = await objetivo(input.organizationId, input.memberId);
+  if (!destino) return NO_ESTA;
+
+  if (destino.role === "owner") {
+    return {
+      ok: false,
+      estado: 403,
+      codigo: "forbidden",
+      mensaje:
+        "Es el propietario de este cliente: no se lo quita desde acá. La cuenta quedaría sin dueño.",
+    };
+  }
+
+  const db = getDb();
+  await db
+    .delete(schema.member)
+    .where(
+      scoped(
+        schema.member.organizationId,
+        input.organizationId,
+        eq(schema.member.id, input.memberId)
+      )
+    );
+  // Sin esto sigue adentro hasta que se le venza la sesión — siete días —, que
+  // es justo el momento en que más importa que salga.
+  await db
+    .delete(schema.session)
+    .where(eq(schema.session.userId, destino.userId));
+
+  await anotar({
+    organizationId: input.organizationId,
+    actorId: null,
+    actorEtiqueta: input.actorEtiqueta,
+    accion: "baja",
+    objetivoId: destino.userId,
+    objetivoEtiqueta: destino.email,
+    detalle: `era ${destino.role}; quitado desde el panel de plataforma`,
+  });
+  return { ok: true, correo: destino.email };
+}

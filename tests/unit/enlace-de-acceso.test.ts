@@ -154,3 +154,21 @@ describe("el alta, probada contra sus dos fallos en producción (136)", () => {
     expect(panel).toMatch(/texto\s*\n?\s*\.split\("\\n"\)/);
   });
 });
+
+/**
+ * 136 — El aviso del enlace dice PARA QUIÉN es.
+ *
+ * «Mandale este enlace al dueño» era texto heredado de cuando solo se podía
+ * generar para el dueño o para soporte. Desde que se elige por persona puede
+ * ser para cualquiera, y ese texto hace mandárselo a quien no era.
+ */
+describe("el enlace generado dice de quién es (136)", () => {
+  it("la acción devuelve el correo junto con la dirección", () => {
+    expect(acciones).toMatch(/aviso: `\$\{fila\.correo\}: \$\{enlace\}`/);
+  });
+
+  it("el panel ya no dice «al dueño»", () => {
+    expect(panel).not.toContain("Mandale este enlace al dueño");
+    expect(panel).toContain("Mandáselo a esta persona");
+  });
+});

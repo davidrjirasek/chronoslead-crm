@@ -5,7 +5,7 @@ import { enabledChannels } from "@/server/channels/enabled";
 import { productName } from "@/lib/channels";
 import { BrandLogo } from "@/components/brand-mark";
 import { InstanciaInexistente } from "@/components/instancia-inexistente";
-import { EdicionProvider } from "@/components/auth/edicion";
+import { EdicionProvider, type Puerta } from "@/components/auth/edicion";
 import { EscenografiaChronosLead } from "@/components/auth/escenografia-chronoslead";
 import { isChronosLeadName } from "@/lib/brand-chronoslead";
 import { currentTenantHost, currentTenantOrg } from "@/server/tenant/current";
@@ -27,14 +27,19 @@ export default async function AuthLayout({
   // 108 — `admin` es la excepción: es una puerta de la plataforma, no de una
   // organización, así que no tiene ninguna y su login sí debe pintarse.
   // 116 — `admin` es además la puerta del OPERADOR, y el titular lo dice.
-  let esPuertaDeOperador = false;
+  let puerta: Puerta = "cliente";
   if (isCloud()) {
     const host = await currentTenantHost();
-    const esPuertaDeLaPlataforma = host.kind === "admin" || host.kind === "alta";
+    // 138 — `cuentas.*` se suma a las puertas que NO son de un cliente: si no,
+    // su login mostraría «esta instancia no existe», porque busca una
+    // organización que ese Host no tiene.
+    const esPuertaDeLaPlataforma =
+      host.kind === "admin" || host.kind === "alta" || host.kind === "cuentas";
     if (!esPuertaDeLaPlataforma && !(await currentTenantOrg())) {
       return <InstanciaInexistente />;
     }
-    esPuertaDeOperador = host.kind === "admin";
+    if (host.kind === "admin") puerta = "operador";
+    if (host.kind === "cuentas") puerta = "cuentas";
   }
   const branding = await getBranding().catch(() => DEFAULT_BRANDING);
 
@@ -46,7 +51,7 @@ export default async function AuthLayout({
   if (isChronosLeadName(branding.name)) {
     return (
       <EscenografiaChronosLead>
-        <EdicionProvider cloud={isCloud()} puertaDeOperador={esPuertaDeOperador}>
+        <EdicionProvider cloud={isCloud()} puerta={puerta}>
           {children}
         </EdicionProvider>
       </EscenografiaChronosLead>
@@ -85,7 +90,7 @@ export default async function AuthLayout({
             </div>
           )}
         </div>
-        <EdicionProvider cloud={isCloud()} puertaDeOperador={esPuertaDeOperador}>
+        <EdicionProvider cloud={isCloud()} puerta={puerta}>
           {children}
         </EdicionProvider>
       </div>

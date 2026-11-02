@@ -14,7 +14,7 @@ import {
   suspender,
 } from "@/server/platform/padron";
 import { accesoAlPanel } from "@/server/platform/superadmin";
-import { anotar } from "@/server/equipo/gobierno";
+import { anotar, quitarComoPlataforma } from "@/server/equipo/gobierno";
 import {
   partirCorreos,
   primerCorreoInvalido,
@@ -473,7 +473,16 @@ export async function enlaceDeAcceso(
     detalle:
       "generado desde el panel de plataforma; invalidó el anterior de esa persona",
   });
-  return { error: null, aviso: enlace };
+  /**
+   * 136 — El aviso lleva el correo de la persona, no solo la dirección.
+   *
+   * El panel decía «Mandale este enlace al dueño», texto heredado de cuando
+   * solo se podía generar para el dueño o para soporte. Desde que se elige por
+   * persona puede ser para cualquiera —un miembro de Bandeja, un
+   * administrador—, y decir «al dueño» hace mandárselo a quien no era. Lo
+   * detectó el dueño generando el suyo.
+   */
+  return { error: null, aviso: `${fila.correo}: ${enlace}` };
 }
 
 
@@ -581,4 +590,38 @@ export async function sumarSoporteACliente(
   );
   revalidatePath("/admin");
   return { error: null, aviso: lineas.join("\n") };
+}
+
+/**
+ * 137 — Quitar a alguien del equipo de un cliente, desde la plataforma.
+ *
+ * El complemento de `sumarSoporteACliente`. Sin esto, sumar era una puerta de
+ * una sola dirección: se podía dar acceso y no sacarlo.
+ */
+export async function quitarSoporteDeCliente(
+  _prev: ResultadoAccion,
+  formData: FormData
+): Promise<ResultadoAccion> {
+  const guardia = await exigirSuperadmin();
+  if (!guardia.ok) return guardia.resultado;
+
+  const datos = idSchema.safeParse({ organizationId: formData.get("organizationId") });
+  if (!datos.success) return { error: "Cliente no indicado.", aviso: null };
+
+  const memberId = String(formData.get("memberId") ?? "").trim();
+  if (!memberId) return { error: "Elegí a quién quitás.", aviso: null };
+
+  const r = await quitarComoPlataforma({
+    organizationId: datos.data.organizationId,
+    memberId,
+    actorEtiqueta: guardia.autor,
+  });
+  if (!r.ok) return { error: r.mensaje, aviso: null };
+
+  registrar(guardia.autor, `soporte quitado (${r.correo})`, datos.data.organizationId);
+  revalidatePath("/admin");
+  return {
+    error: null,
+    aviso: `${r.correo}: quitado de este cliente. Sus sesiones abiertas se cerraron. Conserva su cuenta y sus otros clientes.`,
+  };
 }
