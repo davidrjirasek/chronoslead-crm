@@ -1,4 +1,3 @@
-import { BrandMark } from "@/components/brand-mark";
 import { Salir } from "@/components/admin/salir";
 
 const ETIQUETA_ROL: Record<string, string> = {
@@ -37,11 +36,27 @@ export function ListaDeCuentas({
   }
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-5 py-10">
+    <main className="cl-marca min-h-screen pb-16">
+      {/* 138 — La misma barra que el panel de plataforma: esta página es parte
+          del producto, no una pantalla suelta. El isotipo va acotado a 36px —
+          `BrandMark` sin tamaño se dibuja del porte de la pantalla. */}
+      <div className="cl-superficie border-b border-line">
+        <div className="mx-auto flex max-w-2xl items-center gap-2.5 px-5 py-3.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/isotipo.png" alt="" aria-hidden className="h-9 w-9 object-contain" />
+          <div className="min-w-0">
+            <p className="text-[17px] font-extrabold leading-tight tracking-tight">
+              Chronos<span className="text-brand">Lead</span>
+            </p>
+            <p className="text-[11px] text-text-3">Tus cuentas</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto w-full max-w-2xl px-5 py-8">
       <header className="flex flex-wrap items-center gap-3">
-        <BrandMark />
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-semibold">Tus cuentas</h1>
+          <h1 className="text-xl font-bold tracking-tight">Elegí a cuál entrar</h1>
           <p className="text-xs text-text-3">{correo}</p>
         </div>
         <Salir />
@@ -80,6 +95,7 @@ export function ListaDeCuentas({
         la misma de siempre: las sesiones se guardan por dirección, a propósito,
         para que la de un cliente no sirva en la de otro.
       </p>
+      </div>
     </main>
   );
 }

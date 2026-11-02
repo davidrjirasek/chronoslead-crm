@@ -66,4 +66,16 @@ describe("138 · qué muestra y qué no", () => {
   it("sin organizaciones no deja una pantalla muda", () => {
     expect(lista).toContain("todavía no pertenece a ninguna");
   });
+
+  it("el isotipo va acotado, no a pantalla completa", () => {
+    // `BrandMark` sin clase de tamaño se dibuja del porte de la pantalla: en
+    // producción salió una V gigante tapando la lista. El panel de plataforma
+    // ya resolvía esto con el isotipo a 36px; se usa el mismo.
+    // Se busca el IMPORT y el USO, no la palabra: el comentario del archivo
+    // nombra a BrandMark para explicar por qué no se usa, y buscar la palabra
+    // suelta da un falso positivo.
+    expect(lista).toContain('className="h-9 w-9 object-contain"');
+    expect(lista).not.toMatch(/import \{[^}]*BrandMark/);
+    expect(lista).not.toMatch(/<BrandMark/);
+  });
 });
