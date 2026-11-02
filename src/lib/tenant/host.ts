@@ -28,6 +28,7 @@ export const SLUGS_RESERVADOS = new Set([
   "cdn",
   "status",
   "soporte",
+  "cuentas",
   "ayuda",
   "blog",
   "docs",
@@ -61,6 +62,7 @@ export const SLUGS_RESERVADOS = new Set([
 const SLUG_VALIDO = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
 
 export type TenantHost =
+  | { kind: "cuentas" }
   | { kind: "tenant"; slug: string }
   | { kind: "landing" }
   | { kind: "admin" }
@@ -112,6 +114,17 @@ export function resolveTenantFromHost(
   // y si solo estuviera ahí el host caería en «no existe» en vez de servir el
   // formulario.
   if (etiqueta === "onboarding") return { kind: "onboarding" };
+  /**
+   * 138 — El lanzador. Va ANTES del filtro de reservados, por el mismo motivo
+   * que `alta` y `onboarding`: está en esa lista como segunda cerradura, y si
+   * solo estuviera ahí el host caería en «no existe» en vez de servir la
+   * página.
+   *
+   * Existe porque nadie puede recordar la dirección de cada cliente. Con nueve
+   * ya molesta; con cincuenta es imposible. Muestra SOLO las organizaciones de
+   * quien entró, así que un desconocido no ve la cartera.
+   */
+  if (etiqueta === "cuentas") return { kind: "cuentas" };
   if (!SLUG_VALIDO.test(etiqueta) || SLUGS_RESERVADOS.has(etiqueta)) {
     return { kind: "desconocido" };
   }

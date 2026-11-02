@@ -20,22 +20,29 @@ const EdicionContext = createContext(false);
  * que le habían servido la pantalla equivocada. Lo único que cambia es el
  * titular; el formulario es el mismo porque el usuario también lo es.
  */
-const PuertaDeOperadorContext = createContext(false);
+/**
+ * 138 — Tres puertas, no dos: la del cliente, la del operador (`admin.…`) y el
+ * lanzador (`cuentas.…`). Como string y no como booleanos sueltos: dos
+ * booleanos permiten estados que no existen.
+ */
+export type Puerta = "cliente" | "operador" | "cuentas";
+
+const PuertaContext = createContext<Puerta>("cliente");
 
 export function EdicionProvider({
   cloud,
-  puertaDeOperador = false,
+  puerta = "cliente",
   children,
 }: {
   cloud: boolean;
-  puertaDeOperador?: boolean;
+  puerta?: Puerta;
   children: React.ReactNode;
 }) {
   return (
     <EdicionContext.Provider value={cloud}>
-      <PuertaDeOperadorContext.Provider value={puertaDeOperador}>
+      <PuertaContext.Provider value={puerta}>
         {children}
-      </PuertaDeOperadorContext.Provider>
+      </PuertaContext.Provider>
     </EdicionContext.Provider>
   );
 }
@@ -44,6 +51,6 @@ export function useEsPlataforma(): boolean {
   return useContext(EdicionContext);
 }
 
-export function useEsPuertaDeOperador(): boolean {
-  return useContext(PuertaDeOperadorContext);
+export function usePuerta(): Puerta {
+  return useContext(PuertaContext);
 }

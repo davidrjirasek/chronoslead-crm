@@ -19,6 +19,7 @@ import {
   altaDeCliente,
   enlaceDeAcceso,
   sumarSoporteACliente,
+  quitarSoporteDeCliente,
   marcarPago,
   reactivarCliente,
   suspenderCliente,
@@ -332,6 +333,10 @@ function Acciones({
     sumarSoporteACliente,
     SIN_RESULTADO
   );
+  const [baja, accionBaja, bajaEnCurso] = useActionState(
+    quitarSoporteDeCliente,
+    SIN_RESULTADO
+  );
   const [enlace, accionEnlace, enlaceEnCurso] = useActionState(
     enlaceDeAcceso,
     SIN_RESULTADO
@@ -339,7 +344,8 @@ function Acciones({
 
   const suspendidoAMano =
     cliente.estado.estado === "suspendida" && cliente.estado.motivo === "manual";
-  const error = pago.error ?? susp.error ?? reac.error ?? enlace.error ?? soporte.error;
+  const error =
+    pago.error ?? susp.error ?? reac.error ?? enlace.error ?? soporte.error ?? baja.error;
 
   return (
     <div className="space-y-4 border-t border-line bg-brand-tint/50 px-4 py-4">
@@ -495,7 +501,47 @@ function Acciones({
             </form>
           }
         >
-          {soporte.aviso ? <MensajesParaCopiar texto={soporte.aviso} /> : <span />}
+          <div className="space-y-2">
+            {/* 137 — Quién está hoy, con su baja al lado. Sumar sin poder
+                quitar es una puerta de una sola dirección: cuando alguien se
+                va de la agencia, la regla de rangos impide que otro
+                administrador lo saque, y el único con rango es el propietario
+                del cliente. Pedirle al cliente que eche a nuestro empleado
+                está al revés. */}
+            {miembros.length > 0 && (
+              <ul className="divide-y divide-line rounded-lg border">
+                {miembros.map((m) => (
+                  <li key={m.memberId} className="flex items-center gap-2 px-3 py-2">
+                    <span className="min-w-0 flex-1 truncate text-xs">{m.correo}</span>
+                    <span className="text-[11px] text-text-3">{etiquetaDeRol(m.rol)}</span>
+                    {m.rol === "owner" ? (
+                      <span className="text-[11px] text-text-3">—</span>
+                    ) : (
+                      <form action={accionBaja}>
+                        <input type="hidden" name="organizationId" value={cliente.id} />
+                        <input type="hidden" name="memberId" value={m.memberId} />
+                        <Button
+                          type="submit"
+                          size="sm"
+                          variant="outline"
+                          disabled={bajaEnCurso}
+                          title={`Quitar a ${m.correo} de este cliente`}
+                        >
+                          Quitar
+                        </Button>
+                      </form>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {soporte.aviso ? <MensajesParaCopiar texto={soporte.aviso} /> : null}
+            {baja.aviso ? (
+              <p className="rounded-md bg-success-tint px-3 py-2 text-xs text-success-text">
+                {baja.aviso}
+              </p>
+            ) : null}
+          </div>
         </Bloque>
 
         <Bloque
@@ -538,7 +584,17 @@ function Acciones({
           }
         >
           {enlace.aviso ? (
-            <EnlaceDeAcceso url={enlace.aviso} motivo="recuperacion" />
+            <div className="space-y-2 rounded-lg border border-brand-soft bg-brand-tint/40 p-3">
+              <p className="text-xs font-semibold text-brand-text">
+                Enlace generado. Mandáselo a esta persona:
+              </p>
+              <MensajesParaCopiar texto={enlace.aviso} />
+              <p className="text-[11px] leading-snug text-text-3">
+                Sirve una sola vez y caduca a los 7 días, así que da igual el
+                canal por el que se lo mandes. Esa persona elige su contraseña:
+                nadie más la conoce.
+              </p>
+            </div>
           ) : (
             <span />
           )}
@@ -818,86 +874,6 @@ function Insignia({ estado }: { estado: EstadoOrganizacion }) {
 }
 
 /**
- * El enlace, para copiar y mandar.
- *
- * `navigator.clipboard` solo existe en contexto seguro (HTTPS o localhost): en
- * desarrollo se entra por `http://algo.lvh.me:3000` y ahí no lo hay. Sin
- * alternativa, el botón no hacía nada y parecía roto — y solo fallaba en local,
- * que es como se arreglan tarde las cosas.
- */
-function EnlaceDeAcceso({
-  url,
-  motivo,
-}: {
-  url: string;
-  motivo: "alta" | "recuperacion";
-}) {
-  const [copiado, setCopiado] = useState(false);
-  const [manual, setManual] = useState(false);
-
-  useEffect(() => {
-    if (!copiado) return;
-    const t = setTimeout(() => setCopiado(false), 2500);
-    return () => clearTimeout(t);
-  }, [copiado]);
-
-  async function copiar() {
-    try {
-      if (!navigator.clipboard?.writeText) throw new Error("sin portapapeles");
-      await navigator.clipboard.writeText(url);
-      setCopiado(true);
-    } catch {
-      setManual(true);
-    }
-  }
-
-  return (
-    <div className="space-y-2 rounded-lg border border-brand-soft bg-brand-tint p-3">
-      <p className="text-xs font-semibold text-brand-text">
-        {motivo === "alta"
-          ? "Cliente creado. Mandale este enlace:"
-          : "Mandale este enlace al dueño:"}
-      </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <code className="min-w-0 flex-1 select-all break-all rounded bg-raised px-2 py-1.5 text-[11px]">
-          {url}
-        </code>
-        <Button type="button" size="sm" onClick={() => void copiar()}>
-          {copiado ? (
-            <>
-              <Check className="mr-1.5 h-4 w-4" strokeWidth={2.4} />
-              Copiado
-            </>
-          ) : (
-            <>
-              <Copy className="mr-1.5 h-4 w-4" strokeWidth={2} />
-              Copiar
-            </>
-          )}
-        </Button>
-      </div>
-      <p className="text-[11px] leading-snug text-text-3">
-        Sirve una sola vez y caduca a los 7 días, así que da igual el canal por el que se
-        lo mandes. El cliente elige su contraseña: nadie más la conoce.
-      </p>
-      {manual && (
-        <p className="text-[11px] text-text-3">
-          Este navegador no deja copiar solo sin conexión cifrada. Tocá el enlace para
-          seleccionarlo y copialo con Cmd+C. En producción el botón funciona.
-        </p>
-      )}
-    </div>
-  );
-}
-
-/** 136 — El rol como lo lee un humano, para el selector del enlace. */
-function etiquetaDeRol(rol: string): string {
-  if (rol === "owner") return "Propietario";
-  if (rol === "admin") return "Administrador";
-  return "Miembro";
-}
-
-/**
  * 136 — Un bloque por mensaje, cada uno con SU botón de copiar.
  *
  * Antes el resultado del alta salía entero en un solo bloque con un botón: para
@@ -973,4 +949,11 @@ function MensajeParaCopiar({ texto }: { texto: string }) {
       )}
     </div>
   );
+}
+
+/** 136 — El rol como lo lee un humano, para el selector del enlace. */
+function etiquetaDeRol(rol: string): string {
+  if (rol === "owner") return "Propietario";
+  if (rol === "admin") return "Administrador";
+  return "Miembro";
 }
