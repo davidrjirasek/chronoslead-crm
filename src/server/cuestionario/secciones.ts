@@ -791,6 +791,496 @@ const GENERAL: readonly Seccion[] = [
 ] as const;
 
 /**
+ * 131 — La variante para AGENCIAS.
+ *
+ * Es la primera variante por **rubro** y no por cliente, y la diferencia
+ * importa: no nombra a nadie, así que sirve para cualquier agencia que entre
+ * y no publica en un repositorio público quién está hablando con nosotros.
+ *
+ * Una agencia no encaja en la general, y no por vocabulario. La general supone
+ * un negocio que quiere un asesor para atender a SUS clientes. Lo que pide una
+ * agencia es otra cosa: recuperar las horas que se le van en lo operativo,
+ * dejar de hacer a mano lo que podría hacerse solo, y mejorar lo que su cliente
+ * recibe. De ahí tres desviaciones deliberadas:
+ *
+ * 1. **La sección 5 pregunta por HORAS antes que por consultas.** El inventario
+ *    de tareas repetitivas con sus horas es, además del insumo del agente, la
+ *    línea de base para medir el retorno. Sin el número de partida no hay con
+ *    qué comparar a los tres meses, y es un dato que solo existe el día que
+ *    alguien lo escribe.
+ * 2. **La sección 6 pregunta en nombre de quién habla el agente.** En una
+ *    agencia esa pregunta no es de estilo: decide si atiende a los clientes de
+ *    la agencia o a los clientes DE sus clientes, y son dos productos.
+ * 3. **La 9 y la 10 no piden datos de alta.** Las otras dos variantes son el
+ *    paso 0 del alta y por eso piden el correo del propietario y el número a
+ *    conectar. Una agencia suele llenar esto **antes de decidir si contrata**, y
+ *    pedirle el dueño de la cuenta ahí le presupone la venta. Los datos del alta
+ *    se piden cuando hay alta: son los doce pasos de `docs/alta-de-cliente.md`.
+ *    **Está declarado acá para que no se lea como un olvido.**
+ */
+const AGENCIA: readonly Seccion[] = [
+  {
+    numero: 1,
+    titulo: "La agencia, y quién le escribe",
+    entrada:
+      "Empecemos por el mapa: qué hace la agencia hoy, quién decide esto y quién les escribe. De acá sale todo lo demás.",
+    minutos: 2,
+    bloques: [
+      {
+        id: "1.1",
+        tipo: "texto",
+        etiqueta: "¿A qué se dedica la agencia?",
+        marcador: "en una línea, como se lo dirían a alguien que no los conoce",
+        requerido: true,
+      },
+      {
+        id: "1.2",
+        tipo: "parrafo",
+        etiqueta: "¿Quiénes toman esta decisión? Nombre y rol de cada uno.",
+        ayuda:
+          "Para que la reunión de diagnóstico se arme con las personas que pueden decidir, y no haya que repetirla.",
+        requerido: true,
+      },
+      {
+        id: "1.3",
+        tipo: "parrafo",
+        etiqueta: "¿Cuántas personas son hoy en el equipo, y cómo se reparten?",
+        marcador: "socios, cuentas, creativos, pauta, producción, administración…",
+      },
+      { id: "1.4", tipo: "texto", etiqueta: "¿Cuántos clientes activos atienden a la vez?" },
+      {
+        tipo: "nota",
+        texto:
+          "A un mismo número de agencia suelen llegar tres conversaciones que no se parecen en nada: un cliente activo pidiendo una pieza o un reporte, un prospecto preguntando cuánto cobran, y un proveedor o freelance coordinando una entrega. Mezcladas se atienden todas igual de mal, y la del prospecto —la única que trae plata nueva— es la que más se enfría esperando.",
+      },
+      {
+        id: "1.5",
+        tipo: "varias",
+        etiqueta: "¿Cuáles de esas les escriben hoy al mismo número?",
+        opciones: [
+          "Clientes activos",
+          "Prospectos que todavía no son clientes",
+          "Proveedores, freelances y producción",
+          "Candidatos buscando trabajo",
+        ],
+        otro: true,
+      },
+      {
+        id: "1.6",
+        tipo: "parrafo",
+        etiqueta: "¿Cuál de esas conversaciones les gustaría dejar de atender personalmente?",
+        ayuda: "No la que menos importa: la que consume tiempo sin que su criterio agregue nada.",
+      },
+    ],
+  },
+  {
+    numero: 2,
+    titulo: "Horarios",
+    minutos: 2,
+    bloques: [
+      {
+        id: "2.1",
+        tipo: "parrafo",
+        etiqueta: "¿En qué horario trabaja la agencia?",
+        ayuda: "Si en temporada de campañas o cierres de mes cambia, cuéntenlo.",
+        requerido: true,
+      },
+      {
+        id: "2.2",
+        tipo: "tabla",
+        etiqueta: "¿En qué horario hay personas disponibles para responder un WhatsApp?",
+        ayuda:
+          "El agente contesta siempre. Esto es para saber cuándo puede prometer que alguien va a mirar un caso.",
+        columnas: ["Desde", "Hasta"],
+        filas: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
+      },
+      {
+        id: "2.3",
+        tipo: "parrafo",
+        etiqueta: "¿Hay clientes que escriben fuera de hora y esperan respuesta igual?",
+        ayuda:
+          "Es donde un agente rinde más: no por contestar rápido, sino por evitar que alguien del equipo esté mirando el teléfono un domingo.",
+      },
+    ],
+  },
+  {
+    numero: 3,
+    titulo: "Qué vende la agencia",
+    minutos: 2,
+    bloques: [
+      {
+        id: "3.1",
+        tipo: "parrafo",
+        etiqueta: "¿Qué servicios venden? Cuéntennos cómo están organizados.",
+        marcador: "estrategia de marca, prensa y reputación, contenidos, social media, influencers, eventos y activaciones, pauta…",
+        requerido: true,
+      },
+      {
+        id: "3.2",
+        tipo: "varias",
+        etiqueta: "¿Cómo cobran cada cosa?",
+        opciones: [
+          "Abono mensual (fee)",
+          "Por proyecto cerrado",
+          "Por evento o activación",
+          "Porcentaje de la pauta",
+          "Por hora",
+          "Mixto, según el cliente",
+        ],
+        otro: true,
+      },
+      {
+        id: "3.3",
+        tipo: "una",
+        etiqueta: "¿Los precios son públicos?",
+        ayuda:
+          "No hay respuesta correcta. En servicios profesionales casi nunca conviene decir el número antes de entender el alcance, pero sí conviene decir un rango para no gastar una reunión con quien no puede pagarlo.",
+        opciones: [
+          "Sí, el agente puede decirlos",
+          "Solo un rango o un «desde»",
+          "No, primero hay que entender el alcance",
+        ],
+      },
+      {
+        id: "3.4",
+        tipo: "parrafo",
+        etiqueta: "¿Qué tiene que preguntar el agente para saber si un prospecto les sirve?",
+        ayuda:
+          "Lo que hoy averiguan en los primeros cinco minutos de una llamada: rubro, tamaño, presupuesto, si ya trabajaron con una agencia, qué esperan.",
+      },
+      {
+        id: "3.5",
+        tipo: "parrafo",
+        etiqueta: "¿Hay un cliente que NO quieran? ¿Cómo se reconoce temprano?",
+        ayuda: "Decir no rápido vale tanto como decir sí rápido, y es lo que un agente puede hacer sin desgastar a nadie.",
+      },
+    ],
+  },
+  {
+    numero: 4,
+    titulo: "Cómo les pagan, y cómo cobran",
+    minutos: 2,
+    bloques: [
+      {
+        id: "4.1",
+        tipo: "parrafo",
+        etiqueta: "Expliquen paso a paso cómo les paga un cliente",
+        ayuda: "Desde la factura hasta que el pago queda registrado. Como se lo contarían a alguien que entra al equipo.",
+        requerido: true,
+      },
+      {
+        id: "4.2",
+        tipo: "una",
+        etiqueta: "¿Les pasa que un abono mensual se atrasa?",
+        opciones: ["Seguido", "A veces", "Casi nunca"],
+      },
+      {
+        tipo: "nota",
+        texto:
+          "La cobranza es el caso donde más claro se ve el retorno, porque se mide solo: la cartera al día es un número que ya existe y no hay que inventarlo. El patrón que usamos son dos agentes y no uno — el del tramo por vencer avisa y acompaña, y el del vencido es otro problema, con otro tono y otros límites, porque ahí ya hay un conflicto. Mezclarlos en un solo agente es lo que lo hace fallar.",
+      },
+      {
+        id: "4.3",
+        tipo: "una",
+        etiqueta: "¿Les interesaría que un agente haga el seguimiento de cobranza?",
+        opciones: [
+          "Sí, es uno de los dolores",
+          "Nos interesa pero no es lo primero",
+          "No, eso lo queremos seguir haciendo nosotros",
+        ],
+      },
+      {
+        id: "4.4",
+        tipo: "parrafo",
+        etiqueta: "¿Quién persigue hoy un pago atrasado, y cuánto tiempo le lleva por semana?",
+      },
+    ],
+  },
+  {
+    numero: 5,
+    titulo: "Lo que les come las horas",
+    entrada:
+      "Esta es la sección más importante, y es la que contesta dónde está el retorno. Para recuperar las horas que se van en lo operativo hace falta saber cuáles son esas horas HOY, porque dentro de tres meses nadie se va a acordar de cuántas eran. Escríbanlas aunque sean estimadas: una estimación anotada vale, una que quedó en la cabeza no.",
+    minutos: 5,
+    bloques: [
+      {
+        id: "5.1",
+        tipo: "tabla",
+        etiqueta: "Las tareas que más horas les consumen, quién las hace y cuántas horas por semana",
+        ayuda:
+          "Las operativas y repetitivas, no las creativas: armar reportes de prensa o clipping, llenar calendarios de contenido, pedir materiales, pasar piezas a aprobación y perseguir esas aprobaciones, coordinar influencias o proveedores, cargar pauta, responder lo mismo a cinco clientes. Esta tabla es la línea de base del retorno.",
+        columnas: ["La tarea", "Quién la hace hoy", "Horas por semana"],
+        filas: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+      },
+      {
+        id: "5.2",
+        tipo: "tabla",
+        etiqueta: "Lo que más les preguntan los clientes, y cómo lo contestan hoy",
+        ayuda: "Escríbanlas como las contestan de verdad, sin arreglarlas. De acá sale casi toda la calidad del agente.",
+        columnas: ["Lo que pregunta el cliente", "Cómo lo contestan hoy"],
+        filas: ["1", "2", "3", "4", "5", "6", "7", "8"],
+      },
+      {
+        tipo: "nota",
+        texto:
+          "Conviene separar dos tipos de dolor: hay uno grande, el que mueve la aguja pero cuesta meses, y hay pequeñas victorias que se resuelven en días. Se empieza por una victoria rápida mientras se construye la grande — así el equipo ve que funciona antes de que haya que defender la inversión.",
+      },
+      {
+        id: "5.3",
+        tipo: "parrafo",
+        etiqueta: "De todo eso, ¿cuál es el dolor grande?",
+        ayuda: "El que si se resolviera cambiaría cómo opera la agencia, aunque lleve meses.",
+      },
+      {
+        id: "5.4",
+        tipo: "parrafo",
+        etiqueta: "¿Y cuál sería una victoria rápida?",
+        ayuda: "Algo que les saque horas la semana que viene, aunque sea chico.",
+      },
+      {
+        id: "5.5",
+        tipo: "parrafo",
+        etiqueta: "¿Qué trabajo hace hoy alguien junior que preferirían que no ocupara a una persona?",
+        ayuda:
+          "La idea no es tener menos gente: es que la gente que está haga trabajo de mayor nivel. ¿Qué tarea liberarían primero?",
+      },
+    ],
+  },
+  {
+    numero: 6,
+    titulo: "En nombre de quién habla, y cómo",
+    entrada:
+      "En una agencia esta pregunta no es de estilo. Define si el agente atiende a los clientes de la agencia, o a los clientes DE sus clientes — y son dos cosas distintas, con dos configuraciones distintas.",
+    minutos: 1,
+    bloques: [
+      {
+        id: "6.1",
+        tipo: "una",
+        etiqueta: "¿A quién tiene que atender el agente?",
+        ayuda:
+          "Si es lo segundo, no es un agente: es uno por cada cliente, con su marca y su número. Eso se puede, y de hecho es la forma en que una agencia revende esto — pero conviene decidirlo antes y no después.",
+        opciones: [
+          "A los clientes de la agencia, y al equipo interno",
+          "A los clientes DE nuestros clientes, con la marca de cada uno",
+          "Las dos cosas, en etapas",
+        ],
+        requerido: true,
+      },
+      { id: "6.2", tipo: "texto", etiqueta: "¿Cómo se va a llamar el agente?", requerido: true },
+      {
+        id: "6.3",
+        tipo: "una",
+        etiqueta: "¿Cómo tratan a sus clientes?",
+        opciones: ["De usted", "De vos", "De tú"],
+      },
+      {
+        id: "6.4",
+        tipo: "una",
+        etiqueta: "¿Qué tono?",
+        ayuda:
+          "Están hablando con dueños y gerentes de otras empresas. Un tono demasiado informal resta autoridad; uno demasiado rígido no se parece a cómo habla una agencia.",
+        opciones: ["Cercano y cálido", "Profesional y directo", "Formal"],
+      },
+      {
+        id: "6.5",
+        tipo: "parrafo",
+        etiqueta: "¿Hay algo que el agente nunca deba decir o prometer?",
+        marcador: "plazos de entrega, resultados de campaña, precios cerrados, nombres de otros clientes…",
+      },
+    ],
+  },
+  {
+    numero: 7,
+    titulo: "Qué tiene que lograr, y cómo van a medir que funcionó",
+    minutos: 3,
+    bloques: [
+      {
+        id: "7.1",
+        tipo: "varias",
+        etiqueta: "¿Para qué quieren los agentes?",
+        ayuda: "Marquen todo lo que aplique. Si algo de esta lista no sabían que se podía, es buena señal: por eso está.",
+        opciones: [
+          "Calificar prospectos antes de que lleguen a un socio",
+          "Atender pedidos de clientes activos (materiales, estados, reportes)",
+          "Armar y mandar los reportes periódicos",
+          "Seguimiento de cobranza",
+          "Agendar reuniones",
+          "Coordinar con proveedores, freelances e influencers",
+          "Tareas internas de producción (briefs, checklists, pases a aprobación)",
+          "Juntar y ordenar el clipping o las menciones de prensa",
+        ],
+        otro: true,
+      },
+      {
+        tipo: "nota",
+        texto:
+          "Hay algo que casi todas las agencias piden y que NO es un agente de WhatsApp, así que vale separarlo: en vez de mandarle el informe del mes en PPT al cliente, que el cliente entre a un tablero en línea, vea al día sus métricas, su clipping o sus menciones, y se descargue solo las piezas aprobadas, sin tener que pedírselas a nadie del equipo. Eso es un portal de cliente: es otro entregable, con otro costo y otro plazo.",
+      },
+      {
+        id: "7.2",
+        tipo: "una",
+        etiqueta: "El portal donde el cliente se sirve solo, ¿dónde lo ponen?",
+        opciones: [
+          "Es la prioridad: es lo que más mejora la experiencia de nuestros clientes",
+          "Lo queremos, pero después de lo operativo",
+          "Es interesante y no urgente",
+        ],
+      },
+      {
+        id: "7.3",
+        tipo: "parrafo",
+        etiqueta: "Si ese portal existiera, ¿qué tendría que poder hacer un cliente sin escribirle a nadie?",
+        marcador: "ver el reporte del mes, descargar piezas aprobadas, ver en qué va un pedido, pasar material a un proveedor…",
+      },
+      {
+        id: "7.4",
+        tipo: "tabla",
+        etiqueta: "¿Cómo van a medir que esto funcionó?",
+        ayuda:
+          "Para traducir la incorporación en beneficio económico. Puede ser horas liberadas por semana, costo de nómina evitado, clientes atendidos por persona, tiempo de respuesta, cartera al día. Elijan dos o tres y digan cuánto valen hoy.",
+        columnas: ["Lo que vamos a medir", "Cuánto vale hoy", "A cuánto queremos llegar"],
+        filas: ["1", "2", "3"],
+      },
+      {
+        id: "7.5",
+        tipo: "parrafo",
+        etiqueta: "¿Qué temas tienen que pasar sí o sí a una persona?",
+      },
+      {
+        tipo: "nota",
+        texto:
+          "Lo que armamos para una agencia puede salir con SU marca y entregárselo a sus clientes como producto propio, no como algo nuestro revendido. Si ese camino les interesa, cambia cómo conviene configurar todo desde el principio — por eso se pregunta ahora y no en seis meses.",
+      },
+      {
+        id: "7.6",
+        tipo: "una",
+        etiqueta: "¿Les interesa revender esto a sus clientes con su propia marca?",
+        opciones: [
+          "Sí, es parte de por qué nos interesa",
+          "Primero queremos resolver lo nuestro",
+          "No es nuestro negocio",
+        ],
+      },
+    ],
+  },
+  {
+    numero: 8,
+    titulo: "Para quien maneja sus herramientas",
+    entrada:
+      "Esta sección es técnica. El agente puede responder contra las herramientas que ya usan —el estado de una campaña, un reporte, una planilla— pero necesita una puerta por donde preguntar.",
+    paraQuien: "Pueden pasarle esta sección a quien maneje sus sistemas y seguir con la 9.",
+    minutos: 1,
+    bloques: [
+      {
+        id: "8.1",
+        tipo: "varias",
+        etiqueta: "¿Qué usan hoy para trabajar?",
+        opciones: [
+          "Un CRM",
+          "Planillas",
+          "Gestor de proyectos o tareas",
+          "Drive o similar para los materiales",
+          "Meta Business y administradores de pauta",
+          "Monitoreo de prensa, clipping o escucha social",
+          "Herramienta de reportes o dashboards",
+        ],
+        otro: true,
+      },
+      {
+        id: "8.2",
+        tipo: "parrafo",
+        etiqueta: "¿Cuáles, con nombre? ¿Alguna expone una API?",
+        ayuda: "Si probaron algo y lo abandonaron, cuéntenlo también: lo abandonado informa tanto como lo que quedó.",
+      },
+      {
+        id: "8.3",
+        tipo: "parrafo",
+        etiqueta: "¿Dónde vive hoy la información de un cliente?",
+        marcador: "en una planilla, en el Drive, en el WhatsApp de alguien, en la cabeza de alguien…",
+      },
+      { id: "8.4", tipo: "texto", etiqueta: "¿Quién es el contacto técnico? Nombre, correo y teléfono." },
+      {
+        tipo: "nota",
+        texto:
+          "No hace falta que nada de esto esté listo para arrancar. El agente puede empezar por lo que no necesita conexión —calificar prospectos, responder lo que se repite, agendar— y sumar las consultas en vivo cuando la puerta esté disponible.",
+      },
+    ],
+  },
+  {
+    numero: 9,
+    titulo: "Canales",
+    minutos: 1,
+    bloques: [
+      {
+        id: "9.1",
+        tipo: "tabla",
+        etiqueta: "¿Por dónde les escriben hoy, y por dónde querrían que el agente atienda?",
+        columnas: ["¿Lo usan hoy?", "¿Que el agente atienda ahí?"],
+        filas: ["WhatsApp", "Instagram", "Facebook", "Correo", "Teléfono"],
+      },
+      {
+        id: "9.2",
+        tipo: "texto",
+        etiqueta: "¿Cuántos mensajes reciben por día, más o menos?",
+        marcador: "un número grueso alcanza: diez, cincuenta, doscientos",
+      },
+      {
+        id: "9.3",
+        tipo: "una",
+        etiqueta: "¿Usan un número solo o varios?",
+        ayuda:
+          "No lo preguntamos para conectar nada todavía, pero sí para poder decirles un plazo real: si el número que quieren usar es el que sus clientes ya tienen agendado, conectarlo conservando el WhatsApp del teléfono requiere un trámite con Meta que lleva varios días. No es complicado, pero no es inmediato, y conviene saberlo antes.",
+        opciones: [
+          "Uno solo, en un teléfono del equipo",
+          "Uno solo, en una central o centralita",
+          "Varios, uno por persona o por área",
+        ],
+      },
+      {
+        id: "9.4",
+        tipo: "parrafo",
+        etiqueta: "¿Hacen pauta o comunicación para ustedes mismos, o solo para clientes?",
+        ayuda:
+          "Si un prospecto llega desde un anuncio propio, el agente puede saber de qué anuncio vino y atenderlo distinto. Para una agencia eso además es una demostración vendible.",
+      },
+    ],
+  },
+  {
+    numero: 10,
+    titulo: "Materiales, y quién viene a la reunión",
+    entrada:
+      "Lo último, y lo más corto. Esto no pide accesos ni datos de cuenta: eso se ve si deciden avanzar, y recién entonces.",
+    minutos: 1,
+    bloques: [
+      {
+        id: "10.1",
+        tipo: "parrafo",
+        etiqueta: "¿Quiénes van a estar en la reunión de diagnóstico?",
+        ayuda:
+          "Calculen entre 60 y 70 minutos. Tiene que estar alguien que tenga TODA la información del negocio — si falta ese dato en la reunión, la reunión se repite.",
+      },
+      {
+        id: "10.2",
+        tipo: "parrafo",
+        etiqueta: "Materiales",
+        ayuda:
+          "Manden lo que tengan, aunque esté desordenado: su presentación de servicios y el logo. Y dos cosas que para una agencia valen más que el resto — UNO de los reportes que les mandan hoy a un cliente, tal cual, sin arreglarlo, porque es lo que habría que reemplazar y no se puede proponer con qué reemplazar algo que no vimos; y CAPTURAS DE CONVERSACIONES REALES con clientes y con prospectos, tapando los datos personales. Las capturas muestran cómo habla su gente y cómo pregunta la de ellos, y eso no se saca de ningún manual.",
+      },
+      {
+        tipo: "nota",
+        texto:
+          "Si prefieren no compartir material antes de definir si avanzan, se entiende y no bloquea nada: lo vemos en la reunión, en pantalla, sin que nos quede copia.",
+      },
+      {
+        id: "10.3",
+        tipo: "parrafo",
+        etiqueta: "¿Hay algo que no preguntamos y creen que deberíamos saber?",
+      },
+    ],
+  },
+] as const;
+
+/**
  * Las variantes del cuestionario. La clave es lo que viaja en el enlace
  * (`/?v=the-student-store`); sin `?v=` se sirve la general.
  *
@@ -801,6 +1291,7 @@ const GENERAL: readonly Seccion[] = [
 export const VARIANTES = {
   general: GENERAL,
   "the-student-store": THE_STUDENT_STORE,
+  agencia: AGENCIA,
 } as const;
 
 export type Variante = keyof typeof VARIANTES;
