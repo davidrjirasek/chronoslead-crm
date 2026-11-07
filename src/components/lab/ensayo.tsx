@@ -34,7 +34,9 @@ export function EnsayoCard() {
   const [texto, setTexto] = useState("");
   const [pensando, setPensando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const finRef = useRef<HTMLDivElement>(null);
+  const hiloRef = useRef<HTMLDivElement>(null);
+  /** Para devolver el cursor al cuadro cuando el agente termina de contestar. */
+  const entradaRef = useRef<HTMLInputElement>(null);
 
   const cargar = useCallback(async () => {
     const res = await fetch("/api/lab/ensayo").catch(() => null);
@@ -45,9 +47,18 @@ export function EnsayoCard() {
     void cargar();
   }, [cargar]);
 
+  /**
+   * 140 — Baja SOLO el cuadro de la conversación, no la página.
+   *
+   * La primera versión usaba `scrollIntoView`, que desplaza todos los
+   * contenedores que hay por encima: al llegar una respuesta, la página entera
+   * se iba hacia abajo y te sacaba de donde estabas escribiendo. Mover
+   * `scrollTop` del propio cuadro deja la página quieta.
+   */
   useEffect(() => {
-    finRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [ensayo?.lineas.length]);
+    const hilo = hiloRef.current;
+    if (hilo) hilo.scrollTop = hilo.scrollHeight;
+  }, [ensayo?.lineas.length, pensando]);
 
   async function enviar() {
     const dicho = texto.trim();
@@ -61,6 +72,9 @@ export function EnsayoCard() {
       body: JSON.stringify({ texto: dicho }),
     }).catch(() => null);
     setPensando(false);
+    // El cuadro estuvo deshabilitado mientras pensaba: sin esto hay que
+    // volver a hacerle clic en cada vuelta.
+    entradaRef.current?.focus();
     if (!res) {
       setError("Sin conexión con el servidor.");
       setTexto(dicho);
@@ -108,7 +122,10 @@ export function EnsayoCard() {
       </CardHeader>
 
       <CardContent className="space-y-3">
-        <div className="max-h-[22rem] space-y-2 overflow-y-auto rounded-lg border bg-secondary/30 p-3">
+        <div
+          ref={hiloRef}
+          className="max-h-[22rem] space-y-2 overflow-y-auto rounded-lg border bg-secondary/30 p-3"
+        >
           {vacio ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
               Probá con un precio, un horario o una política que acabes de
@@ -136,7 +153,6 @@ export function EnsayoCard() {
           {pensando && (
             <p className="px-1 text-xs text-muted-foreground">El agente está pensando…</p>
           )}
-          <div ref={finRef} />
         </div>
 
         {ensayo?.escalado && (
@@ -157,6 +173,7 @@ export function EnsayoCard() {
 
         <div className="flex gap-2">
           <Input
+            ref={entradaRef}
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             onKeyDown={(e) => {
