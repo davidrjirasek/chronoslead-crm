@@ -147,7 +147,11 @@ con un `TypeError` sobre `credentials!`:
 
 ## Verificación
 
-**Hecho:** `typecheck` + `lint` + `test` (127 archivos, 1416 casos) + `build`.
+**Hecho:** `typecheck` + `lint` + `test` (127 archivos, 1423 casos) + `build`, y
+el gate que manda: **`test:e2e:aislamiento` en 92/92**, con la **sección 15**
+nueva que prueba este camino con UNA llave compartida entre dos clientes —el
+caso de la agencia— porque con llave compartida el aislamiento no lo da ni la
+puerta ni la firma, lo da el reparto por `accountId`.
 Los 14 casos nuevos cubren la identidad sin «+», la simetría 521/52, el BSUID
 como respaldo, el descarte de otras plataformas, y los tres valores de `source`
 —incluido que `cloud_api` **no** es un eco, que es el fallo más caro de los

@@ -1965,6 +1965,38 @@ tenía que fallar: `messenger.test.ts` afirmaba que `whatsapp` era «una
 plataforma que Vocero no atiende». Se actualizó siguiendo el precedente que el
 propio test documentaba de cuando TikTok pasó a ser canal.
 
+#### El aislamiento de ESTE camino no estaba probado (y ahora sí)
+
+El dueño preguntó, con dos números reales ya andando, si podía haber cruce de
+mensajes entre clientes. Buena pregunta: **los 79/79 de la mañana NO probaban
+este camino.** El guion de aislamiento solo ejercitaba la puerta de Meta por
+organización; la palabra «zernio» no aparecía en ninguna de sus líneas.
+
+Se agregó la **sección 15**, y a propósito con el caso difícil: **una sola
+llave y un solo secreto para los dos clientes**, que es como trabaja la
+agencia. Con la llave compartida, la puerta es la misma y la firma es la
+misma, así que la firma prueba que la entrega viene de Zernio — **no** a qué
+cliente pertenece. Lo único que separa un cliente de otro es el `accountId`,
+sostenido por `meta_credentials_account_ref_uq`. No hay segunda línea de
+defensa, y por eso había que probarlo en vez de razonarlo.
+
+Trece comprobaciones nuevas, **92/92 en verde**. La que importaba:
+
+```
+✅ entregado por el subdominio de B, un evento de la cuenta de A sigue yendo a A
+✅ y NO se cuela en B aunque entró por su puerta
+```
+
+También: una firma inventada se rechaza con 401 y no escribe en ninguno de los
+dos, y un evento de una cuenta que nadie conectó no cae en nadie.
+
+La sección va al final del guion a propósito: una organización tiene UNA fila
+de WhatsApp, así que conectar por Zernio reemplaza la conexión nativa que usan
+las secciones anteriores.
+
+Necesita `ZERNIO_BASE_URL` apuntando al `zernio-mock` (ya en `.env`); sin eso
+se salta con aviso en vez de dar un falso verde.
+
 #### Pendiente de verificación humana
 
 El recorrido en vivo: un mensaje real entrando a la bandeja de

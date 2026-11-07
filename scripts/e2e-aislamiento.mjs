@@ -26,6 +26,12 @@ const BASE_DOMAIN = process.env.BASE_DOMAIN ?? "lvh.me";
 const PUERTO = new URL(process.env.APP_BASE_URL ?? "http://lvh.me:3000").port || "3000";
 const BOT_KEY = process.env.BOT_API_KEY ?? "";
 const CLAVE = process.env.ENCRYPTION_KEY ?? "";
+/**
+ * 139 — El segmento de la puerta COMPARTIDA, la que usa Zernio. En plataforma
+ * esa puerta solo acepta cuerpos de Zernio; los de Meta siguen entrando por la
+ * de cada organización, que es lo que prueban las secciones 8 y 9.
+ */
+const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN ?? "";
 
 /**
  * Identificador de corrida en cada `wa_message_id` inyectado. Sin él la segunda
@@ -860,6 +866,149 @@ async function main() {
       !texto.includes(B.correo),
       "apareció el correo del dueño de B en la bitácora de A"
     );
+  }
+
+  /**
+   * 139 — WhatsApp por Zernio: dos clientes, UNA llave.
+   *
+   * Este es el escenario real de la agencia: una sola llave de Zernio sirve a
+   * todos los clientes, así que los dos comparten la MISMA puerta pública y el
+   * MISMO secreto de firma. La firma, entonces, prueba que la entrega viene de
+   * Zernio — NO a qué cliente pertenece. Lo único que separa a un cliente de
+   * otro es el `accountId` del cuerpo, sostenido por el índice único
+   * `meta_credentials_account_ref_uq`.
+   *
+   * Dicho de otro modo: acá el aislamiento NO lo da la puerta ni la firma, lo
+   * da el reparto. Por eso se prueba, y por eso se prueba con la misma llave
+   * en vez de con dos, que sería el caso fácil.
+   *
+   * Va al final a propósito: una organización tiene UNA fila de WhatsApp, y
+   * conectar por Zernio reemplaza la conexión nativa que usaron las secciones
+   * anteriores.
+   */
+  seccion("15 · WhatsApp por Zernio: dos clientes, UNA llave (139)");
+
+  const MOCK_ZERNIO = (process.env.ZERNIO_BASE_URL ?? "").includes("zernio-mock");
+  if (!MOCK_ZERNIO) {
+    console.log("  SKIP: ZERNIO_BASE_URL no apunta al zernio-mock.");
+    console.log("  Sin el simulador no se puede sembrar la conexión sin tocar Zernio de verdad.");
+  } else {
+    const LLAVE_ZERNIO = `zk-e2e-${RUN}`;
+    const SECRETO_ZERNIO = `s3cr3t-e2e-${RUN}`;
+    const cuentaA = `waacct-A-${RUN}`;
+    const cuentaB = `waacct-B-${RUN}`;
+
+    await fetch(`${origen(A)}/api/dev/zernio-mock/_reset`, { method: "POST" });
+    await fetch(`${origen(A)}/api/dev/zernio-mock/_accounts`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        accounts: [
+          { _id: cuentaA, platform: "whatsapp", username: "+595 900 000001", isActive: true },
+          { _id: cuentaB, platform: "whatsapp", username: "+595 900 000002", isActive: true },
+        ],
+      }),
+    });
+
+    // La MISMA llave y el MISMO secreto para los dos: el caso de la agencia.
+    const conectar = (org, accountRef) =>
+      pedir(org, "/api/settings/whatsapp", {
+        method: "PUT",
+        body: JSON.stringify({
+          source: "zernio",
+          token: LLAVE_ZERNIO,
+          accountRef,
+          webhookSecret: SECRETO_ZERNIO,
+        }),
+      });
+
+    const conA = await conectar(A, cuentaA);
+    const conB = await conectar(B, cuentaB);
+    ok("A conecta su WhatsApp por Zernio", conA.status === 200, `recibido ${conA.status}`);
+    ok("B conecta el suyo con la MISMA llave", conB.status === 200, `recibido ${conB.status}`);
+
+    const PUERTA_COMPARTIDA = `${origen(A)}/api/webhooks/wa/${VERIFY_TOKEN}`;
+
+    const entregarZernio = (url, cuenta, texto, secreto = SECRETO_ZERNIO) => {
+      const cuerpo = JSON.stringify({
+        id: `evt-${texto}`,
+        event: "message.received",
+        message: {
+          id: `zm-${texto}`,
+          conversationId: `conv-${cuenta}`,
+          platform: "whatsapp",
+          direction: "incoming",
+          text: texto,
+          sentAt: new Date().toISOString(),
+          sender: { id: "595900000009", name: "Cliente E2E" },
+        },
+        conversation: { id: `conv-${cuenta}` },
+        account: { id: cuenta, accountId: cuenta, platform: "whatsapp" },
+      });
+      return fetch(url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-zernio-signature": createHmac("sha256", secreto).update(cuerpo).digest("hex"),
+        },
+        body: cuerpo,
+      });
+    };
+
+    // 1 · Lo legítimo entra donde tiene que entrar, y en ningún otro lado.
+    const marcaA = `ZERNIO-A-${RUN}`;
+    await entregarZernio(PUERTA_COMPARTIDA, cuentaA, marcaA);
+    ok(
+      "un evento de la cuenta de A entra en A",
+      await reintentar(() => contieneTexto(A, marcaA))
+    );
+    ok("y NO aparece en B", !(await contieneTexto(B, marcaA)));
+
+    const marcaB = `ZERNIO-B-${RUN}`;
+    await entregarZernio(PUERTA_COMPARTIDA, cuentaB, marcaB);
+    ok(
+      "un evento de la cuenta de B entra en B",
+      await reintentar(() => contieneTexto(B, marcaB))
+    );
+    ok("y NO aparece en A", !(await contieneTexto(A, marcaB)));
+
+    // 2 · La URL no manda: el reparto es por cuenta. Entregar lo de A por el
+    //     subdominio de B no mueve el mensaje de cliente.
+    const marcaCruce = `ZERNIO-CRUCE-${RUN}`;
+    await entregarZernio(
+      `${origen(B)}/api/webhooks/wa/${VERIFY_TOKEN}`,
+      cuentaA,
+      marcaCruce
+    );
+    ok(
+      "entregado por el subdominio de B, un evento de la cuenta de A sigue yendo a A",
+      await reintentar(() => contieneTexto(A, marcaCruce))
+    );
+    ok(
+      "y NO se cuela en B aunque entró por su puerta",
+      !(await contieneTexto(B, marcaCruce)),
+      "CRUCE DE CLIENTES: el cuerpo pudo apuntar al vecino"
+    );
+
+    // 3 · Una firma que no es de Zernio no entra en ningún lado.
+    const marcaFalsa = `ZERNIO-FALSO-${RUN}`;
+    const falsa = await entregarZernio(
+      PUERTA_COMPARTIDA,
+      cuentaA,
+      marcaFalsa,
+      "secreto-que-no-es"
+    );
+    ok("una firma inventada se rechaza", falsa.status === 401, `recibido ${falsa.status}`);
+    await dormir(2000);
+    ok("y no escribió en A", !(await contieneTexto(A, marcaFalsa)));
+    ok("ni en B", !(await contieneTexto(B, marcaFalsa)));
+
+    // 4 · Una cuenta que nadie conectó no tiene dónde caer.
+    const marcaHuerfana = `ZERNIO-HUERFANO-${RUN}`;
+    await entregarZernio(PUERTA_COMPARTIDA, `waacct-NADIE-${RUN}`, marcaHuerfana);
+    await dormir(2000);
+    ok("un evento de una cuenta desconocida no entra en A", !(await contieneTexto(A, marcaHuerfana)));
+    ok("ni en B", !(await contieneTexto(B, marcaHuerfana)));
   }
 
   console.log(`\n${comprobaciones - fallos}/${comprobaciones} comprobaciones correctas.`);
