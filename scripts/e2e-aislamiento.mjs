@@ -1030,6 +1030,84 @@ async function main() {
     ok("ni en B", !(await contieneTexto(B, marcaHuerfana)));
   }
 
+  /**
+   * 140 — El ensayo del Laboratorio.
+   *
+   * Es una conversación por organización, y lo que se escribe ahí es material
+   * de trabajo del cliente: precios que está probando, preguntas que le hace a
+   * su agente. Que no se vea desde otra cuenta no es un detalle.
+   *
+   * El camino de escritura con el agente contestando se verifica a mano: aquí
+   * las organizaciones no tienen llave de IA, y hacer que el gate llame al
+   * proveedor de verdad sería caro y frágil. Lo que sí se comprueba es que SIN
+   * IA se avise en vez de escribir contra una pared, que es la decisión D5.
+   */
+  seccion("16 · El ensayo del Laboratorio (140)");
+
+  const ensayoA = await pedir(A, "/api/lab/ensayo");
+  const ensayoB = await pedir(B, "/api/lab/ensayo");
+  ok("A puede abrir su ensayo", ensayoA.status === 200, `recibido ${ensayoA.status}`);
+  ok("B puede abrir el suyo", ensayoB.status === 200, `recibido ${ensayoB.status}`);
+
+  if (ensayoA.status === 200 && ensayoB.status === 200) {
+    const datosA = await ensayoA.json();
+    const datosB = await ensayoB.json();
+    ok(
+      "cada organización tiene SU propia conversación de ensayo",
+      Boolean(datosA.conversationId) &&
+        Boolean(datosB.conversationId) &&
+        datosA.conversationId !== datosB.conversationId,
+      "las dos cuentas comparten la misma conversación de ensayo"
+    );
+
+    /**
+     * Lo que se escribe en un ensayo es material de trabajo del cliente:
+     * precios que está probando, preguntas que le hace a su agente. Que no se
+     * vea desde otra cuenta es lo que esta sección existe para comprobar.
+     *
+     * La IA sale del entorno cuando la organización no tiene llave guardada
+     * (`isAiConfiguredFor` cae al `.env`), así que el POST entra y el agente
+     * contesta contra el ai-mock.
+     */
+    const marcaEnsayo = `ENSAYO-${RUN}`;
+    const escrito = await pedir(A, "/api/lab/ensayo", {
+      method: "POST",
+      body: JSON.stringify({ texto: marcaEnsayo }),
+    });
+    ok("A escribe en su ensayo", escrito.status === 200, `recibido ${escrito.status}`);
+
+    const deA = await pedir(A, "/api/lab/ensayo");
+    const deB = await pedir(B, "/api/lab/ensayo");
+    const textoA = deA.status === 200 ? JSON.stringify(await deA.json()) : "";
+    const textoB = deB.status === 200 ? JSON.stringify(await deB.json()) : "";
+    ok("y lo ve en el suyo", textoA.includes(marcaEnsayo));
+    ok(
+      "y B NO lo ve en el suyo",
+      !textoB.includes(marcaEnsayo),
+      "el ensayo de una cuenta se lee desde otra"
+    );
+
+    // Y no se cuela en la bandeja: una conversación de prueba no es un lead.
+    const bandeja = await pedir(A, "/api/conversations");
+    const enBandeja =
+      bandeja.status === 200 ? JSON.stringify(await bandeja.json()) : "";
+    ok(
+      "el ensayo NO aparece en la bandeja",
+      !enBandeja.includes(marcaEnsayo),
+      "una conversación de prueba se mezcló con las de clientes"
+    );
+
+    // Reiniciar es de cada quien: no puede vaciar el del vecino.
+    const reinicio = await pedir(A, "/api/lab/ensayo", { method: "DELETE" });
+    ok("A puede reiniciar su ensayo", reinicio.status === 200, `recibido ${reinicio.status}`);
+    const bSigue = await pedir(B, "/api/lab/ensayo");
+    ok(
+      "y el de B sigue siendo el suyo",
+      bSigue.status === 200 &&
+        (await bSigue.json()).conversationId === datosB.conversationId
+    );
+  }
+
   console.log(`\n${comprobaciones - fallos}/${comprobaciones} comprobaciones correctas.`);
   if (fallos > 0) {
     console.log(`\n❌ ${fallos} fallo(s). NADA está Hecho hasta que esto esté verde.\n`);

@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EnsayoCard } from "@/components/lab/ensayo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -170,6 +171,16 @@ export function LabClient() {
           </div>
         </div>
       )}
+
+      {/*
+        140 — El ensayo va ARRIBA de las corridas, y a propósito: es lo que se
+        usa a cada rato mientras se carga conocimiento, mientras que una
+        corrida del Laboratorio se lanza de vez en cuando. Enterrarlo abajo
+        sería enterrar lo frecuente debajo de lo esporádico.
+      */}
+      <div className="p-4 pb-0 sm:p-6 sm:pb-0">
+        <EnsayoCard />
+      </div>
 
       <div className="grid gap-4 p-4 sm:gap-6 sm:p-6 lg:grid-cols-[280px_1fr]">
         <HistoryList
