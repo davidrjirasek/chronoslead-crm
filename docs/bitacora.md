@@ -2135,6 +2135,11 @@ Lo encontró una captura del dueño con un relojito. Es el mismo patrón que el
 fallo del webhook de esta mañana: lo que se prueba contra una imitación solo
 vale lo que la imitación se parezca, y eso no lo dice ningún test en verde.
 
+**Verificado en vivo (16:47)**: un saliente nuevo desde el CRM de Castell llegó
+a **doble tilde azul** —pasó por `sent`, `delivered` y `read`—, mientras el de
+las 16:16 sigue con el reloj en la misma pantalla, porque sus acuses pasaron
+antes del arreglo. El contraste en una sola captura confirma la causa.
+
 #### Lo que este transporte todavía NO hace
 
 Se dice con un error que el operador entiende, nunca con un fallo silencioso:
