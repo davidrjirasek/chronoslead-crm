@@ -1849,6 +1849,138 @@ dominio.
 - **Ceder la propiedad no existe.** Decisión del dueño del 30-oct: poco
   frecuente, se atiende caso por caso desde superadmin cuando un cliente lo pida
 
+### WhatsApp por Zernio: coexistencia sin ser Tech Provider (2026-11-07, spec 139)
+
+El dueño necesitaba conectar el número corporativo de **ZA Climatización**
+(+595 972 213 571) a su instancia **sin sacarlo de la app WhatsApp Business del
+teléfono**. Ese «sin sacarlo» es Coexistencia, y Coexistencia exige el Embedded
+Signup de un **Tech Provider** de Meta. El trámite nuestro sigue en curso.
+
+#### Lo que se probó y no servía
+
+| Intento | Por qué no |
+|---|---|
+| Reclamar el número desde el Business Manager del cliente | Lo deja en «Cuentas de mensajes». Meta Business Suite dice «your WhatsApp account is now connected», pero el número **no aparece** entre los de la Cloud API: reclamarlo no crea la sesión de API |
+| Traer el Embedded Signup de upstream (spec 066) | Su propio encabezado dice «sin la coexistencia», y llama a `/{phone_number_id}/register` con PIN — que es exactamente lo que **saca el número del teléfono** |
+| El asistente manual con lo que da Zernio | Zernio **no entrega las credenciales de Meta**: devuelve `accountId`, `profileId` y el número. El asistente pide `wabaId` + `phoneNumberId` + token. El dueño lo había dicho con tres palabras —«Zernio sólo me da ID»— y la documentación lo confirma: *«`accountId` is the id every WhatsApp call takes from here on»* |
+
+Lo que **sí** sirve: Zernio es Tech Provider y hace Coexistencia (el dueño
+escanea un QR que muestra Meta y el número sigue en su teléfono). Lo que faltaba
+era el código. Hasta hoy `ZernioChannel` excluía WhatsApp **explícitamente**
+(`Exclude<Channel, "whatsapp">`) y el envío salía siempre directo a la Graph API.
+
+#### La cuenta, verificada en vivo antes de escribir una línea
+
+Se instaló el MCP de Zernio (`https://mcp.zernio.com/mcp`, OAuth, ámbito local
+en `~/.claude.json` y **no** en `.mcp.json`, que se commitea y el repo es
+público). Con él:
+
+```
+whatsapp: +595 972 213571  →  accountId 6aedce451b624b76af0d1b13
+status healthy · phoneStatus CONNECTED · inboundWebhookSubscribed true
+permisos: whatsapp_business_{management,messaging,manage_events} + business_management
+primer entrante: 2026-11-07 14:28
+```
+
+Y el dueño confirmó con el teléfono en la mano que WhatsApp **sigue
+funcionando** ahí. Coexistencia real, no prometida.
+
+#### Lo que el repo ya tenía resuelto
+
+Tres piezas que ahorraron casi todo el trabajo, y vale saber que están:
+
+1. **El patrón de dos transportes para un canal** ya existía en
+   `messenger_credentials` desde la 017 (`source: zernio | meta`), y el
+   comentario de `tiktok_credentials` lo anticipaba palabra por palabra:
+   «`source` existe, con un solo valor, para que una fuente futura no pida otra
+   migración».
+2. **La columna del hilo externo** ya estaba en `conversation`, con este
+   comentario: «identificador del hilo en la plataforma de origen. Zernio
+   entrega… WhatsApp no lo necesita y queda null». Ahora se llena.
+3. **El eco del teléfono** ya estaba implementado para el transporte nativo
+   (`smb_message_echoes` → `origin: "manual"` + handoff `manual_reply`), y el
+   enum de `message.origin` lo decía: «manual desde la app de WhatsApp Business
+   del teléfono (echo)». Se extrajo a `ingestManualOutbound()` y lo comparten
+   los dos transportes.
+
+El reparto y la firma de Zernio tampoco se tocaron: su webhook enruta por
+`account.id` y firma con HMAC-SHA256 hex sobre el cuerpo crudo, que es
+exactamente lo que `dispatch.ts` e `isValidZernioSignatureAny` ya hacían.
+
+#### Los dos fallos que se evitaron, y cómo
+
+**1. El agente apagándose solo después de su primera respuesta.** Zernio manda
+`message.sent` para *todo* saliente, con `message.source`:
+
+| `source` | Qué es | Qué se hace |
+|---|---|---|
+| `whatsapp_business_app` | lo escribió el dueño en el teléfono | eco: guardar `manual` y apartar al agente |
+| `meta_business_agent` | contestó el agente de Meta en ese número | ídem |
+| `cloud_api` | **lo mandamos nosotros** | ignorar |
+
+Sin esa distinción, cada mensaje del CRM volvía como eco, se guardaba dos veces
+**y pausaba al agente**. Se encontró leyendo la tabla de eventos de la
+documentación antes de escribir el normalizador, no después de verlo en
+producción. Hay un test por cada valor.
+
+**2. El mismo cliente partido en dos contactos.** `sender.phoneNumber` llega en
+E.164 **con** «+», `sender.id` sin él, y el transporte nativo guarda lo que
+manda Meta en `from`, que nunca lo lleva. La primera versión guardaba el «+»
+tal cual: el día que un número pasara de un transporte al otro, el historial se
+habría partido en dos fichas **sin que nada fallara a la vista**. Se quita el
+«+» y después se aplica `normalizeMx`, como el camino nativo.
+
+#### La decisión de diseño que importa
+
+`waba_id` y `phone_number_id` pasaron a opcionales **en la tabla**, pero el tipo
+`Credentials` los conserva obligatorios: `toCredentials()` descarta las filas
+que no son del transporte nativo. **44 usos en 17 archivos** leen esos dos
+campos para armar llamadas a la Graph API; hacerlos nulos en el tipo obligaba a
+tocar los 17 y a que cada sitio aprendiera a dudar.
+
+Con el filtro en el conversor, el compilador señaló **un solo** sitio que había
+que tocar (`doctor/checks.ts`, que lee la fila cruda), y el camino de los siete
+clientes ya conectados quedó demostrablemente intacto. La contrapartida, que
+hay que respetar: `getCredentialsByOrg()` devuelve `null` para una organización
+por Zernio, así que todo camino que leía ese `null` como «no hay número» tiene
+que consultar antes `getZernioWhatsappByOrg()`.
+
+#### La puerta compartida del webhook
+
+`/api/webhooks/wa/{verify token}` devolvía 404 con `EDITION=cloud` porque es
+insegura en multitenant: cualquier organización entraría por ella con el
+`phone_number_id` del vecino. Una entrega de Zernio no tiene ese problema —se
+enruta por id de cuenta y se firma contra el secreto de **esa** organización—,
+así que el 404 pasó a ser **solo del camino de Meta**. Los payloads son
+inconfundibles: Meta manda `object: "whatsapp_business_account"`.
+
+#### Cómo se probó
+
+`typecheck` + `lint` + `test` (**127 archivos, 1416 casos**) + `build`, y el
+gate que manda: **`test:e2e:aislamiento` en 79/79** con dos organizaciones
+sembradas en `*.lvh.me`. Importaba correrlo porque esta spec toca una puerta de
+webhook en modo plataforma, que es exactamente lo que ese guion vigila. Catorce
+casos nuevos en `tests/unit/whatsapp-por-zernio.test.ts`. Un test viejo falló y
+tenía que fallar: `messenger.test.ts` afirmaba que `whatsapp` era «una
+plataforma que Vocero no atiende». Se actualizó siguiendo el precedente que el
+propio test documentaba de cuando TikTok pasó a ser canal.
+
+#### Pendiente de verificación humana
+
+El recorrido en vivo: un mensaje real entrando a la bandeja de
+`za-climatizacion.chronoslead.com`, una respuesta saliendo, y un mensaje escrito
+desde el teléfono apareciendo como `manual` con el agente apartado. El dueño
+tiene el teléfono de ese número a mano.
+
+#### Lo que este transporte todavía NO hace
+
+Se dice con un error que el operador entiende, nunca con un fallo silencioso:
+adjuntos (Zernio los manda por URL pública y los nuestros viven en el volumen
+local), ubicaciones y contactos, plantillas para **iniciar** conversación, y los
+acuses de «entregado»/«leído» —que llegan y se ignoran, así que un saliente
+queda en `sent` y no avanza.
+
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:

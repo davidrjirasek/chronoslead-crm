@@ -548,6 +548,22 @@ export const mediaAsset = pgTable(
   ]
 );
 
+/**
+ * Credenciales del canal de WhatsApp.
+ *
+ * 139 — `source` distingue los DOS transportes del MISMO canal, igual que en
+ * `messenger_credentials`: `meta` es la Cloud API directa (la de siempre, el
+ * default, y por eso nadie que ya esté conectado cambia de comportamiento), y
+ * `zernio` es la API unificada.
+ *
+ * Por qué hacen falta dos: para que un número que ya vive en la app WhatsApp
+ * Business siga viviendo ahí (Coexistencia) hace falta el Embedded Signup de
+ * un Tech Provider. Mientras ChronosLead no lo sea, el Tech Provider es
+ * Zernio — y Zernio NO entrega las credenciales de Meta, solo el `accountId`
+ * de la cuenta en su lado. De ahí que `waba_id` y `phone_number_id` sean
+ * opcionales: en modo Zernio no existen, y exigirlos era lo que dejaba este
+ * camino fuera del producto.
+ */
 export const metaCredentials = pgTable(
   "meta_credentials",
   {
@@ -555,13 +571,27 @@ export const metaCredentials = pgTable(
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
-    wabaId: text("waba_id").notNull(),
-    phoneNumberId: text("phone_number_id").notNull(),
+    /** De dónde vienen los mensajes: API unificada o Cloud API propia. */
+    source: text("source", { enum: ["zernio", "meta"] })
+      .notNull()
+      .default("meta"),
+    /**
+     * 139 — Opcionales: solo el transporte `meta` los conoce. El webhook de
+     * Meta enruta por `phone_number_id`; el de Zernio, por `account_ref`.
+     */
+    wabaId: text("waba_id"),
+    phoneNumberId: text("phone_number_id"),
+    /** Zernio: `accountId` de la cuenta conectada. Meta directo: null. */
+    accountRef: text("account_ref"),
     displayPhoneNumber: text("display_phone_number"),
     verifiedName: text("verified_name"),
     tokenCipher: text("token_cipher").notNull(),
     tokenIv: text("token_iv").notNull(),
     tokenTag: text("token_tag").notNull(),
+    /** 139 — Secreto HMAC de las entregas de Zernio, cifrado como el token. */
+    webhookSecretCipher: text("webhook_secret_cipher"),
+    webhookSecretIv: text("webhook_secret_iv"),
+    webhookSecretTag: text("webhook_secret_tag"),
     status: text("status", { enum: ["connected", "reconnect_required"] })
       .notNull()
       .default("connected"),
@@ -570,8 +600,12 @@ export const metaCredentials = pgTable(
   },
   (t) => [
     uniqueIndex("meta_credentials_org_uq").on(t.organizationId),
-    // El webhook enruta por phone_number_id: debe ser único en la instancia.
+    // El webhook de Meta enruta por phone_number_id: único en la instancia.
+    // Postgres admite varios NULL en un índice único, así que las filas en
+    // modo Zernio (que no lo tienen) no se estorban entre sí.
     uniqueIndex("meta_credentials_phone_uq").on(t.phoneNumberId),
+    // 139 — El de Zernio enruta por account_ref: mismo trato, mismo motivo.
+    uniqueIndex("meta_credentials_account_ref_uq").on(t.accountRef),
   ]
 );
 

@@ -327,6 +327,18 @@ Zoom o Google Calendar, según lo que use el cliente. Guía completa en
 
 **WhatsApp primero**, que es el que sostiene todo.
 
+Hay **dos caminos**, y la pregunta que los separa es una sola:
+
+> **¿El número que va a atender el agente se usa HOY en la app WhatsApp
+> Business de un teléfono, y tiene que seguir usándose ahí?**
+
+| Respuesta | Camino |
+|---|---|
+| **No** — es un número nuevo, o uno que nadie abre desde el teléfono | **Cloud API directa.** El de siempre |
+| **Sí** — alguien lo atiende desde su teléfono y no lo va a soltar | **Por Zernio**, que da coexistencia (spec 139) |
+
+### Cloud API directa
+
 **Ajustes → WhatsApp.** El cliente comparte su cuenta de WhatsApp Business desde
 su Business Manager, y de ahí salen el identificador del número y el token, que
 se pegan acá. **El webhook lo registra el CRM solo al guardar** — eso no hay que
@@ -334,6 +346,32 @@ hacerlo a mano.
 
 > El botón que hace todo esto solo (Embedded Signup) necesita el estatus de
 > Tech Provider de Meta, que todavía no tenemos. Hasta entonces, es a mano.
+
+### Por Zernio, con coexistencia
+
+Abrir la Cloud API sobre un número que ya vive en la app del teléfono exige el
+Embedded Signup de un Tech Provider. Zernio lo es; nosotros todavía no. Así que
+el número se conecta **en Zernio** (el dueño escanea un QR que le muestra Meta,
+y el número sigue en su teléfono), y en **Ajustes → WhatsApp → Conectar por
+Zernio** se pega la llave de Zernio. La cuenta se resuelve contra su API: si la
+llave tiene una sola cuenta de WhatsApp, no hay que copiar ningún identificador.
+
+**Decile esto al cliente ANTES de conectar**, porque le cambia el día a quien
+usa ese teléfono:
+
+- El número **sigue funcionando en el teléfono**: no pierde su app ni sus chats.
+- Lo que contesten desde el teléfono **aparece en la bandeja**, y el agente se
+  aparta solo de esa conversación.
+- Se **desvinculan WhatsApp Web y los dispositivos vinculados**.
+- Los **grupos no llegan** al CRM, y las listas de difusión quedan de solo
+  lectura.
+- **Si nadie abre la app del teléfono en unos 14 días, Meta desconecta el
+  número.**
+
+> **Lo que este camino todavía no hace** (spec 139, D6): adjuntos, ubicaciones,
+> contactos, plantillas para iniciar conversación, y los acuses de «entregado»
+> y «leído». Texto entra y sale bien. Si el cliente necesita algo de esa lista
+> desde el día uno, va por la Cloud API directa.
 
 **Instagram y Messenger** van por Zernio. **Una sola API key de Zernio sirve
 para los dos** — la llave es de la cuenta, no de la red. El CRM da de alta el

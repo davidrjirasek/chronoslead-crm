@@ -376,6 +376,7 @@ export async function loadWhatsAppCredentials(): Promise<StoredWhatsApp[]> {
       if (!isDecryptError(err)) throw err;
       const rows = await db
         .select({
+          source: schema.metaCredentials.source,
           phoneNumberId: schema.metaCredentials.phoneNumberId,
           displayPhoneNumber: schema.metaCredentials.displayPhoneNumber,
         })
@@ -383,8 +384,16 @@ export async function loadWhatsAppCredentials(): Promise<StoredWhatsApp[]> {
         .where(scoped(schema.metaCredentials.organizationId, org.id))
         .limit(1);
       const row = rows[0];
-      if (row) {
-        out.push({ organization: org.name, ...row, credentials: null });
+      // 139: esta revisión prueba el token contra la Graph API, así que solo
+      // le toca al transporte nativo. Una fila de Zernio no tiene
+      // `phone_number_id` que probar; su salud se mira en Zernio.
+      if (row?.source === "meta" && row.phoneNumberId) {
+        out.push({
+          organization: org.name,
+          phoneNumberId: row.phoneNumberId,
+          displayPhoneNumber: row.displayPhoneNumber,
+          credentials: null,
+        });
       }
     }
   }

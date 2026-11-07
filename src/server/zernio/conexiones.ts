@@ -18,6 +18,10 @@ import {
   getTiktokCredentialsByOrg,
 } from "@/server/tiktok/credentials";
 import {
+  getZernioWhatsappByAccountRef,
+  getZernioWhatsappByOrg,
+} from "@/server/whatsapp/credentials";
+import {
   webhookUrl,
   webhookVerifyToken,
   type WebhookChannel,
@@ -39,12 +43,13 @@ import {
  * en lugar de tres veces casi iguales.
  */
 
-export const ZERNIO_CHANNELS = CHANNEL_ORDER.filter(
-  (c): c is ZernioChannel => c !== "whatsapp"
-);
+// 139 — Los cuatro: WhatsApp también puede venir por Zernio. Cuál transporte
+// usa cada organización lo decide su fila de credenciales, no esta lista.
+export const ZERNIO_CHANNELS: readonly ZernioChannel[] = CHANNEL_ORDER;
 
 /** Segmento de la ruta del webhook de cada canal. */
 const WEBHOOK_PATH: Record<ZernioChannel, WebhookChannel> = {
+  whatsapp: "wa",
   instagram: "ig",
   messenger: "messenger",
   tiktok: "tiktok",
@@ -65,10 +70,21 @@ export type ZernioConnection = {
 
 const arroba = (u: string | null) => (u ? `@${u.replace(/^@/, "")}` : null);
 
+/** Con qué nombre reconoce una persona la cuenta de WhatsApp: el número. */
+const nombreWa = (c: {
+  displayPhoneNumber: string | null;
+  verifiedName: string | null;
+}) => c.displayPhoneNumber ?? c.verifiedName;
+
 async function byOrg(
   channel: ZernioChannel,
   organizationId: string
 ): Promise<ZernioConnection | null> {
+  if (channel === "whatsapp") {
+    const c = await getZernioWhatsappByOrg(organizationId);
+    if (!c) return null;
+    return { channel, ...comun(c), accountRef: c.accountRef, name: nombreWa(c) };
+  }
   if (channel === "instagram") {
     const c = await getInstagramCredentialsByOrg(organizationId);
     if (!c || c.source !== "zernio" || !c.accountRef) return null;
@@ -88,6 +104,11 @@ async function byAccountRef(
   channel: ZernioChannel,
   accountRef: string
 ): Promise<ZernioConnection | null> {
+  if (channel === "whatsapp") {
+    const c = await getZernioWhatsappByAccountRef(accountRef);
+    if (!c) return null;
+    return { channel, ...comun(c), accountRef: c.accountRef, name: nombreWa(c) };
+  }
   if (channel === "instagram") {
     const c = await getInstagramCredentialsByAccountRef(accountRef);
     if (!c || c.source !== "zernio" || !c.accountRef) return null;
@@ -162,7 +183,12 @@ async function update(
     updatedAt: new Date(),
   };
   const db = getDb();
-  if (channel === "instagram") {
+  if (channel === "whatsapp") {
+    await db
+      .update(schema.metaCredentials)
+      .set(values)
+      .where(eq(schema.metaCredentials.id, id));
+  } else if (channel === "instagram") {
     await db
       .update(schema.instagramCredentials)
       .set(values)

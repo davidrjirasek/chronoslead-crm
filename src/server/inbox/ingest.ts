@@ -379,8 +379,48 @@ async function ingestManualEcho(
   organizationId: string,
   echo: WebhookMessage
 ): Promise<void> {
+  await ingestManualOutbound(organizationId, {
+    toPhone: echo.to!,
+    messageId: echo.id,
+    type: echo.type,
+    text: echo.text?.body ?? null,
+    timestamp: echo.timestamp,
+    media: mediaInputFrom(echo),
+  });
+}
+
+/**
+ * Un saliente que el dueño escribió FUERA del CRM, desde la app WhatsApp
+ * Business de su teléfono, en un número que vive a la vez en la app y en la
+ * API (Coexistencia).
+ *
+ * 139 — Era privada y solo entendía la forma de Meta (`smb_message_echoes`).
+ * Ahora la comparten los dos transportes: por Zernio el mismo hecho llega como
+ * `message.sent`. El núcleo es el que importa y es el mismo —guardar el
+ * mensaje como `origin: "manual"` y APARTAR AL AGENTE de ese hilo—, así que
+ * vive una sola vez. Si se duplicara, el día que cambie la regla del handoff
+ * se arreglaría un transporte y no el otro, y el síntoma sería el peor
+ * posible: el agente contestándole encima al dueño mientras él ya responde.
+ *
+ * Idempotente por `wa_message_id`: un reintento del proveedor no duplica el
+ * mensaje ni vuelve a escalar.
+ */
+export async function ingestManualOutbound(
+  organizationId: string,
+  echo: {
+    /** Teléfono del cliente (el destinatario del saliente). */
+    toPhone: string;
+    /** Id del mensaje en el proveedor, ya prefijado si hace falta. */
+    messageId: string;
+    type: string;
+    text: string | null;
+    /** Segundos desde epoch, como los entrega el webhook. */
+    timestamp: string;
+    media?: MediaInput | null;
+  }
+): Promise<void> {
   const db = getDb();
-  const identity = normalizeMx(echo.to!);
+  const identity = normalizeMx(echo.toPhone);
 
   const { contact } = await getOrCreateContactByIdentity(organizationId, {
     identity,
@@ -400,10 +440,10 @@ async function ingestManualEcho(
       id: newId("message"),
       organizationId,
       conversationId: conversation.id,
-      waMessageId: echo.id,
+      waMessageId: echo.messageId,
       direction: "out",
       type: echo.type,
-      text: echo.text?.body ?? null,
+      text: echo.text,
       status: "sent",
       origin: "manual",
       waTimestamp,
@@ -413,9 +453,8 @@ async function ingestManualEcho(
   const message = inserted[0];
   if (!message) return; // duplicado
 
-  const mediaInput = mediaInputFrom(echo);
-  const asset = mediaInput
-    ? await attachMediaAsset(organizationId, message.id, mediaInput)
+  const asset = echo.media
+    ? await attachMediaAsset(organizationId, message.id, echo.media)
     : null;
 
   // Solo lastMessageAt: un mensaje del negocio NUNCA abre la ventana de 24 h.
@@ -442,7 +481,7 @@ async function ingestManualEcho(
     .returning();
   if (paused[0]) {
     console.log(
-      `[webhook] respuesta manual del dueño en ${conversation.id} — IA pausada (manual_reply)`
+      `[inbox] respuesta manual del dueño en ${conversation.id} — IA pausada (manual_reply)`
     );
   }
 

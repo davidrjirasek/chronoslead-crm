@@ -13,10 +13,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ZernioConnect } from "@/components/settings/zernio-connect";
 
 type Connection = {
-  wabaId: string;
-  phoneNumberId: string;
+  /** 139 — Qué transporte: la Cloud API directa o la API unificada de Zernio. */
+  source?: "zernio" | "meta";
+  /** Solo con la Cloud API directa; con Zernio no existen. */
+  wabaId?: string | null;
+  phoneNumberId?: string | null;
+  /** 139 — Solo con Zernio: el `accountId` de la cuenta en su lado. */
+  accountRef?: string | null;
   displayPhoneNumber: string | null;
   verifiedName: string | null;
   status: "connected" | "reconnect_required";
@@ -76,11 +82,15 @@ export function WhatsappWizard() {
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
           <div className="min-w-[12rem] flex-1">
             <p className="font-medium text-danger-text">
-              El token de WhatsApp expiró o fue revocado.
+              {connection.source === "zernio"
+                ? "La llave de Zernio dejó de servir."
+                : "El token de WhatsApp expiró o fue revocado."}
             </p>
             <p className="text-danger-text opacity-80">
-              Los envíos están pausados. Pega un token nuevo abajo y prueba la
-              conexión para reconectar.
+              Los envíos están pausados.{" "}
+              {connection.source === "zernio"
+                ? "Pega una llave nueva abajo para reconectar."
+                : "Pega un token nuevo abajo y prueba la conexión para reconectar."}
             </p>
           </div>
           <Desconectar
@@ -97,14 +107,20 @@ export function WhatsappWizard() {
           <CheckCircle2 className="h-5 w-5 text-success" />
           <div className="min-w-[12rem] flex-1 text-sm">
             <p className="font-medium text-success-text">
-              Número conectado: {connection.displayPhoneNumber ?? connection.phoneNumberId}
+              Número conectado:{" "}
+              {connection.displayPhoneNumber ??
+                connection.phoneNumberId ??
+                connection.accountRef}
             </p>
             <p className="text-success-text opacity-80">
               {connection.verifiedName ? `${connection.verifiedName} · ` : ""}
-              token …{connection.tokenLast4}
+              {connection.source === "zernio" ? "llave de Zernio …" : "token …"}
+              {connection.tokenLast4}
             </p>
           </div>
-          <Badge variant="success">Conectado</Badge>
+          <Badge variant="success">
+            {connection.source === "zernio" ? "Conectado por Zernio" : "Conectado"}
+          </Badge>
           <Desconectar
             onHecho={() => {
               setRegistration(null);
@@ -123,6 +139,11 @@ export function WhatsappWizard() {
         onSaved={() => void refetch()}
       />
 
+      <ConectarPorZernio
+        existing={connection}
+        onSaved={() => void refetch()}
+      />
+
       {webhook && (
         <WebhookCard
           webhook={webhook}
@@ -134,6 +155,78 @@ export function WhatsappWizard() {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * 139 — Conectar por Zernio: el camino de Coexistencia.
+ *
+ * Existe porque abrir la Cloud API sobre un número que YA se usa en la app
+ * WhatsApp Business exige el Embedded Signup de un Tech Provider. Mientras
+ * ChronosLead no lo sea, el Tech Provider es Zernio, que no entrega las
+ * credenciales de Meta: devuelve el `accountId` de su lado, y por él sale todo.
+ *
+ * Las consecuencias se dicen ACÁ, antes de conectar, y no después: le cambian
+ * el día a quien usa ese teléfono, y descubrirlas por un mensaje que no llegó
+ * es la peor manera de enterarse.
+ */
+const COEXISTENCIA = [
+  "El número sigue funcionando en el teléfono: quien lo atiende hoy no pierde su app ni sus chats.",
+  "Lo que contesten desde el teléfono aparece en la bandeja, y el agente se aparta solo de esa conversación.",
+  "Se desvinculan WhatsApp Web y los dispositivos vinculados.",
+  "Los mensajes de grupos no llegan al CRM, y las listas de difusión quedan de solo lectura.",
+  "Si nadie abre la app del teléfono en unos 14 días, Meta desconecta el número.",
+];
+
+function ConectarPorZernio({
+  existing,
+  onSaved,
+}: {
+  existing: Connection | null;
+  onSaved: () => void;
+}) {
+  const yaEsZernio = existing?.source === "zernio";
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <ShieldCheck className="h-4 w-4" />
+          {yaEsZernio ? "Conexión por Zernio" : "Conectar por Zernio (coexistencia)"}
+        </CardTitle>
+        <CardDescription>
+          Para un número que ya se usa en la app WhatsApp Business y tiene que
+          seguir usándose ahí. Pega la llave de Zernio: la cuenta se resuelve
+          contra su API y, si la llave tiene una sola de WhatsApp, no hace falta
+          copiar ningún identificador.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <ul className="list-disc space-y-1 pl-5 text-xs text-text-2">
+          {COEXISTENCIA.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+
+        {existing && !yaEsZernio && (
+          <p className="flex items-start gap-2 rounded-lg border border-warning-soft bg-warning-tint p-3 text-xs text-warning-text">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              Esta organización ya tiene un número por la Cloud API directa.
+              Conectar por Zernio lo reemplaza: una organización tiene un número
+              de WhatsApp. La bandeja no se toca.
+            </span>
+          </p>
+        )}
+
+        <ZernioConnect
+          endpoint="/api/settings/whatsapp"
+          extraBody={{ source: "zernio" }}
+          what="tu número de WhatsApp"
+          idPrefix="waz"
+          onSaved={onSaved}
+        />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -467,7 +560,14 @@ function WebhookCard({
 }) {
   const [copied, setCopied] = useState<string | null>(null);
   const [registering, setRegistering] = useState(false);
-  const canRegister = connection?.status === "connected";
+  const porZernio = connection?.source === "zernio";
+  /**
+   * 139 — Con Zernio no hay webhook de Meta que registrar: el webhook es de la
+   * llave, lo administra Zernio y el CRM lo da de alta al conectar. El botón
+   * llamaría a una ruta que necesita el `phone_number_id` que esta conexión no
+   * tiene, y el operador se llevaría un «no hay número conectado» teniéndolo.
+   */
+  const canRegister = connection?.status === "connected" && !porZernio;
 
   async function register() {
     setRegistering(true);
@@ -501,10 +601,9 @@ function WebhookCard({
       <CardHeader>
         <CardTitle>Webhook de WhatsApp</CardTitle>
         <CardDescription>
-          Al guardar la conexión, esta dirección se registra en Meta por ti, en
-          el número (override). Estos valores son para el backend de tu agencia
-          o para pegarlos a mano en el panel de Meta solo si el registro
-          automático falla.
+          {porZernio
+            ? "Con la conexión por Zernio el webhook lo da de alta ChronosLead en tu Zernio al conectar, limitado a tus cuentas. Esta dirección es la que recibe esas entregas; no hay nada que registrar en Meta."
+            : "Al guardar la conexión, esta dirección se registra en Meta por ti, en el número (override). Estos valores son para el backend de tu agencia o para pegarlos a mano en el panel de Meta solo si el registro automático falla."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

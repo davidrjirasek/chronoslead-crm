@@ -41,7 +41,7 @@ uno de ellos tiene una trampa que muerde en cada alta:
 
 | Paso | Estado |
 |---|---|
-| **6 · Embedded Signup** | **No está.** Cada cliente conecta WhatsApp a mano: comparte su WABA, y su token se pega en Ajustes → WhatsApp. El botón que lo hace solo necesita el estatus de Tech Provider de Meta — decisión del dueño: después |
+| **6 · Embedded Signup** | **No está**, y sigue necesitando el estatus de Tech Provider (en trámite). Pero el agujero que dejaba ya **no bloquea**: hay **dos** caminos para conectar WhatsApp (spec 139). Cloud API directa, a mano, cuando el número es nuevo; **por Zernio**, cuando el número ya se usa en la app WhatsApp Business de un teléfono y tiene que seguir ahí — eso es Coexistencia, y la da Zernio porque el Tech Provider es suyo. Lo elige `meta_credentials.source` |
 | **7 · Alta automática** | **No se quiere.** El alta la hace el operador desde `admin.…` tras la reunión de diagnóstico. No es un agujero, es el modelo de negocio |
 | **8 · Infra comodín** | **No está, y es la trampa.** El DNS sí es comodín (Cloudflare resuelve cualquier subdominio), pero **el proxy de Coolify tiene una lista de dominios escrita a mano**. Un subdominio que no esté en esa lista contesta `503 no available server` y NUNCA llega a la app: la pantalla «esta instancia no existe» no se ve jamás |
 
@@ -137,7 +137,7 @@ corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack 
 Y el gate que manda, con dos organizaciones sembradas en `*.lvh.me` y la app viva:
 
 ```bash
-corepack pnpm test:e2e:aislamiento    # 45 comprobaciones, spec 105
+corepack pnpm test:e2e:aislamiento    # 79 comprobaciones, spec 105
 ```
 
 Necesita la app viva con `EDITION=cloud`, `BASE_DOMAIN=lvh.me`,

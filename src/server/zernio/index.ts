@@ -86,14 +86,47 @@ export type ZernioEvent = {
     /** 022: la plataforma también viene en el mensaje, no solo en la cuenta. */
     platform?: string;
     direction?: string;
+    /**
+     * 139 — Solo WhatsApp, solo en `message.sent`: QUIÉN produjo el saliente.
+     * `cloud_api` = lo mandamos nosotros por Zernio · `whatsapp_business_app`
+     * = lo escribió el dueño en el teléfono (Coexistencia) ·
+     * `meta_business_agent` = contestó el agente de Meta en ese número.
+     *
+     * Distinguirlo no es un lujo: sin esto, cada mensaje que manda el CRM
+     * vuelve como eco, se guarda de nuevo y pausa al agente — el agente se
+     * apagaría solo justo después de su primera respuesta.
+     */
+    source?: string;
     text?: string | null;
     /** Cuándo lo mandó la persona, ISO-8601. Ver `zernioSentAtSeconds`. */
     sentAt?: string;
     attachments?: { type?: string; url?: string }[];
-    sender?: { id?: string; name?: string | null; username?: string | null };
+    sender?: {
+      id?: string;
+      name?: string | null;
+      username?: string | null;
+      /**
+       * 139 — Solo WhatsApp: el número en E.164. Anulable desde el despliegue
+       * de los BSUID (abril 2026), cuando la persona usa nombre de usuario.
+       */
+      phoneNumber?: string | null;
+      /** 139 — El Business-Scoped User ID: la identidad que Meta recomienda. */
+      businessScopedUserId?: string | null;
+    };
   };
   /** 022: el hilo también viene aparte; su `id` es el `conversationId`. */
-  conversation?: { id?: string };
+  conversation?: {
+    id?: string;
+    /**
+     * 139 — La OTRA parte, poblada en los dos sentidos. En un saliente el
+     * `sender` es el propio negocio, así que el cliente solo se conoce por
+     * aquí. La documentación de Zernio avisa de lo mismo: leer `sender` en un
+     * eco reetiqueta la ficha del cliente con el nombre del negocio.
+     */
+    participantId?: string;
+    participantName?: string | null;
+    participantUsername?: string | null;
+  };
   /**
    * 023: `profileId` es el del perfil que agrupa las cuentas. Sirve para
    * corregir una conexión guardada con ese id en vez del de la cuenta.

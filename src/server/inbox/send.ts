@@ -9,6 +9,11 @@ import {
   markReconnectRequired,
   type Credentials,
 } from "@/server/whatsapp/credentials";
+import {
+  getZernioWhatsappByOrg,
+  type ZernioWhatsapp,
+} from "@/server/whatsapp/credentials";
+import { sendZernioWhatsappText } from "@/server/whatsapp/zernio-send";
 import { isWindowOpen, replyWindow } from "@/server/inbox/window";
 import { plainSocialText } from "@/lib/social-text";
 import { IG_PREFIX } from "@/server/inbox/identity";
@@ -93,6 +98,12 @@ type SendTarget = {
   messenger?: MessengerCredentials;
   /** 022: presente solo en conversaciones de TikTok. */
   tiktok?: TiktokCredentials;
+  /**
+   * 139: presente solo cuando el canal es WhatsApp y su transporte es Zernio.
+   * Es excluyente con `credentials`: una organización tiene UNA fila de
+   * WhatsApp, y su `source` dice por dónde sale.
+   */
+  whatsappZernio?: ZernioWhatsapp;
   /**
    * 024: el envío sale con la etiqueta de agente humano. Lo decide el
    * pre-vuelo (`assertReplyWindow`), no cada canal por su cuenta.
@@ -305,6 +316,35 @@ async function prepareSend(
     );
   }
 
+  /**
+   * 139 — WhatsApp por Zernio. Va aquí, después del control de ventana (que
+   * es del canal y ya corrió arriba) y antes de exigir las credenciales
+   * nativas: `getCredentialsByOrg` solo devuelve filas del transporte
+   * nativo, así que sin esta rama una organización conectada por Zernio
+   * recibiría «No hay número de WhatsApp conectado» teniendo el número
+   * andando.
+   */
+  const porZernio = await getZernioWhatsappByOrg(organizationId);
+  if (porZernio) {
+    if (porZernio.status === "reconnect_required") {
+      throw new SendError(
+        "reconnect_required",
+        "La llave de Zernio dejó de servir: reconecta WhatsApp en Ajustes"
+      );
+    }
+    const destino = row.contact.phone
+      ? normalizeRecipient(row.contact.phone)
+      : row.contact.waIdentity;
+    return {
+      conversation: row.conversation,
+      // Zernio no habla la Graph API de WhatsApp: no hay token de Meta.
+      credentials: null,
+      destinatario: { to: destino },
+      recipient: destino,
+      whatsappZernio: porZernio,
+    };
+  }
+
   const credentials = await getCredentialsByOrg(organizationId);
   if (!credentials) {
     throw new SendError("not_connected", "No hay número de WhatsApp conectado");
@@ -436,7 +476,9 @@ export async function sendText(input: {
       ? await callMessengerSend(target, text)
       : target.tiktok
         ? await callTiktokSend(target, text)
-        : await callGraphSend(credentials!, {
+        : target.whatsappZernio
+          ? await callZernioWhatsappSend(target, text)
+          : await callGraphSend(credentials!, {
           messaging_product: "whatsapp",
           ...target.destinatario,
           type: "text",
@@ -511,6 +553,16 @@ export async function sendMediaMessage(input: {
   const asset = assetRows[0]!;
 
   try {
+    // 139 — Zernio manda adjuntos por URL pública, y los nuestros viven en el
+    // volumen local: hace falta exponerlos antes, y eso es trabajo aparte.
+    // Hasta entonces se dice aquí, con un mensaje que el operador entiende,
+    // en vez de reventar sobre `credentials!` con un TypeError.
+    if (target.whatsappZernio) {
+      throw new SendError(
+        "meta_error",
+        "Este número está conectado por Zernio y todavía no envía adjuntos: escribe el mensaje como texto"
+      );
+    }
     const waMediaId = await uploadGraphMedia(credentials!, input.file);
     await db
       .update(schema.mediaAsset)
@@ -600,10 +652,17 @@ export async function sendStructured(
   );
   // Ubicaciones y contactos son mensajes de WhatsApp: en los demás canales no
   // hay credenciales de WhatsApp que usar y Graph los rechazaría.
+  //
+  // 139 — Un número conectado por Zernio cae aquí igual (no tiene token de
+  // Meta), pero decirle «este canal no admite» sería falso: el canal sí, el
+  // transporte todavía no. Zernio los tiene en su payload `interactive`;
+  // traerlos es trabajo aparte.
   if (!target.credentials) {
     throw new SendError(
       "meta_error",
-      "Este canal no admite ubicaciones ni contactos; manda el texto"
+      target.whatsappZernio
+        ? "Este número está conectado por Zernio y todavía no envía ubicaciones ni contactos; manda el texto"
+        : "Este canal no admite ubicaciones ni contactos; manda el texto"
     );
   }
 
@@ -796,6 +855,47 @@ async function callMessengerSend(
  * 022 — Envío por el canal de TikTok. Mismo vocabulario de SendError que los
  * demás canales. La ventana y el tope ya se comprobaron en `prepareSend`.
  */
+/**
+ * 139 — Envío de WhatsApp por Zernio. Mismo patrón que TikTok: se responde
+ * dentro de la conversación de Zernio con el `conversationId` que guardó la
+ * ingesta. La ventana ya se comprobó en `prepareSend`.
+ */
+async function callZernioWhatsappSend(
+  target: SendTarget,
+  text: string
+): Promise<string> {
+  const creds = target.whatsappZernio!;
+
+  try {
+    const res = await sendZernioWhatsappText({
+      credentials: creds,
+      // Sin esta referencia el envío no tiene a dónde ir: Zernio es
+      // conversation-centric y no acepta un `to` suelto en este endpoint.
+      threadRef: target.conversation.channelThreadRef,
+      text,
+    });
+    return res.platformMessageId;
+  } catch (err) {
+    if (err instanceof MetaApiError) {
+      if (err.isAuthError) {
+        await markReconnectRequired(creds.organizationId);
+        throw new SendError(
+          "reconnect_required",
+          "La llave de Zernio expiró o fue revocada: reconecta WhatsApp en Ajustes"
+        );
+      }
+      if (err.status === 0 || err.status >= 500) {
+        throw new SendError(
+          "meta_unavailable",
+          "WhatsApp no está disponible en este momento; intenta de nuevo"
+        );
+      }
+      throw new SendError("meta_error", err.message);
+    }
+    throw err;
+  }
+}
+
 async function callTiktokSend(target: SendTarget, text: string): Promise<string> {
   const creds = target.tiktok!;
 
