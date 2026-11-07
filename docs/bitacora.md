@@ -2052,12 +2052,27 @@ Y el procedimiento de `docs/alta-de-cliente.md` §10 ahora pide una **cuarta
 prueba** al conectar cualquier cliente que no sea el primero: volver a
 escribirle al anterior. Es la que habría detectado esto el mismo día.
 
-#### Pendiente de verificación humana
+#### Verificado en vivo (7-nov-2026, ~14:53)
 
-El recorrido en vivo: un mensaje real entrando a la bandeja de
-`za-climatizacion.chronoslead.com`, una respuesta saliendo, y un mensaje escrito
-desde el teléfono apareciendo como `manual` con el agente apartado. El dueño
-tiene el teléfono de ese número a mano.
+Las tres pruebas, con el número real de ZA Climatización y el dueño con el
+teléfono en la mano:
+
+1. **Entra**: «Prueba 1» llegó a la bandeja con el contacto y su nombre de
+   perfil, por el canal WhatsApp de siempre (no un canal nuevo).
+2. **Sale**: la respuesta desde el CRM llegó al teléfono al instante.
+3. **El eco**: «Mensaje 3 desde el celular», escrito **desde el teléfono de ZA
+   Climatización**, apareció en la bandeja como saliente con la etiqueta
+   **Celular**, con ✓ en vez del reloj, la conversación marcada «Atención
+   humana» y **la IA en pausa con su motivo a la vista** («Respondiste desde
+   el teléfono»), más el botón para reactivarla.
+
+La tercera es la que prueba la coexistencia de verdad y la que más fácil se
+saltea. Coexistencia completa: el dueño sigue atendiendo desde su teléfono, el
+CRM se entera, y el agente se aparta en vez de contestarle encima.
+
+**El relojito de un saliente anterior al arreglo se queda puesto**: los acuses
+no se aplican hacia atrás. Solo afecta a los mensajes mandados entre la
+conexión y el momento en que el webhook ganó los cinco eventos.
 
 #### Esto es un puente, y el día de la mudanza tiene un paso manual
 

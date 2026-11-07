@@ -4,8 +4,8 @@
 
 **Created**: 2026-11-07
 
-**Status**: Implementada y verificada con pruebas unitarias; pendiente la
-verificación en vivo con el número real. Depende de la
+**Status**: Implementada y **verificada en vivo** con el número real
+(7-nov-2026). Depende de la
 [017](../017-messenger/spec.md) (el patrón de dos transportes para un canal) y
 de la [023](../023-cuentas-de-zernio/spec.md) (el enrutado por `accountId`).
 
@@ -157,7 +157,9 @@ como respaldo, el descarte de otras plataformas, y los tres valores de `source`
 —incluido que `cloud_api` **no** es un eco, que es el fallo más caro de los
 posibles.
 
-**Pendiente de verificación humana:** el recorrido en vivo con
-+595 972 213 571 — un mensaje real entrando a la bandeja de
-`za-climatizacion.chronoslead.com`, una respuesta saliendo, y un mensaje escrito
-desde el teléfono apareciendo como `manual` con el agente apartado.
+**Verificado en vivo el 7-nov-2026** con +595 972 213 571: entra un mensaje,
+sale una respuesta desde el CRM, y lo escrito **desde el teléfono** aparece
+como saliente con la etiqueta «Celular», la conversación en «Atención humana» y
+la IA en pausa con su motivo. Coexistencia completa.
+
+**Status**: implementada y verificada en producción.
