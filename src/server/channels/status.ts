@@ -128,13 +128,21 @@ export async function channelsStatus(organizationId: string): Promise<ChannelSta
     if (!encendidos.has(channel)) continue;
     const base = { channel, lastInboundAt: ultimos[channel] ?? null };
 
-    if (channel === "whatsapp") {
+    /**
+     * 139 — WhatsApp nativo (Cloud API directa). Si NO hay fila nativa, sigue
+     * de largo hasta el bloque de Zernio: `getCredentialsByOrg` devuelve null
+     * para una conexión por Zernio, y cortar acá hacía que la pantalla dijera
+     * «Sin conectar» con el número andando — y de paso escondía el botón que
+     * vuelve a dar de alta el webhook, que es justo el que hace falta cuando
+     * algo de Zernio se desacomoda.
+     */
+    if (channel === "whatsapp" && wa) {
       filas.push({
         ...base,
-        connected: Boolean(wa),
-        source: wa ? "meta" : null,
-        account: wa?.displayPhoneNumber ?? null,
-        status: wa?.status ?? null,
+        connected: true,
+        source: "meta",
+        account: wa.displayPhoneNumber ?? null,
+        status: wa.status,
         health: null,
       });
       continue;

@@ -369,9 +369,59 @@ usa ese teléfono:
   número.**
 
 > **Lo que este camino todavía no hace** (spec 139, D6): adjuntos, ubicaciones,
-> contactos, plantillas para iniciar conversación, y los acuses de «entregado»
-> y «leído». Texto entra y sale bien. Si el cliente necesita algo de esa lista
-> desde el día uno, va por la Cloud API directa.
+> contactos y plantillas para **iniciar** conversación. Texto entra y sale
+> bien, y los acuses de «entregado» y «leído» ya avanzan. Si el cliente
+> necesita algo de esa lista desde el día uno, va por la Cloud API directa.
+
+#### Los seis pasos, en orden
+
+Probado en vivo el 7-nov-2026 con ZA Climatización. El orden importa: cada
+paso depende del anterior.
+
+| # | Dónde | Qué |
+|---|---|---|
+| 1 | El teléfono del cliente | El chip puesto y **WhatsApp Business andando** en ese número |
+| 2 | Zernio | Conectar el número. Meta muestra un **QR** y el dueño lo escanea **desde ese teléfono**. Eso es lo que crea la coexistencia |
+| 3 | Zernio → API keys | Si no existe, crear **una** llave (`chronoslead-WA`, Read & Write, sin expiración). **La misma sirve para todos los clientes** |
+| 4 | `{cliente}.chronoslead.com` → Ajustes → WhatsApp | **Conectar por Zernio**, pegar la llave, guardar |
+| 5 | La misma pantalla | Confirmar que dice el número y que el webhook quedó actualizado |
+| 6 | En vivo | Las **tres** pruebas de abajo |
+
+**Del segundo cliente en adelante**, el paso 4 cambia: como la llave ya tiene
+más de una cuenta de WhatsApp, el CRM no puede adivinar cuál es y **muestra
+una lista para elegir**. Es lo esperado, no un error. Con el primero no
+aparece porque hay una sola.
+
+#### Las tres pruebas, y qué prueba cada una
+
+No alcanza con que «llegue un mensaje». Son tres y cada una cubre algo que las
+otras no:
+
+1. **Escribirle al número desde otro teléfono** → tiene que aparecer en la
+   Bandeja. Prueba la entrada: firma, reparto a la organización correcta,
+   contacto y conversación.
+2. **Contestar desde el CRM** → tiene que llegar al teléfono. Prueba la
+   salida por Zernio, que usa el hilo que guardó la entrada.
+3. **Contestar desde el teléfono del cliente** → tiene que aparecer en la
+   Bandeja marcado como manual, **y la IA de esa conversación queda apagada
+   sola**. Es la única que prueba la coexistencia de verdad, y la que más
+   fácil se saltea.
+
+> **Si ya hay otro cliente conectado**, agregá una cuarta: volvé a escribirle
+> **al cliente anterior** y confirmá que sigue entrando. El webhook de Zernio
+> es **uno por llave**, y hasta el 7-nov conectar al segundo cliente le quitaba
+> la cuenta al primero: ese número dejaba de recibir **en silencio**, con el
+> webhook activo y nada fallando a la vista. Está arreglado (las cuentas se
+> suman, no se reemplazan), pero es barato comprobarlo.
+
+#### Si algo no llega
+
+| Síntoma | Dónde mirar |
+|---|---|
+| No entra ningún mensaje | **Ajustes → Estado**: ahí se ve la salud de la cuenta y del webhook según Zernio. El botón vuelve a darlo de alta **con la llave ya guardada**, sin pedirla otra vez |
+| Entra pero lo del teléfono no aparece | El webhook tiene que estar suscrito a `message.sent`, no solo a `message.received`. El CRM pide los cinco al guardar; si el webhook es viejo, el botón de Estado lo actualiza |
+| El saliente se queda con el relojito | Faltan `message.delivered` / `message.read`. Mismo arreglo: el botón de Estado |
+| «Sin conectar» con el número andando | Era un fallo del 7-nov ya corregido. Si reaparece, es que algo volvió a leer `getCredentialsByOrg` como «no hay número»: esa función **solo** devuelve conexiones nativas |
 
 **Instagram y Messenger** van por Zernio. **Una sola API key de Zernio sirve
 para los dos** — la llave es de la cuenta, no de la red. El CRM da de alta el

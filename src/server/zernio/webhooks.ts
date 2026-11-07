@@ -219,6 +219,16 @@ export function webhookHealth(
  * El límite de cuentas no es un detalle: un webhook sin él recibe los mensajes
  * de TODAS las cuentas de la llave, y la llave de una agencia ve las de sus
  * clientes.
+ *
+ * 139 — Las cuentas se SUMAN a las que el webhook ya tenía; jamás se
+ * reemplazan. En Vocero daba igual («una instancia, un negocio»), pero en
+ * plataforma UNA llave de Zernio sirve a MUCHAS organizaciones, y quien llama
+ * solo conoce las de la suya. Reemplazando, conectar al cliente 2 le quitaba
+ * la cuenta al cliente 1 y ese número dejaba de recibir **en silencio**: el
+ * webhook sigue activo, sigue apuntando aquí, y nada falla a la vista.
+ *
+ * Dejar de más es inocuo: un evento de una cuenta que ninguna organización
+ * tiene conectada no encuentra conexión y se descarta sin ingerir nada.
  */
 export async function ensureZernioWebhook(input: {
   token: string;
@@ -244,7 +254,9 @@ export async function ensureZernioWebhook(input: {
     events: [...ZERNIO_EVENTS],
     secret: input.secret,
     isActive: true,
-    accountIds: [...new Set(input.accountIds)],
+    // 139: unión, no reemplazo. Ver el encabezado: quien llama solo conoce
+    // las cuentas de SU organización, y este webhook es de toda la llave.
+    accountIds: [...new Set([...(previo?.accountIds ?? []), ...input.accountIds])],
   };
 
   const json = (await zernioFetch("/webhooks/settings", {

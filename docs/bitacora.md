@@ -1997,6 +1997,61 @@ las secciones anteriores.
 Necesita `ZERNIO_BASE_URL` apuntando al `zernio-mock` (ya en `.env`); sin eso
 se salta con aviso en vez de dar un falso verde.
 
+#### Dos fallos más de la MISMA premisa, y el segundo era el caro
+
+Los tres fallos de esta jornada salieron del mismo sitio: la premisa de Vocero
+—**«una instancia es un negocio»**— metida en un producto donde una instancia
+sirve a nueve clientes.
+
+**1 · «WhatsApp · Sin conectar» con el número andando.** `channelsStatus()`
+cortaba en seco para WhatsApp (`if (channel === "whatsapp") { … continue }`) y
+nunca miraba las conexiones por Zernio, porque el único transporte había sido
+siempre el nativo. Como la pantalla creía que no había nada conectado, además
+escondía el botón que vuelve a dar de alta el webhook — justo el que hace
+falta cuando algo de Zernio se desacomoda. Es la misma consecuencia de D2 que
+ya estaba escrita y que no se respetó en este archivo: `getCredentialsByOrg()`
+devuelve `null` para una fila de Zernio.
+
+**2 · Conectar al cliente 2 le quitaba el webhook al cliente 1.** Este es el
+grave. El webhook de Zernio es **UNO por llave**, limitado a una lista de
+cuentas, y `ensureWebhookForOrg` la armaba con las conexiones de **esa**
+organización nada más:
+
+> «Una instancia es un negocio (constitución): el límite de cuentas del
+> webhook es el de ESTA organización.»
+
+Cierto con un negocio. Falso con nueve compartiendo llave. Al conectar al
+segundo cliente, el `PUT` reemplazaba la lista y la cuenta del primero
+desaparecía: ese número **dejaba de recibir en silencio**, con el webhook
+activo, apuntando aquí, y nada fallando a la vista. No se rompía al conectar:
+se rompía **días antes**, en el cliente que ya andaba.
+
+Lo irónico es que el comentario de `webhookAccountIds` advierte de este modo
+de fallo exacto —«la segunda le quitaría las de la primera y ese canal dejaría
+de recibir en silencio»— pero solo lo pensó **dentro** de una organización.
+
+Arreglo: `ensureZernioWebhook` **suma** a las cuentas que el webhook ya tenía
+en vez de reemplazarlas. Dejar de más es inocuo (un evento de una cuenta que
+nadie conectó no encuentra conexión y se descarta); dejar de menos es un
+cliente mudo.
+
+Se encontró **antes** de que mordiera porque el dueño avisó que iba a conectar
+Castell Muebles como segundo cliente, y eso obligó a mirar qué pasaba con el
+webhook compartido. Sin ese aviso, el síntoma habría aparecido en ZA
+Climatización un día cualquiera, sin nada que lo relacionara con el alta de
+Castell.
+
+Dos comprobaciones nuevas en el guion, **94/94**:
+
+```
+✅ el webhook conserva la cuenta de A después de conectar B
+✅ y también tiene la de B
+```
+
+Y el procedimiento de `docs/alta-de-cliente.md` §10 ahora pide una **cuarta
+prueba** al conectar cualquier cliente que no sea el primero: volver a
+escribirle al anterior. Es la que habría detectado esto el mismo día.
+
 #### Pendiente de verificación humana
 
 El recorrido en vivo: un mensaje real entrando a la bandeja de

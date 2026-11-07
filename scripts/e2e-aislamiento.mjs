@@ -927,6 +927,25 @@ async function main() {
     ok("A conecta su WhatsApp por Zernio", conA.status === 200, `recibido ${conA.status}`);
     ok("B conecta el suyo con la MISMA llave", conB.status === 200, `recibido ${conB.status}`);
 
+    /**
+     * 139 — El webhook de Zernio es UNO por llave, limitado a cuentas. Quien
+     * conecta solo conoce las de SU organización, así que si la lista se
+     * reemplazara en vez de sumarse, conectar al cliente 2 le quitaría la
+     * cuenta al cliente 1 y ese número dejaría de recibir EN SILENCIO.
+     *
+     * Se mira en el simulador porque es lo que de verdad quedó registrado,
+     * no lo que el CRM cree que mandó.
+     */
+    const webhooksMock =
+      (await (await fetch(`${origen(A)}/api/dev/zernio-mock/_state`)).json())?.webhooks ?? [];
+    const cuentasDelWebhook = new Set(webhooksMock.flatMap((w) => w.accountIds ?? []));
+    ok(
+      "el webhook conserva la cuenta de A después de conectar B",
+      cuentasDelWebhook.has(cuentaA),
+      "CONECTAR AL CLIENTE 2 DEJÓ SIN WEBHOOK AL CLIENTE 1"
+    );
+    ok("y también tiene la de B", cuentasDelWebhook.has(cuentaB));
+
     const PUERTA_COMPARTIDA = `${origen(A)}/api/webhooks/wa/${VERIFY_TOKEN}`;
 
     const entregarZernio = (url, cuenta, texto, secreto = SECRETO_ZERNIO) => {
