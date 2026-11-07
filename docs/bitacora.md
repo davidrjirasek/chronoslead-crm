@@ -2149,6 +2149,54 @@ acuses de «entregado»/«leído» —que llegan y se ignoran, así que un salie
 queda en `sent` y no avanza.
 
 
+### El ensayo del Laboratorio (2026-11-07, spec 140)
+
+El Laboratorio prueba **comportamiento**: personas fijas con guiones genéricos
+y un juez. Para verificar **contenido** —un precio, un horario, una política—
+había que escribirle por WhatsApp, y eso dejó de ser gratis el día que los
+números pasaron a ser de clientes reales.
+
+Pedido del dueño al ver que íbamos a cargar nueve bases de conocimiento sin
+forma de verificarlas. Su memoria del relevamiento era exacta: *«parte de la
+arquitectura ya tiene para hacerlo, solo falta la pantallita»*.
+
+**Y era así.** El motor existía entero: `conversation.isTest`,
+`runAgentTurn()`, el guardián que lanza `sandbox_violation` sobre cualquier
+conversación de prueba que intente salir, la bandeja que ya las filtra y
+Resultados que ya las excluye. El Laboratorio hace **exactamente este bucle**
+en `runner.ts`. Faltaba una ruta de cuarenta líneas y una pantalla.
+
+Lo que se decidió, y por qué:
+
+- **Una conversación por organización, persistente, con botón de reiniciar.**
+  Se puede retomar al día siguiente, y el historial corto es parte de lo que se
+  prueba: el agente usa el contexto.
+- **El turno corre sincrónico.** El Laboratorio va en segundo plano porque son
+  cinco guiones largos; un ensayo es un mensaje, y quien prueba quiere ver la
+  respuesta sin refrescar.
+- **Se muestra si escaló y por qué, en palabras.** «El cliente pidió hablar con
+  una persona», no `handoff_reason: frase`. Es lo que más se verifica al cargar
+  conocimiento: que derive cuando toca y que **no** derive cuando no.
+- **Va ARRIBA de las corridas.** El ensayo se usa a cada rato mientras se carga
+  conocimiento; una corrida se lanza de vez en cuando. Enterrar lo frecuente
+  debajo de lo esporádico es el error típico de estas pantallas.
+
+#### Dos cosas que encontró el gate
+
+La sección 16 nueva **falló a propósito la primera vez**, y el diagnóstico fue
+más útil que la feature: se había asumido que las organizaciones del guion no
+tendrían IA, pero `isAiConfiguredFor` **cae al entorno** cuando no hay llave
+guardada. El POST entró con 200 y el agente contestó de verdad.
+
+Y «de verdad» era literal: **`OPENROUTER_BASE_URL` del `.env` apuntaba a
+OpenRouter real**, cuando el `CLAUDE.md` dice que para las pruebas va al
+`ai-mock`. Cada corrida del gate le hacía llamadas **pagas** al proveedor.
+Corregido, con el motivo escrito al lado de la variable.
+
+La comprobación quedó mejor de lo que iba a ser: ahora prueba el camino de
+escritura completo —A escribe, A lo ve, **B no**, y no aparece en la bandeja—
+en vez de solo el aviso de «sin IA». **103/103.**
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
