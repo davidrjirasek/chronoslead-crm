@@ -2101,6 +2101,40 @@ presente**. Media hora por cliente, con el teléfono a mano.
 Está escrito acá para no prometerle a un cliente que «después no hay que tocar
 nada más», que es justo lo que uno dice cuando no se acuerda de este párrafo.
 
+#### Un simulador que miente es peor que no tener simulador
+
+Tercer fallo en vivo del día, y el más instructivo. Tras conectar Castell, el
+saliente del CRM llegaba al cliente al instante pero **se quedaba con el reloj
+puesto**, mientras el eco del teléfono sí mostraba ✓.
+
+Los registros de entrega de Zernio mostraron que **los tres acuses llegaron**
+(`message.sent`, `message.delivered`, `message.read`), que nuestra puerta
+respondió `200`, y que los tres traían el mismo `message.id`. O sea: la
+suscripción estaba bien, la entrega estaba bien, y aun así el acuse **no
+encontraba el mensaje**.
+
+La causa: Zernio llama al mismo mensaje de dos formas —su id interno
+(`message.id`) y el `wamid` de Meta (`platformMessageId`)—, y cuál de los dos
+devuelve el envío no está documentado. Guardábamos uno y buscábamos por el
+otro.
+
+**Por qué ninguna prueba lo vio.** El `zernio-mock` devolvía
+`{ message: { id } }`; la API real devuelve `{ success, data: { messageId } }`.
+`sendZernioMessage` acepta las dos formas de respaldo, así que **siempre**
+obtenía un id y nada fallaba: ni los 1426 tests, ni el typecheck, ni el gate de
+aislamiento en 94/94. Todo verde con el comportamiento real roto.
+
+Dos arreglos, y el segundo importa más que el primero:
+
+1. El acuse se busca por **los dos** identificadores del evento. Probar los dos
+   es inocuo —el que no corresponde no encuentra fila— y elimina la apuesta.
+2. **El simulador devuelve ahora la forma real.** Mientras mintiera, cada
+   prueba que pasara por él valía lo que se pareciera a Zernio, que era poco.
+
+Lo encontró una captura del dueño con un relojito. Es el mismo patrón que el
+fallo del webhook de esta mañana: lo que se prueba contra una imitación solo
+vale lo que la imitación se parezca, y eso no lo dice ningún test en verde.
+
 #### Lo que este transporte todavía NO hace
 
 Se dice con un error que el operador entiende, nunca con un fallo silencioso:
@@ -2152,6 +2186,12 @@ queda en `sent` y no avanza.
   para un cliente específico, no para Creativo ni para todas las versiones de
   ChronosLead». Queda como función a pedido de un cliente, no de plataforma.
   El análisis (A/B/C y los costos) se conserva arriba para cuando se pida.
+- **`send-sandbox.test.ts` se cae si algo más usa la máquina.** Tarda ~4 s él
+  solo y el 7-nov dio rojo por correrlo junto a un `build`; aislado pasa. El
+  guardián que vigila (una conversación `is_test` jamás toca la API real) está
+  intacto, pero un test que depende de la carga de la máquina enseña a
+  desconfiar de los rojos, que es justo lo contrario de lo que tiene que hacer.
+  **No correr `build` y `test` en paralelo** mientras siga así
 - **«Vocero» en pantallas que ve el CLIENTE**, en un producto de marca blanca.
   Visto el 7-nov conectando WhatsApp por Zernio: Ajustes → WhatsApp dice «Con
   esa llave **Vocero** encuentra tu número de WhatsApp en Zernio». El

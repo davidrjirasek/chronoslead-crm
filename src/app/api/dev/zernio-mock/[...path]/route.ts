@@ -151,7 +151,14 @@ export async function POST(req: Request, ctx: Ctx) {
       idempotencyKey: req.headers.get("idempotency-key"),
       at: new Date().toISOString(),
     });
-    return Response.json({ message: { id } });
+    // 139 — La forma REAL de Zernio: `{ success, data: { messageId } }`. El
+    // simulador devolvía `{ message: { id } }`, una forma vieja que el cliente
+    // todavía acepta de respaldo. Mientras el simulador mintiera, los tests
+    // pasaban con una respuesta que la API ya no da.
+    return Response.json({
+      success: true,
+      data: { messageId: id, platformMessageId: `wamid.${id}` },
+    });
   }
 
   return Response.json({});

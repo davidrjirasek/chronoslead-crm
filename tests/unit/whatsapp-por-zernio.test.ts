@@ -265,6 +265,7 @@ describe("139 · acuses: el reloj tiene que avanzar", () => {
   it("entregado y leído mueven el estado", () => {
     expect(estadoZernioWhatsapp(saliente("cloud_api", { event: "message.delivered" })))
       .toMatchObject({ status: "delivered", accountRef: ACCOUNT });
+
     expect(estadoZernioWhatsapp(saliente("cloud_api", { event: "message.read" })))
       .toMatchObject({ status: "read" });
     expect(estadoZernioWhatsapp(saliente("cloud_api", { event: "message.failed" })))
@@ -355,5 +356,32 @@ describe("139 · de qué anuncio llegó (Click-to-WhatsApp)", () => {
       entrante({ message: { metadata: { otra_cosa: 1 } } })
     );
     expect(n!.anuncio).toBeNull();
+  });
+});
+
+describe("139 · el acuse se busca por los DOS ids", () => {
+  it("devuelve el id de Zernio y el wamid de Meta", () => {
+    // El fallo del 7-nov en vivo: los tres acuses llegaron, respondimos 200, y
+    // ninguno encontró el mensaje — porque el envío devuelve un id y los
+    // acuses traen el otro. Apostar por uno deja el reloj puesto para siempre.
+    const a = estadoZernioWhatsapp(
+      saliente("cloud_api", {
+        event: "message.delivered",
+        message: { id: "zid-123", platformMessageId: "wamid.ABC" },
+      })
+    );
+    expect(a!.ids).toEqual(["zid-123", "wamid.ABC"]);
+  });
+
+  it("con un solo id, ese; y sin ninguno, nada", () => {
+    const a = estadoZernioWhatsapp(
+      saliente("cloud_api", { event: "message.read", message: { id: "solo-uno" } })
+    );
+    expect(a!.ids).toEqual(["solo-uno"]);
+    expect(
+      estadoZernioWhatsapp(
+        saliente("cloud_api", { event: "message.read", message: { id: undefined } })
+      )
+    ).toBeNull();
   });
 });

@@ -257,9 +257,19 @@ export function normalizeZernioWhatsappEcho(
  * llegaba al cliente pero se quedaba con el reloj puesto para siempre — el
  * operador no sabía si había salido.
  *
- * El id es el de Zernio, sin prefijo: es el mismo que devolvió el envío y que
- * se guardó en `wa_message_id`. Los ENTRANTES sí van prefijados (`zwa_`), y
- * no se cruzan porque un entrante nunca recibe acuses.
+ * **Se prueban LOS DOS identificadores del evento**, y no uno elegido de
+ * antemano: Zernio llama al mismo mensaje de dos formas —su id interno
+ * (`message.id`) y el `wamid` de Meta (`message.platformMessageId`)— y cuál de
+ * los dos devolvió el envío no está documentado. Apostar por uno dejaba el
+ * saliente con el reloj puesto para siempre, que fue justo lo que pasó en la
+ * prueba en vivo del 7-nov: los tres acuses llegaron, respondimos 200, y
+ * ninguno encontró el mensaje.
+ *
+ * Probar los dos es inocuo: el que no corresponde no encuentra fila y no hace
+ * nada, y el avance de estado es monótono.
+ *
+ * Los ENTRANTES van prefijados (`zwa_`) y no se cruzan con esto: un entrante
+ * nunca recibe acuses.
  */
 const ESTADO_POR_EVENTO: Record<string, string> = {
   // Nuestro propio envío, confirmado por la plataforma.
@@ -271,7 +281,7 @@ const ESTADO_POR_EVENTO: Record<string, string> = {
 
 export function estadoZernioWhatsapp(
   payload: unknown
-): { accountRef: string; id: string; status: string; error?: string } | null {
+): { accountRef: string; ids: string[]; status: string } | null {
   const evt = payload as ZernioEvent | null;
   if (!esDeWhatsapp(evt)) return null;
   const status = ESTADO_POR_EVENTO[evt.event ?? ""];
@@ -285,9 +295,11 @@ export function estadoZernioWhatsapp(
   }
 
   const accountRef = evt.account?.id ?? evt.account?.accountId;
-  const id = evt.message?.id;
-  if (!accountRef || !id) return null;
-  return { accountRef, id, status };
+  const ids = [evt.message?.id, evt.message?.platformMessageId].filter(
+    (v): v is string => typeof v === "string" && v.length > 0
+  );
+  if (!accountRef || ids.length === 0) return null;
+  return { accountRef, ids: [...new Set(ids)], status };
 }
 
 /** La organización de una cuenta de Zernio, o un aviso de por qué no hay. */
@@ -331,11 +343,13 @@ export async function processZernioWhatsappEvent(
   if (acuse) {
     const organizationId = await organizacionDe(acuse.accountRef);
     if (organizationId) {
-      await applyStatusUpdate(organizationId, {
-        id: acuse.id,
-        status: acuse.status,
-        timestamp: zernioSentAtSeconds(undefined),
-      });
+      for (const id of acuse.ids) {
+        await applyStatusUpdate(organizationId, {
+          id,
+          status: acuse.status,
+          timestamp: zernioSentAtSeconds(undefined),
+        });
+      }
     }
   }
 
