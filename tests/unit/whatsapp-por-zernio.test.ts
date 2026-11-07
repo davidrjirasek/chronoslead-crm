@@ -4,6 +4,7 @@ import {
   normalizeZernioWhatsappEcho,
   normalizeZernioWhatsappInbound,
 } from "@/server/whatsapp/zernio-ingest";
+import { zernioAccountName } from "@/server/zernio/cuentas";
 import { zernioTargetChannel } from "@/server/zernio/dispatch";
 
 /**
@@ -239,5 +240,21 @@ describe("139 · reparto del webhook", () => {
         account: { id: ACCOUNT },
       })
     ).toBe("whatsapp");
+  });
+});
+
+describe("139 · cómo se nombra la cuenta en Ajustes", () => {
+  it("un número de WhatsApp NO lleva arroba", () => {
+    // La arroba es de las redes sociales. En WhatsApp el `username` es el
+    // número, y «@+595 972 213571» no es ni un usuario ni un teléfono.
+    expect(
+      zernioAccountName({ _id: "x", platform: "whatsapp", username: "+595 972 213571" })
+    ).toBe("+595 972 213571");
+  });
+
+  it("y en las redes sí la sigue llevando", () => {
+    expect(
+      zernioAccountName({ _id: "x", platform: "instagram", username: "za.climatizacion" })
+    ).toBe("@za.climatizacion");
   });
 });

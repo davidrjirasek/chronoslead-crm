@@ -80,7 +80,11 @@ export function zernioAccountName(a: ZernioAccount): string {
   if (pagina) return pagina;
   const usuario = a.username?.trim().replace(/^@/, "");
   const platform = (a.platform ?? "").toLowerCase();
-  if (usuario && platform !== "facebook") return `@${usuario}`;
+  // 139: la arroba es la convención de las redes sociales. En WhatsApp el
+  // `username` es el NÚMERO, y «@+595 972 213571» no es nada: ni un usuario
+  // ni un teléfono. Facebook ya estaba exento por lo mismo.
+  const SIN_ARROBA = new Set(["facebook", "whatsapp"]);
+  if (usuario && !SIN_ARROBA.has(platform)) return `@${usuario}`;
   return a.displayName?.trim() || usuario || a._id;
 }
 

@@ -2050,6 +2050,15 @@ queda en `sent` y no avanza.
   para un cliente específico, no para Creativo ni para todas las versiones de
   ChronosLead». Queda como función a pedido de un cliente, no de plataforma.
   El análisis (A/B/C y los costos) se conserva arriba para cuando se pida.
+- **«Vocero» en pantallas que ve el CLIENTE**, en un producto de marca blanca.
+  Visto el 7-nov conectando WhatsApp por Zernio: Ajustes → WhatsApp dice «Con
+  esa llave **Vocero** encuentra tu número de WhatsApp en Zernio». El
+  componente es compartido (`zernio-connect.tsx`), así que el mismo texto sale
+  en Instagram, Messenger y TikTok. Hay doce componentes que lo mencionan;
+  falta separar los textos visibles de los comentarios y variables, y usar el
+  nombre de la marca —que puede ser la del tenant, porque Ajustes → Marca
+  existe— en vez de fijarlo. Si se parametriza en vez de reemplazar, upstream
+  lo querría igual y no es divergencia
 - **El conocimiento va entero en cada turno** (`renderKb()`): hoy da igual,
   pero cuando un cliente cargue menú, precios por colegio y cincuenta P/R, cada
   mensaje va a arrastrar todo eso. Es un límite que va a aparecer
