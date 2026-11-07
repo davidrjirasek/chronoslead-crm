@@ -1,6 +1,7 @@
 import { normalizeMx } from "@/lib/meta/client";
 import { BSUID_PREFIX } from "@/server/inbox/identity";
 import { ingestInboundMessage, ingestManualOutbound } from "@/server/inbox/ingest";
+import { applyStatusUpdate } from "@/server/inbox/status";
 import { getZernioWhatsappByAccountRef } from "@/server/whatsapp/credentials";
 import { zernioSentAtSeconds, type ZernioEvent } from "@/server/zernio";
 
@@ -209,6 +210,48 @@ export function normalizeZernioWhatsappEcho(
   ];
 }
 
+/**
+ * 139 — El estado de un saliente: de «enviado» a «entregado» a «leído».
+ *
+ * WhatsApp declara acuses de entrega, así que el saliente nace `pending` y
+ * espera. Por el transporte nativo lo mueven los `statuses` de Meta; por
+ * Zernio llegan como eventos propios, y hasta que se atendieron el mensaje
+ * llegaba al cliente pero se quedaba con el reloj puesto para siempre — el
+ * operador no sabía si había salido.
+ *
+ * El id es el de Zernio, sin prefijo: es el mismo que devolvió el envío y que
+ * se guardó en `wa_message_id`. Los ENTRANTES sí van prefijados (`zwa_`), y
+ * no se cruzan porque un entrante nunca recibe acuses.
+ */
+const ESTADO_POR_EVENTO: Record<string, string> = {
+  // Nuestro propio envío, confirmado por la plataforma.
+  "message.sent": "sent",
+  "message.delivered": "delivered",
+  "message.read": "read",
+  "message.failed": "failed",
+};
+
+export function estadoZernioWhatsapp(
+  payload: unknown
+): { accountRef: string; id: string; status: string; error?: string } | null {
+  const evt = payload as ZernioEvent | null;
+  if (!esDeWhatsapp(evt)) return null;
+  const status = ESTADO_POR_EVENTO[evt.event ?? ""];
+  if (!status) return null;
+
+  // Un `message.sent` que NO mandamos nosotros es un eco, no un acuse: lo
+  // atiende `normalizeZernioWhatsappEcho` y aquí no tiene nada que hacer.
+  if (evt.event === "message.sent") {
+    const source = (evt.message?.source ?? "").toLowerCase();
+    if (source !== "cloud_api") return null;
+  }
+
+  const accountRef = evt.account?.id ?? evt.account?.accountId;
+  const id = evt.message?.id;
+  if (!accountRef || !id) return null;
+  return { accountRef, id, status };
+}
+
 /** La organización de una cuenta de Zernio, o un aviso de por qué no hay. */
 async function organizacionDe(accountRef: string): Promise<string | null> {
   const creds = await getZernioWhatsappByAccountRef(accountRef);
@@ -243,6 +286,18 @@ export async function processZernioWhatsappEvent(
       timestamp: evt.timestamp,
       threadRef: evt.threadRef,
     });
+  }
+
+  const acuse = estadoZernioWhatsapp(payload);
+  if (acuse) {
+    const organizationId = await organizacionDe(acuse.accountRef);
+    if (organizationId) {
+      await applyStatusUpdate(organizationId, {
+        id: acuse.id,
+        status: acuse.status,
+        timestamp: zernioSentAtSeconds(undefined),
+      });
+    }
   }
 
   for (const eco of normalizeZernioWhatsappEcho(payload)) {

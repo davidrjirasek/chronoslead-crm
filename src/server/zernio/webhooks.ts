@@ -17,6 +17,35 @@ import type { Health } from "@/server/zernio/cuentas";
 /** El evento con el que llega un mensaje de un cliente. */
 export const ZERNIO_MESSAGE_EVENT = "message.received";
 
+/**
+ * 139 — A qué se suscribe el webhook que damos de alta.
+ *
+ * Hasta ahora era SOLO `message.received`, y alcanzaba: Instagram, Messenger y
+ * TikTok no tienen eco del teléfono ni acuses que el CRM dibuje. WhatsApp sí,
+ * y las dos cosas dependen de eventos que no estaban pedidos:
+ *
+ * - `message.sent` trae lo que el dueño contesta desde la app del teléfono
+ *   (coexistencia). Sin él, el CRM no se entera y el agente contesta encima.
+ * - `message.delivered` / `message.read` / `message.failed` mueven el estado
+ *   del saliente. Sin ellos el mensaje llega pero se queda con el reloj
+ *   puesto para siempre, y el operador no sabe si salió.
+ *
+ * Pedirlos de más no molesta a los otros canales: sus normalizadores
+ * descartan todo lo que no sea `message.received`.
+ *
+ * Este es el fallo contra el que avisa la skill `whatsapp-saas-meta-infra`:
+ * la suscripción responde `success: true` y no llega nada, porque faltaba el
+ * campo. Se escribió el manejo del eco con sus pruebas antes de comprobar que
+ * el evento viajaba.
+ */
+export const ZERNIO_EVENTS: readonly string[] = [
+  ZERNIO_MESSAGE_EVENT,
+  "message.sent",
+  "message.delivered",
+  "message.read",
+  "message.failed",
+];
+
 /** Un webhook de `GET /webhooks/settings`, en lo que a Vocero le importa. */
 export type ZernioWebhook = {
   _id: string;
@@ -212,7 +241,7 @@ export async function ensureZernioWebhook(input: {
   const body = {
     name: previo?.name || input.name,
     url,
-    events: [ZERNIO_MESSAGE_EVENT],
+    events: [...ZERNIO_EVENTS],
     secret: input.secret,
     isActive: true,
     accountIds: [...new Set(input.accountIds)],

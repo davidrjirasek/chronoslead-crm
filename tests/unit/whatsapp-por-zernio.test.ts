@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { BSUID_PREFIX } from "@/server/inbox/identity";
 import {
+  estadoZernioWhatsapp,
   normalizeZernioWhatsappEcho,
   normalizeZernioWhatsappInbound,
 } from "@/server/whatsapp/zernio-ingest";
+import { ZERNIO_EVENTS } from "@/server/zernio/webhooks";
 import { zernioAccountName } from "@/server/zernio/cuentas";
 import { zernioTargetChannel } from "@/server/zernio/dispatch";
 
@@ -256,5 +258,51 @@ describe("139 · cómo se nombra la cuenta en Ajustes", () => {
     expect(
       zernioAccountName({ _id: "x", platform: "instagram", username: "za.climatizacion" })
     ).toBe("@za.climatizacion");
+  });
+});
+
+describe("139 · acuses: el reloj tiene que avanzar", () => {
+  it("entregado y leído mueven el estado", () => {
+    expect(estadoZernioWhatsapp(saliente("cloud_api", { event: "message.delivered" })))
+      .toMatchObject({ status: "delivered", accountRef: ACCOUNT });
+    expect(estadoZernioWhatsapp(saliente("cloud_api", { event: "message.read" })))
+      .toMatchObject({ status: "read" });
+    expect(estadoZernioWhatsapp(saliente("cloud_api", { event: "message.failed" })))
+      .toMatchObject({ status: "failed" });
+  });
+
+  it("nuestro propio envío confirma como «enviado»", () => {
+    expect(estadoZernioWhatsapp(saliente("cloud_api"))).toMatchObject({ status: "sent" });
+  });
+
+  it("pero un saliente del teléfono es un eco, NO un acuse", () => {
+    // Si entrara por acá intentaría mover el estado de un mensaje que el CRM
+    // nunca envió, y además no se guardaría como eco.
+    expect(estadoZernioWhatsapp(saliente("whatsapp_business_app"))).toBeNull();
+    expect(estadoZernioWhatsapp(saliente("meta_business_agent"))).toBeNull();
+  });
+
+  it("un entrante no es un acuse, y otra plataforma tampoco", () => {
+    expect(estadoZernioWhatsapp(entrante())).toBeNull();
+    expect(
+      estadoZernioWhatsapp(
+        saliente("cloud_api", {
+          event: "message.delivered",
+          account: { id: ACCOUNT, platform: "instagram" },
+        })
+      )
+    ).toBeNull();
+  });
+});
+
+describe("139 · el webhook pide los eventos que hacen falta", () => {
+  it("no solo message.received", () => {
+    // El fallo real del 7-nov: el eco y los acuses estaban implementados y
+    // probados, pero Zernio nunca mandaba esos eventos porque no se pedían.
+    expect(ZERNIO_EVENTS).toContain("message.received");
+    expect(ZERNIO_EVENTS).toContain("message.sent");
+    expect(ZERNIO_EVENTS).toContain("message.delivered");
+    expect(ZERNIO_EVENTS).toContain("message.read");
+    expect(ZERNIO_EVENTS).toContain("message.failed");
   });
 });
