@@ -2,6 +2,7 @@ import { isChannelEnabled } from "@/server/channels/enabled";
 import { processZernioEvent } from "@/server/instagram/ingest";
 import { processZernioMessengerEvent } from "@/server/messenger/ingest";
 import { processZernioTiktokEvent, zernioPlatform } from "@/server/tiktok/ingest";
+import { processZernioWhatsappEvent } from "@/server/whatsapp/zernio-ingest";
 import { webhookVerifyToken } from "@/server/whatsapp/webhook-url";
 import {
   isValidZernioSignatureAny,
@@ -38,6 +39,9 @@ export function zernioTargetChannel(payload: unknown): ZernioChannel | null {
   const evt = payload as ZernioEvent | null;
   if (!evt || typeof evt !== "object") return null;
   const platform = zernioPlatform(evt);
+  // 139: WhatsApp por Zernio. El canal es el de siempre; lo que cambia es el
+  // transporte, y cuál usa cada organización lo dice su fila de credenciales.
+  if (platform === "whatsapp") return "whatsapp";
   if (platform === "instagram") return "instagram";
   if (platform === "facebook" || platform === "messenger") return "messenger";
   if (platform === "tiktok") return "tiktok";
@@ -106,7 +110,8 @@ export async function processZernioPayload(payload: unknown): Promise<void> {
   // la firma verificada, y el canal la encuentra por el id de la cuenta.
   await healZernioAccountRef(channel, (payload as ZernioEvent).account);
 
-  if (channel === "messenger") await processZernioMessengerEvent(payload);
+  if (channel === "whatsapp") await processZernioWhatsappEvent(payload);
+  else if (channel === "messenger") await processZernioMessengerEvent(payload);
   else if (channel === "tiktok") await processZernioTiktokEvent(payload);
   else await processZernioEvent(payload);
 }

@@ -225,6 +225,13 @@
       "when": 1793363919974,
       "tag": "0031_striped_bloodstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1794066336731,
+      "tag": "0032_workable_obadiah_stane",
+      "breakpoints": true
     }
   ]
 }
