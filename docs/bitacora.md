@@ -1972,6 +1972,33 @@ El recorrido en vivo: un mensaje real entrando a la bandeja de
 desde el teléfono apareciendo como `manual` con el agente apartado. El dueño
 tiene el teléfono de ese número a mano.
 
+#### Esto es un puente, y el día de la mudanza tiene un paso manual
+
+Decisión del dueño (7-nov): la cuenta de Zernio es **de la agencia**, no de los
+clientes — infraestructura interna que les presta mientras no haya Tech
+Provider. Cuando llegue, **WhatsApp sale de Zernio** y vuelve a la Cloud API
+directa; Zernio se queda para lo que está fuera de Meta.
+
+Por eso **no** se parten los perfiles de Zernio por cliente: un perfil único
+está bien para un arreglo temporal, y acotar llaves por perfil no significa
+nada mientras haya uno solo. La llave de WhatsApp sí va **separada** de la de
+Facebook/Instagram (`Chronoslead WA`, con `write` y solo los grupos `accounts`,
+`messages` y `webhooks`), para poder revocarla sola el día que sobre.
+
+**Del lado del CRM la mudanza es un clic**: `saveCredentials` fija
+`source: "meta"`, limpia `account_ref` y el secreto de Zernio, y el envío
+cambia de camino. La bandeja no se toca — conversaciones, contactos y leads son
+de la organización, no de la conexión.
+
+**Del lado de Meta no lo es.** El número queda registrado bajo la **WABA de
+Zernio**, que es el Tech Provider. Pasarlo a la nuestra pide desconectarlo de
+Zernio y volverlo a dar de alta por nuestro Embedded Signup, y en un número con
+coexistencia eso **repite el paso del QR en el teléfono, con el dueño
+presente**. Media hora por cliente, con el teléfono a mano.
+
+Está escrito acá para no prometerle a un cliente que «después no hay que tocar
+nada más», que es justo lo que uno dice cuando no se acuerda de este párrafo.
+
 #### Lo que este transporte todavía NO hace
 
 Se dice con un error que el operador entiende, nunca con un fallo silencioso:
