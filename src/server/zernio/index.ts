@@ -101,6 +101,12 @@ export type ZernioEvent = {
     /** Cuándo lo mandó la persona, ISO-8601. Ver `zernioSentAtSeconds`. */
     sentAt?: string;
     attachments?: { type?: string; url?: string }[];
+    /**
+     * 139 — Lo que Zernio adjunta al mensaje. Para WhatsApp incluye el
+     * `referral` de Meta **verbatim** cuando la conversación llegó de un
+     * anuncio Click-to-WhatsApp, más los campos `ctwa_*` ya desarmados.
+     */
+    metadata?: Record<string, unknown>;
     sender?: {
       id?: string;
       name?: string | null;

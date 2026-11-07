@@ -306,3 +306,54 @@ describe("139 · el webhook pide los eventos que hacen falta", () => {
     expect(ZERNIO_EVENTS).toContain("message.failed");
   });
 });
+
+describe("139 · de qué anuncio llegó (Click-to-WhatsApp)", () => {
+  const REFERRAL = {
+    source_id: "120000000000000000",
+    source_type: "ad",
+    source_url: "https://fb.me/abc",
+    headline: "Climatización para tu casa",
+    body: "Presupuesto en 2 minutos",
+    media_type: "image",
+    ctwa_clid: "AbCdEfGhIjKlMn0pQrStUvWxYz",
+    image_url: "https://scontent.xx.fbcdn.net/x.jpg",
+  };
+
+  it("lee el `referral` verbatim que manda Zernio", () => {
+    const [m] = normalizeZernioWhatsappInbound(
+      entrante({ message: { metadata: { referral: REFERRAL } } })
+    );
+    expect(m!.anuncio).not.toBeNull();
+    expect(m!.anuncio!.ctwaClid).toBe(REFERRAL.ctwa_clid);
+    expect(m!.anuncio!.sourceId).toBe(REFERRAL.source_id);
+    expect(m!.anuncio!.headline).toBe(REFERRAL.headline);
+  });
+
+  it("y si no viene el verbatim, arma el anuncio con los campos ctwa_*", () => {
+    const [m] = normalizeZernioWhatsappInbound(
+      entrante({
+        message: {
+          metadata: {
+            ctwa_clid: REFERRAL.ctwa_clid,
+            ctwa_source_id: REFERRAL.source_id,
+            ctwa_headline: REFERRAL.headline,
+            ctwa_source_type: "ad",
+          },
+        },
+      })
+    );
+    expect(m!.anuncio!.ctwaClid).toBe(REFERRAL.ctwa_clid);
+    expect(m!.anuncio!.sourceId).toBe(REFERRAL.source_id);
+  });
+
+  it("una conversación sin anuncio entra igual, con anuncio null", () => {
+    // Llegar sin anuncio es lo normal: no puede impedir la ingesta.
+    const [m] = normalizeZernioWhatsappInbound(entrante());
+    expect(m).toBeDefined();
+    expect(m!.anuncio).toBeNull();
+    const [n] = normalizeZernioWhatsappInbound(
+      entrante({ message: { metadata: { otra_cosa: 1 } } })
+    );
+    expect(n!.anuncio).toBeNull();
+  });
+});

@@ -3,6 +3,7 @@ import { BSUID_PREFIX } from "@/server/inbox/identity";
 import { ingestInboundMessage, ingestManualOutbound } from "@/server/inbox/ingest";
 import { applyStatusUpdate } from "@/server/inbox/status";
 import { getZernioWhatsappByAccountRef } from "@/server/whatsapp/credentials";
+import { anuncioDeWhatsapp, type AnuncioDeOrigen } from "@/server/attribution/referral";
 import { zernioSentAtSeconds, type ZernioEvent } from "@/server/zernio";
 
 /**
@@ -36,6 +37,8 @@ export type ZernioWhatsappInbound = {
   timestamp: string;
   /** `conversationId` opaco de Zernio: hace falta para responder. */
   threadRef: string | null;
+  /** 139 — El anuncio del que llegó, si llegó de uno. */
+  anuncio: AnuncioDeOrigen | null;
 };
 
 /** Un saliente que NO salió del CRM: lo escribió el dueño en su teléfono. */
@@ -92,6 +95,40 @@ function telefonoDeLaIdentidad(crudo: string | null): string | null {
   const digits = crudo.replace(/^\+/, "");
   if (!/^\d{6,}$/.test(digits)) return null;
   return normalizeMx(digits);
+}
+
+
+/**
+ * 139 — El anuncio Click-to-WhatsApp del que llegó la conversación.
+ *
+ * Zernio adjunta el `referral` de Meta **verbatim** junto a sus propios
+ * campos `ctwa_*`, así que se le pasa el verbatim al normalizador que ya
+ * entiende la forma de Meta (`anuncioDeWhatsapp`) en vez de escribir un
+ * segundo normalizador que haya que mantener al día dos veces.
+ *
+ * El respaldo arma el mismo objeto con los `ctwa_*` por si un día llega el
+ * desarmado sin el verbatim. Sin ninguno de los dos no hay anuncio, y la
+ * conversación entra igual: llegar sin anuncio es lo normal.
+ */
+function anuncioDelEvento(evt: ZernioEvent): AnuncioDeOrigen | null {
+  const meta = evt.message?.metadata;
+  if (!meta || typeof meta !== "object") return null;
+
+  const verbatim = anuncioDeWhatsapp(meta.referral);
+  if (verbatim) return verbatim;
+
+  const texto = (v: unknown) => (typeof v === "string" && v ? v : null);
+  if (!texto(meta.ctwa_clid) && !texto(meta.ctwa_source_id)) return null;
+  return anuncioDeWhatsapp({
+    source_id: meta.ctwa_source_id,
+    source_type: meta.ctwa_source_type,
+    source_url: meta.ctwa_source_url,
+    headline: meta.ctwa_headline,
+    body: meta.ctwa_body,
+    media_type: meta.ctwa_media_type,
+    ctwa_clid: meta.ctwa_clid,
+    image_url: meta.ctwa_image_url,
+  });
 }
 
 /** La plataforma del evento: Zernio la manda en la cuenta y en el mensaje. */
@@ -165,6 +202,7 @@ export function normalizeZernioWhatsappInbound(
       timestamp: zernioSentAtSeconds(evt.message?.sentAt),
       // Opaco por contrato: se guarda tal cual y no se parsea.
       threadRef: evt.message?.conversationId ?? evt.conversation?.id ?? null,
+      anuncio: anuncioDelEvento(evt),
     },
   ];
 }
@@ -285,6 +323,7 @@ export async function processZernioWhatsappEvent(
       text: evt.text,
       timestamp: evt.timestamp,
       threadRef: evt.threadRef,
+      anuncio: evt.anuncio,
     });
   }
 

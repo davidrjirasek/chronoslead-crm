@@ -125,8 +125,28 @@ con un `TypeError` sobre `credentials!`:
 - **Plantillas / mensajes iniciados por el negocio**: el envío usa
   `POST /inbox/conversations/{id}/messages`, que necesita una conversación ya
   abierta. Iniciar es `POST /inbox/conversations` con `participantId`.
-- **Acuses de entrega**: `message.delivered` / `message.read` llegan y se
-  ignoran, así que un saliente queda en `sent` y no avanza a «entregado».
+Ya resueltos después de la verificación en vivo: los **acuses de entrega**
+(`message.delivered` / `message.read` / `message.failed`, que traducía
+`estadoZernioWhatsapp()`) y el **anuncio de origen**.
+
+### D7 · El anuncio de origen viene en el `referral` verbatim
+
+Zernio captura el `ctwa_clid` de una conversación que llegó de un anuncio
+Click-to-WhatsApp y lo adjunta al mensaje en `metadata`, **junto al `referral`
+de Meta tal cual**. Así que se le pasa ese verbatim al normalizador que ya
+entiende la forma de Meta (`anuncioDeWhatsapp`) en vez de escribir un segundo
+normalizador: el día que Meta agregue un campo, lo agarran los dos transportes
+a la vez en lugar de uno. El respaldo arma el objeto con los `ctwa_*` por si
+llegara el desarmado sin el verbatim.
+
+Importa porque sin esto una conversación venida de un anuncio entraba **sin su
+tarjeta de origen**: el operador no sabía de qué campaña vino el lead, y el
+`ctwa_clid` —lo que después permite reportarle a Meta las conversiones que
+pasan dentro del chat— se perdía.
+
+Y para medir campañas por este transporte **no hace falta el `waba_id`**, que
+era lo que parecía bloquearlo: Zernio provisiona el dataset con
+`POST /v1/whatsapp/dataset` pasando solo su `accountId`.
 
 ## Lo que quedó tocado
 
