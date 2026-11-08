@@ -310,28 +310,61 @@ export function normalizeBranding(input: Partial<Branding> | null): Branding {
 }
 
 /**
+ * 141 — El lema de la plataforma, para la pestaña de la landing pública.
+ *
+ * Vive acá y no dentro de la función para poder cambiarlo sin tocar la regla.
+ */
+export const LEMA = "tu CRM a tiempo y a medida";
+
+/** 141 — Qué superficie es esta dirección, a los efectos del título. */
+export type SuperficieDeTitulo =
+  | { kind: "tenant"; organizacion: string | null }
+  | { kind: "landing" }
+  | { kind: "admin" }
+  | { kind: "cuentas" }
+  | { kind: "alta" }
+  | { kind: "onboarding" }
+  | { kind: "desconocido" };
+
+/**
  * 141 — El título de la pestaña del navegador.
  *
  * Quien atiende varias cuentas trabaja con tres o cuatro pestañas abiertas, y
  * todas decían lo mismo: la marca solo cambia si el cliente la personaliza, y
  * ninguno lo hace.
  *
- * El nombre del cliente va **primero** porque el navegador recorta la pestaña
+ * **Lo que distingue va primero**, porque el navegador recorta la pestaña
  * **por la derecha**: con «ChronosLead · Castell Muebles» todas se verían
- * «ChronosLe…» y el problema seguiría igual. Lo que distingue tiene que entrar
- * en los primeros caracteres.
+ * «ChronosLe…» y el problema seguiría igual.
  *
- * Sin organización —el apex, el panel de superadmin, una dirección que no es
- * de nadie— va el título de siempre: ahí no hay cliente que nombrar, y poner
- * uno sería peor que no poner ninguno.
+ * La excepción es la landing pública: ahí lo que distingue ES la marca, y
+ * además ese título es el que sale en Google y en la vista previa al compartir
+ * el enlace.
  */
 export function tituloDePestana(input: {
-  organizacion: string | null;
+  superficie: SuperficieDeTitulo;
   marca: string;
   producto: string;
 }): string {
-  const cliente = input.organizacion?.trim();
-  return cliente
-    ? `${cliente} · ${input.marca}`
-    : `${input.marca} — ${input.producto}`;
+  const { superficie, marca, producto } = input;
+  switch (superficie.kind) {
+    case "tenant": {
+      const cliente = superficie.organizacion?.trim();
+      // Sin nombre no se inventa uno: cae al título de siempre.
+      return cliente ? `${cliente} · ${marca}` : `${marca} — ${producto}`;
+    }
+    case "landing":
+      return `${marca}, ${LEMA}`;
+    case "admin":
+      return `Panel de control · ${marca}`;
+    case "cuentas":
+      return `Cuentas · ${marca}`;
+    case "alta":
+      return `Alta · ${marca}`;
+    case "onboarding":
+      return `Cuestionario · ${marca}`;
+    default:
+      // Una dirección que no es de nadie: nada que nombrar.
+      return `${marca} — ${producto}`;
+  }
 }

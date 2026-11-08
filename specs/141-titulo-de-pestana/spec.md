@@ -35,11 +35,28 @@ adelante, tres pestañas abiertas se leen «ChronosLe…», «ChronosLe…»,
 Lo que distingue tiene que entrar en los primeros caracteres. Con el cliente
 adelante se lee «Castell…», «ZA Clim…», «Creativo…».
 
-### Dónde NO se toca
+### Cada puerta dice lo suyo
 
-El apex (`chronoslead.com`), el panel de superadmin y cualquier dirección que
-no sea de una organización conservan `ChronosLead — CRM multicanal`: ahí no hay
-cliente que nombrar, y poner uno sería peor que no poner ninguno.
+El dueño lo extendió el mismo día: si la pestaña puede decir dónde estás
+parado, que lo diga en **todas** las superficies, no solo en las de clientes.
+
+| Dirección | Título |
+|---|---|
+| `{cliente}.chronoslead.com` | `Castell Muebles · ChronosLead` |
+| `chronoslead.com` (el apex) | `ChronosLead, tu CRM a tiempo y a medida` |
+| `admin.chronoslead.com` | `Panel de control · ChronosLead` |
+| `cuentas.chronoslead.com` | `Cuentas · ChronosLead` |
+| `alta.chronoslead.com` | `Alta · ChronosLead` |
+| `onboarding.chronoslead.com` | `Cuestionario · ChronosLead` |
+| Una dirección de nadie | `ChronosLead — CRM multicanal` |
+
+**La landing es la única excepción al orden.** En las demás lo que distingue va
+primero porque la pestaña se recorta; en la landing lo que distingue **es la
+marca**, y además ese título es el que sale en Google y en la vista previa al
+compartir el enlace. Ahí el lema vale más que la brevedad.
+
+Una dirección que no es de nadie conserva el título genérico: no hay nada que
+nombrar, y poner algo sería peor que no poner nada.
 
 ### Si el cliente personalizó su marca, se respeta
 
@@ -57,16 +74,21 @@ rompía.
 
 ## Verificación
 
-Cinco casos en `tests/unit/titulo-de-pestana.test.ts`, incluido que dos
-clientes distintos difieran **desde el primer carácter**.
+Ocho casos en `tests/unit/titulo-de-pestana.test.ts`, incluidos que dos
+clientes distintos difieran **desde el primer carácter** y que **las siete
+superficies den títulos distintos entre sí** — si dos coincidieran, volvería el
+problema que esto vino a resolver.
 
 En vivo, contra la aplicación:
 
 ```
-e2ealfa.lvh.me    E2E Alfa · ChronosLead
-e2ebeta.lvh.me    E2E Beta · ChronosLead
-lvh.me            ChronosLead — CRM de WhatsApp
-admin.lvh.me      ChronosLead — CRM de WhatsApp
+e2ealfa.lvh.me        E2E Alfa · ChronosLead
+lvh.me                ChronosLead, tu CRM a tiempo y a medida
+admin.lvh.me          Panel de control · ChronosLead
+cuentas.lvh.me        Cuentas · ChronosLead
+alta.lvh.me           Alta · ChronosLead
+onboarding.lvh.me     Cuestionario · ChronosLead
+noexiste999.lvh.me    ChronosLead — CRM de WhatsApp
 ```
 
 Y en el guion de aislamiento, porque el título sale de la resolución por Host:

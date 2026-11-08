@@ -11,7 +11,7 @@ import { normalizeThemePreference, THEME_COOKIE } from "@/lib/theme";
 import { getBranding } from "@/server/branding";
 import { enabledChannels } from "@/server/channels/enabled";
 import { productName } from "@/lib/channels";
-import { currentTenantOrg } from "@/server/tenant/current";
+import { currentTenantHost, currentTenantOrg } from "@/server/tenant/current";
 import "./globals.css";
 
 // 107 — Montserrat es la tipografía de ChronosLead (docs/brand/sistema-visual.md:
@@ -45,12 +45,26 @@ export async function generateMetadata(): Promise<Metadata> {
   const branding = await getBranding().catch(() => DEFAULT_BRANDING);
   const producto = productName([...enabledChannels()]);
 
-  // 141 — La regla y el porqué viven en `tituloDePestana`.
-  const org = await currentTenantOrg().catch(() => null);
+  /**
+   * 141 — La regla y el porqué viven en `tituloDePestana`. Acá solo se
+   * averigua QUÉ superficie es esta dirección: el cliente, la landing, el
+   * panel de control, el lanzador de cuentas…
+   *
+   * Fuera de una petición no hay Host (un build, una tarea de fondo): ahí
+   * `desconocido`, que da el título de siempre en vez de adivinar.
+   */
+  const host = await currentTenantHost().catch(() => ({ kind: "desconocido" as const }));
+  const superficie =
+    host.kind === "tenant"
+      ? {
+          kind: "tenant" as const,
+          organizacion: (await currentTenantOrg().catch(() => null))?.name ?? null,
+        }
+      : { kind: host.kind };
 
   return {
     title: tituloDePestana({
-      organizacion: org?.name ?? null,
+      superficie,
       marca: branding.name,
       producto,
     }),
