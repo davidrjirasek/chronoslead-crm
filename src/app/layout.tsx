@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { IBM_Plex_Mono, Montserrat } from "next/font/google";
-import { accentCssVariables, DEFAULT_BRANDING } from "@/lib/branding";
+import {
+  accentCssVariables,
+  DEFAULT_BRANDING,
+  tituloDePestana,
+} from "@/lib/branding";
 import { faviconHref } from "@/lib/favicon";
 import { normalizeThemePreference, THEME_COOKIE } from "@/lib/theme";
 import { getBranding } from "@/server/branding";
 import { enabledChannels } from "@/server/channels/enabled";
 import { productName } from "@/lib/channels";
+import { currentTenantOrg } from "@/server/tenant/current";
 import "./globals.css";
 
 // 107 — Montserrat es la tipografía de ChronosLead (docs/brand/sistema-visual.md:
@@ -39,8 +44,16 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
   const branding = await getBranding().catch(() => DEFAULT_BRANDING);
   const producto = productName([...enabledChannels()]);
+
+  // 141 — La regla y el porqué viven en `tituloDePestana`.
+  const org = await currentTenantOrg().catch(() => null);
+
   return {
-    title: `${branding.name} — ${producto}`,
+    title: tituloDePestana({
+      organizacion: org?.name ?? null,
+      marca: branding.name,
+      producto,
+    }),
     // 129 — «asesor IA», no «agente»: es la palabra de la casa, y esta
     // descripción es lo que se ve en Google y en la vista previa de WhatsApp
     // al compartir el enlace.

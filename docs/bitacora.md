@@ -2197,6 +2197,32 @@ La comprobación quedó mejor de lo que iba a ser: ahora prueba el camino de
 escritura completo —A escribe, A lo ve, **B no**, y no aparece en la bandeja—
 en vez de solo el aviso de «sin IA». **103/103.**
 
+### El título de la pestaña nombra al cliente (2026-11-08, spec 141)
+
+Con Creativo 4D, Castell y ZA Climatización abiertos a la vez, **las tres
+pestañas decían «ChronosLead — CRM multicanal»**. El título salía de la marca
+de la organización, que solo cambia si el cliente la personaliza — y ninguno lo
+hizo.
+
+**El cliente va PRIMERO**, y no como lo planteó el dueño («ChronosLead de
+Castell Muebles»): el navegador recorta la pestaña **por la derecha**, así que
+con la marca adelante las tres se leerían «ChronosLe…» y el problema quedaría
+igual. Lo que distingue tiene que entrar en los primeros caracteres.
+
+El apex y el panel de superadmin conservan el título de siempre: ahí no hay
+cliente que nombrar.
+
+La regla vive en `tituloDePestana()` (`lib/branding.ts`) y no dentro de
+`generateMetadata`, para que **el porqué del orden** se pueda leer y probar sin
+levantar la aplicación. Una regla de presentación escondida en un layout es una
+que el próximo cambia sin saber qué rompía.
+
+Verificado contra la aplicación —`E2E Alfa · ChronosLead`,
+`E2E Beta · ChronosLead`, el apex intacto— y en el guion de aislamiento, porque
+el título sale de la resolución por Host: un fallo ahí pondría el nombre de un
+cliente en la pestaña de otro. Cosmético, pero es una filtración de nombre que
+se ve en la barra del navegador. **107/107.**
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:

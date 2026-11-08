@@ -308,3 +308,30 @@ export function normalizeBranding(input: Partial<Branding> | null): Branding {
       : null;
   return { name, accent, currency, favicon };
 }
+
+/**
+ * 141 — El título de la pestaña del navegador.
+ *
+ * Quien atiende varias cuentas trabaja con tres o cuatro pestañas abiertas, y
+ * todas decían lo mismo: la marca solo cambia si el cliente la personaliza, y
+ * ninguno lo hace.
+ *
+ * El nombre del cliente va **primero** porque el navegador recorta la pestaña
+ * **por la derecha**: con «ChronosLead · Castell Muebles» todas se verían
+ * «ChronosLe…» y el problema seguiría igual. Lo que distingue tiene que entrar
+ * en los primeros caracteres.
+ *
+ * Sin organización —el apex, el panel de superadmin, una dirección que no es
+ * de nadie— va el título de siempre: ahí no hay cliente que nombrar, y poner
+ * uno sería peor que no poner ninguno.
+ */
+export function tituloDePestana(input: {
+  organizacion: string | null;
+  marca: string;
+  producto: string;
+}): string {
+  const cliente = input.organizacion?.trim();
+  return cliente
+    ? `${cliente} · ${input.marca}`
+    : `${input.marca} — ${input.producto}`;
+}

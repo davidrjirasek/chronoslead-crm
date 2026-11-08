@@ -137,7 +137,7 @@ corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack 
 Y el gate que manda, con dos organizaciones sembradas en `*.lvh.me` y la app viva:
 
 ```bash
-corepack pnpm test:e2e:aislamiento    # 103 comprobaciones, specs 105, 139 y 140
+corepack pnpm test:e2e:aislamiento    # 107 comprobaciones, specs 105 y 139-141
 ```
 
 Necesita la app viva con `EDITION=cloud`, `BASE_DOMAIN=lvh.me`,

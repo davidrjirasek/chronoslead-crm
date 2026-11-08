@@ -365,6 +365,31 @@ async function main() {
   ok("un subdominio inexistente dice «esta instancia no existe»", htmlInexistente.includes("Esta instancia no existe"));
   ok("y no filtra la marca de nadie", !htmlInexistente.includes(A.nombre) && !htmlInexistente.includes(B.nombre));
 
+  /**
+   * 141 — El título de la pestaña nombra al cliente, y sale de la resolución
+   * por Host. Un fallo ahí pondría el nombre de una organización en la pestaña
+   * de otra: cosmético, pero es una filtración de nombre de cliente y se ve a
+   * simple vista en la barra del navegador.
+   */
+  const tituloDe = async (org) => {
+    const html = await (await fetch(`${origen(org)}/login`)).text();
+    return (html.match(/<title>([^<]*)<\/title>/) ?? [])[1] ?? "";
+  };
+  const tituloA = await tituloDe(A);
+  const tituloB = await tituloDe(B);
+  ok("la pestaña de A lleva el nombre de A", tituloA.includes(A.nombre), tituloA);
+  ok(
+    "y NO el de B",
+    !tituloA.includes(B.nombre),
+    `el título de A nombraba a B: ${tituloA}`
+  );
+  ok("la de B lleva el de B y no el de A", tituloB.includes(B.nombre) && !tituloB.includes(A.nombre), tituloB);
+  ok(
+    "y el cliente va PRIMERO, que es lo que la vuelve distinguible",
+    tituloA.startsWith(A.nombre),
+    `la pestaña empieza por otra cosa: ${tituloA}`
+  );
+
   seccion("8 · Webhook: firmas que no valen");
   const puertaAConFirmaB = await fetch(
     `${origen(A)}/api/webhooks/wa/${orgIdA}/${firmaWebhook(orgIdB)}`,
