@@ -20,6 +20,7 @@ import {
 } from "@/server/whatsapp/credentials";
 import {
   createZernioTemplate,
+  cuerpoDeComponentes,
   listZernioTemplates,
   sendZernioTemplate,
 } from "@/server/whatsapp/zernio-templates";
@@ -274,7 +275,7 @@ export async function syncTemplates(organizationId: string): Promise<number> {
   }
 
   let data: {
-    data?: { id?: string; name?: string; language?: string; status?: string; category?: string; quality_score?: unknown; rejected_reason?: string }[];
+    data?: { id?: string; name?: string; language?: string; status?: string; category?: string; quality_score?: unknown; rejected_reason?: string; components?: unknown }[];
   };
   try {
     if (transporte.tipo === "zernio") {
@@ -290,6 +291,9 @@ export async function syncTemplates(organizationId: string): Promise<number> {
           status: t.status,
           category: t.category ?? undefined,
           rejected_reason: t.rejectedReason ?? undefined,
+          // El cuerpo viaja ya extraído: Zernio lo entrega en componentes,
+          // igual que Graph, y la importación de abajo lo necesita.
+          components: t.body ? [{ type: "BODY", text: t.body }] : undefined,
         })),
       };
     } else {
@@ -323,7 +327,34 @@ export async function syncTemplates(organizationId: string): Promise<number> {
         (remote.id && t.waTemplateId === remote.id) ||
         (t.name === remote.name && t.language === remote.language)
     );
-    if (!match) continue;
+    if (!match) {
+      // 142 — IMPORTAR lo que existe allá y no acá.
+      //
+      // Antes esto era `continue`, y la consecuencia se vio desplegando: las
+      // plantillas creadas fuera del producto —por la API de Zernio, o a mano
+      // en Meta Business Manager— nunca llegaban a la tabla local, y como el
+      // envío busca por nombre EN LA TABLA, el aviso quedaba mudo con las
+      // plantillas aprobadas a la vista en Meta.
+      //
+      // Sin cuerpo no se importa: una fila sin `body` no se puede enviar
+      // (`countVariables` no sabría cuántos valores pedir) y sería peor que
+      // no tenerla.
+      const cuerpo = cuerpoDeComponentes(remote.components);
+      if (!cuerpo || !remote.name || !remote.language) continue;
+      await db.insert(schema.template).values({
+        id: newId("template"),
+        organizationId,
+        name: remote.name,
+        language: remote.language,
+        category: remote.category ?? "UTILITY",
+        body: cuerpo,
+        status,
+        rejectionReason: remote.rejected_reason ?? null,
+        waTemplateId: remote.id ?? null,
+      });
+      updated += 1;
+      continue;
+    }
     // Meta reclasifica la categoría al aprobar (una UTILITY puede volverse
     // MARKETING, lo que cambia el costo por conversación): es autoridad.
     const category = remote.category ?? match.category;

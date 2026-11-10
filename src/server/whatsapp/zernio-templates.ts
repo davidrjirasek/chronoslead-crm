@@ -36,7 +36,21 @@ export type ZernioTemplate = {
   status: string;
   category: string | null;
   rejectedReason: string | null;
+  /** El texto del componente BODY, que es lo único que este producto usa. */
+  body: string | null;
 };
+
+/** Saca el texto del BODY de los componentes que devuelve Meta. */
+export function cuerpoDeComponentes(componentes: unknown): string | null {
+  if (!Array.isArray(componentes)) return null;
+  for (const c of componentes) {
+    const comp = c as { type?: unknown; text?: unknown };
+    if (String(comp.type ?? "").toUpperCase() !== "BODY") continue;
+    const texto = typeof comp.text === "string" ? comp.text : null;
+    if (texto) return texto;
+  }
+  return null;
+}
 
 /** El teléfono va en dígitos, con país y sin `+`. */
 function soloDigitos(phone: string): string {
@@ -104,6 +118,7 @@ export async function listZernioTemplates(
       language: String(t.language ?? ""),
       status: String(t.status ?? ""),
       category: t.category != null ? String(t.category) : null,
+      body: cuerpoDeComponentes(t.components),
       rejectedReason:
         t.rejected_reason != null
           ? String(t.rejected_reason)

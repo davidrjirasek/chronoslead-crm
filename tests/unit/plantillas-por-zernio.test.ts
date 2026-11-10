@@ -23,6 +23,7 @@ vi.mock("@/server/zernio", () => ({
 
 const {
   createZernioTemplate,
+  cuerpoDeComponentes,
   listZernioTemplates,
   sendZernioTemplate,
 } = await import("@/server/whatsapp/zernio-templates");
@@ -198,5 +199,51 @@ describe("enviar una plantilla", () => {
     });
     expect(res.conversationId).toBe("conv_3");
     expect(res.platformMessageId).toMatch(/^zernio_tpl_\d+$/);
+  });
+});
+
+describe("el cuerpo de la plantilla", () => {
+  /**
+   * Lo necesita la IMPORTACIÓN: una plantilla creada fuera del producto —por
+   * la API de Zernio, o a mano en Meta Business Manager— llega sin fila local,
+   * y sin cuerpo no se puede guardar ni enviar. Desplegando el 10-nov-2026 se
+   * vio en vivo: diez plantillas aprobadas en Meta y el sincronizador
+   * devolviendo `updated: 0`.
+   */
+  it("saca el texto del componente BODY", () => {
+    expect(
+      cuerpoDeComponentes([
+        { type: "HEADER", format: "TEXT", text: "Encabezado" },
+        { type: "BODY", text: "Hola {{1}}, tu cita es el {{2}}." },
+        { type: "FOOTER", text: "Pie" },
+      ])
+    ).toBe("Hola {{1}}, tu cita es el {{2}}.");
+  });
+
+  it("acepta el tipo en minúsculas, como lo manda Zernio al crear", () => {
+    expect(cuerpoDeComponentes([{ type: "body", text: "Hola." }])).toBe("Hola.");
+  });
+
+  it("devuelve null si no hay BODY, y entonces no se importa", () => {
+    expect(cuerpoDeComponentes([{ type: "HEADER", text: "Solo encabezado" }])).toBeNull();
+    expect(cuerpoDeComponentes([])).toBeNull();
+    expect(cuerpoDeComponentes(undefined)).toBeNull();
+    expect(cuerpoDeComponentes("no es una lista")).toBeNull();
+  });
+
+  it("el listado lo trae ya extraído", async () => {
+    respuesta = {
+      templates: [
+        {
+          id: "1",
+          name: "cita_agendada_equipo",
+          language: "es",
+          status: "APPROVED",
+          components: [{ type: "BODY", text: "Hola {{1}}." }],
+        },
+      ],
+    };
+    const [t] = await listZernioTemplates(CREDENCIALES);
+    expect(t!.body).toBe("Hola {{1}}.");
   });
 });
