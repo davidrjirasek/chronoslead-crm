@@ -33,6 +33,26 @@ describe("las acciones nuevas", () => {
     expect(res.success).toBe(false);
   });
 
+  it("book_slot acepta la puerta de la segunda cita, y es opcional", () => {
+    // Sin la bandera: el caso normal, y el motor se niega si ya hay una cita.
+    expect(
+      AgentAction.safeParse({
+        action: "book_slot",
+        startUtc: "2026-11-12T13:00:00.000Z",
+      }).success
+    ).toBe(true);
+    // Con la bandera: el cliente confirmó que quiere las dos.
+    const dos = AgentAction.safeParse({
+      action: "book_slot",
+      startUtc: "2026-11-12T13:00:00.000Z",
+      allowSecond: true,
+    });
+    expect(dos.success).toBe(true);
+    expect(dos.success && "allowSecond" in dos.data && dos.data.allowSecond).toBe(
+      true
+    );
+  });
+
   it("acepta cancel_slot sin más datos", () => {
     const res = AgentAction.safeParse({ action: "cancel_slot" });
     expect(res.success).toBe(true);

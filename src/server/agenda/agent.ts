@@ -6,6 +6,7 @@ import {
   BookingError,
   cancelForConversation,
   createSessionBooking,
+  proximaCitaDeLaConversacion,
   rescheduleForConversation,
 } from "@/server/agenda/service";
 
@@ -80,7 +81,29 @@ export async function bookSlot(input: {
   conversationId: string;
   startUtc: string;
   confirmation?: string;
+  /** El cliente confirmó que quiere una cita ADEMÁS de la que ya tiene. */
+  allowSecond?: boolean;
 }): Promise<AgendaTurn & { label?: string }> {
+  // 142 — Antes de crear, mirar si esta persona ya tiene una cita abierta.
+  //
+  // El 10-nov-2026 una clienta con turno para el jueves pidió agendar otra
+  // vez; el agente le creó uno para el miércoles sin enterarse del primero, y
+  // el equipo quedó con dos citas de la misma persona. «Quiero agendar» de
+  // alguien que ya tiene cita casi siempre significa «quiero moverla», y
+  // preguntarlo es lo que haría una persona.
+  if (!input.allowSecond) {
+    const yaTiene = await proximaCitaDeLaConversacion(
+      input.organizationId,
+      input.conversationId
+    );
+    if (yaTiene) {
+      return {
+        ok: false,
+        text: `Antes de agendarte, ojo: ya tenés una cita con nosotros el ${yaTiene}. ¿Querés que te la mueva a este horario nuevo, o preferís dejar las dos?`,
+      };
+    }
+  }
+
   try {
     const result = await createSessionBooking({
       organizationId: input.organizationId,

@@ -381,6 +381,7 @@ export async function runAgentTurn(
                   conversationId,
                   startUtc: action.startUtc,
                   confirmation: action.reply,
+                  allowSecond: action.allowSecond,
                 })
               : action.action === "reschedule_slot"
                 ? await rescheduleSlot({

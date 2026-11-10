@@ -44,6 +44,18 @@ const agendaActions = [
     action: z.literal("book_slot"),
     startUtc: z.string().min(1),
     reply: z.string().optional(),
+    /**
+     * 142 — Agendar una SEGUNDA cita a alguien que ya tiene una.
+     *
+     * Por defecto el motor se niega: el 10-nov-2026 el agente le agendó a una
+     * clienta un turno nuevo sin enterarse de que ya tenía uno, y el equipo
+     * terminó con dos citas de la misma persona en la agenda. Lo normal es que
+     * «quiero agendar» de alguien con cita abierta signifique moverla.
+     *
+     * Solo se pone en true cuando el cliente confirmó que quiere las DOS. Sin
+     * esta puerta, el agente quedaría trabado ante el caso legítimo.
+     */
+    allowSecond: z.boolean().optional(),
   }),
   /**
    * 142 — Mover y cancelar. Hasta la 142 el agente solo sabía CREAR citas: si

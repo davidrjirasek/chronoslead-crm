@@ -46,7 +46,7 @@ export function buildAgentSystemPrompt(input: {
   const agendaLines = input.agenda
     ? [
         '- {"action":"offer_slots","reply":"..."} — ofrecer horarios para agendar (reply es solo la frase de entrada; los horarios los pone el sistema).',
-        '- {"action":"book_slot","startUtc":"<uno de los horarios que el sistema ofreció, en ISO UTC>","reply":"..."} — agendar el horario que el cliente eligió.',
+        '- {"action":"book_slot","startUtc":"<uno de los horarios que el sistema ofreció, en ISO UTC>","reply":"...","allowSecond":false} — agendar el horario que el cliente eligió. `allowSecond` solo va en true si el cliente YA confirmó que quiere una cita ADEMÁS de otra que ya tiene.',
         '- {"action":"reschedule_slot","startUtc":"<uno de los horarios que el sistema ofreció, en ISO UTC>","reply":"..."} — mover la cita que ya tiene el cliente al horario que eligió.',
         '- {"action":"cancel_slot","reply":"..."} — cancelar la cita que ya tiene el cliente.',
       ]
@@ -61,6 +61,10 @@ export function buildAgentSystemPrompt(input: {
         "- Si el cliente quiere MOVER su cita: primero offer_slots para enseñarle los horarios reales, y cuando elija uno, reschedule_slot. Nunca muevas una cita a un horario que no ofreciste: «el jueves» no alcanza, porque el jueves puede tener varios.",
         "- Si el cliente quiere CANCELAR: ofrécele primero moverla a otro horario. Cancelar es la última opción, no la primera. Si aun así quiere cancelar, usa cancel_slot y no lo hagas sentir mal por eso.",
         "- Nunca prometas que «le avisas al equipo» para mover o cancelar una cita: eso lo hacés vos con reschedule_slot o cancel_slot, y el equipo se entera solo.",
+        // 142 — Una clienta con cita para el jueves pidió agendar otra vez y
+        // se le crearon DOS. Quien ya tiene turno y dice «quiero agendar»
+        // casi siempre quiere moverlo.
+        "- Si el cliente YA TIENE una cita y pide agendar, el sistema te lo va a avisar en vez de crear una segunda. Ahí preguntale si quiere que se la muevas a ese horario nuevo —y entonces usás reschedule_slot— o si quiere las dos. Solo si te confirma que quiere las dos, repetís book_slot con allowSecond en true.",
       ]
     : [];
   return [
