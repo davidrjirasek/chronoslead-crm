@@ -409,9 +409,19 @@ function CtaPrimario({
 
 export function LandingPublica() {
   return (
-    <div className="bg-[#FFFCF8] font-sans text-ink">
+    <div id="top" className="bg-[#FFFCF8] font-sans text-ink">
       <header className="sticky top-0 z-40 flex items-center justify-between gap-4 border-black/5 border-b bg-[#FFFCF8]/90 px-5 py-3.5 backdrop-blur-xl sm:px-10 sm:py-4">
-        <div className="flex shrink-0 items-center gap-2.5">
+        {/*
+         * El logotipo lleva al inicio, que es lo que todo el mundo intenta.
+         * `Link` a "/" y no un ancla: así también sirve desde las páginas
+         * legales, donde "arriba" no alcanza porque hay que volver al sitio.
+         * En la propia landing, Next sube al principio sin recargar.
+         */}
+        <Link
+          href="/"
+          aria-label="Ir al inicio de ChronosLead"
+          className="flex shrink-0 items-center gap-2.5 rounded-lg transition hover:opacity-70 focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-4"
+        >
           <Image
             src="/isotipo.png"
             alt=""
@@ -423,7 +433,7 @@ export function LandingPublica() {
           <span className="whitespace-nowrap font-extrabold text-[16px] tracking-tight sm:text-[18px]">
             Chronos<span className="text-primary">Lead</span>
           </span>
-        </div>
+        </Link>
         <nav className="hidden items-center gap-7 font-semibold text-[13px] text-zinc-600 lg:flex">
           {NAV_LINKS.map((l) => (
             <a key={l.href} href={l.href} className="transition hover:text-ink">
@@ -1123,7 +1133,37 @@ export function LandingPublica() {
       </footer>
 
       {/* ---- Único verde de la página: el flotante ---- */}
-      <div className="pointer-events-none sticky bottom-5 z-50 flex items-end justify-end px-5 sm:px-10">
+      <div className="pointer-events-none sticky bottom-5 z-50 flex items-end justify-end gap-3 px-5 sm:px-10">
+        {/*
+         * Volver arriba, disponible desde CUALQUIER sección.
+         *
+         * Va en la misma barra pegajosa que el flotante de WhatsApp y a su
+         * izquierda: una flecha en cada sección obligaría a bajar hasta el
+         * final de la sección para usarla, que es justo lo contrario de lo que
+         * se busca. Aquí está siempre a mano.
+         *
+         * Discreta a propósito: el verde sigue siendo el único acento fuerte
+         * de la página, y esto no compite con el CTA.
+         */}
+        <a
+          href="#top"
+          aria-label="Volver arriba"
+          className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white/90 text-zinc-600 shadow-[0_10px_24px_-12px_rgba(0,0,0,.4)] ring-4 ring-[#FFFCF8] backdrop-blur transition hover:text-ink focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-5 w-5"
+            aria-hidden="true"
+          >
+            <path d="M12 19V5" />
+            <path d="m5 12 7-7 7 7" />
+          </svg>
+        </a>
         <a
           href={waLink(CTA_TEXT)}
           target="_blank"

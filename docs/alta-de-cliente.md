@@ -304,6 +304,38 @@ previo y ventana.
 > cambiarla a `America/Asuncion`. **Si no la cambiás, el agente ofrece horarios
 > corridos** y el cliente se entera cuando alguien no aparece a la reunión.
 
+### El medio de pago en Meta, sin el cual los avisos no salen ⚠️
+
+**Un cliente con agenda necesita su tarjeta cargada en su cuenta de WhatsApp
+Business, en Meta.** No es opcional y no depende de nosotros.
+
+Todo lo que el negocio INICIA —el aviso al equipo cuando se agenda una cita,
+los recordatorios, el aviso de atención humana— sale como *plantilla*, y Meta
+cobra las plantillas. **Sin medio de pago las rechaza todas**, con el código
+`131042 · Business eligibility payment issue`.
+
+Lo que NO necesita tarjeta son las respuestas del agente dentro de las 24 h
+desde que el cliente escribió. Por eso el síntoma engaña: **el agente contesta
+perfecto y parece que todo anda, mientras ningún aviso llega a nadie.** Así se
+descubrió, el 10-nov-2026: una clienta de ZA Climatización agendó, el aviso se
+generó bien, y la persona que tenía que atenderla nunca se enteró.
+
+Tres cosas que conviene saber:
+
+1. **Es por cada cuenta de WhatsApp Business**, no por la agencia. Que un
+   cliente pague no habilita a los demás.
+2. **Que la tarjeta esté cargada no alcanza.** Los bancos suelen bloquear el
+   cargo por ser internacional, recurrente, de monto variable y sin clave. Hay
+   que pedirle al emisor que lo habilite de forma permanente — el texto para
+   mandarle al ejecutivo de cuenta está en
+   `~/Documents/ChronosLead/` junto a los briefs.
+3. **Tarda en propagarse.** Después de cargar la tarjeta, Meta puede seguir
+   rechazando un rato. En ZA fueron unos 40 minutos. Si falla justo después de
+   cargarla, esperá antes de buscar otra causa.
+
+**Cómo se comprueba:** agendá una cita de prueba y mirá en la Bandeja la
+conversación del número de aviso. Si el mensaje queda `no se entregó`, es esto.
+
 ---
 
 ## 9 · El conector de reunión
