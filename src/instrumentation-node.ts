@@ -4,6 +4,8 @@ import { mediaDirStatus } from "@/server/media-dir";
 import { leerConfigDespacho } from "@/server/brains/config";
 import { iniciarWorker, tanda } from "@/server/dispatch/worker";
 import { cifrarSecretosEnClaro } from "@/server/zernio/secreto-guardado";
+import { agendaEnabled } from "@/server/agenda/flag";
+import { iniciarRecordatorios } from "@/server/agenda/recordatorios";
 
 /**
  * 008 — Aviso al arranque si MEDIA_DIR no es escribible. Sin esto, el primer
@@ -103,4 +105,17 @@ export function resumeDispatch(): void {
       "[boot] BRAIN_DISPATCH_URL está definida pero falta BOT_API_KEY (mínimo 16 caracteres): el despacho al cerebro queda INACTIVO."
     );
   }
+}
+
+/**
+ * 142 — El barrido de recordatorios de cita.
+ *
+ * Es el primer trabajo del producto que lo dispara el reloj y no un mensaje
+ * entrante, así que necesita arrancar con el proceso. Detrás de la bandera de
+ * agenda: donde no hay agenda, no hay nada que recordar.
+ */
+export function resumeRecordatorios(): void {
+  if (!agendaEnabled()) return;
+  iniciarRecordatorios();
+  console.log("[boot] recordatorios de cita activos (una hora antes)");
 }

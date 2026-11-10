@@ -13,8 +13,16 @@ import { publish } from "@/server/events/bus";
 import {
   getCredentialsByOrg,
   getCredentialsByWabaId,
+  getZernioWhatsappByOrg,
   markReconnectRequired,
+  type Credentials,
+  type ZernioWhatsapp,
 } from "@/server/whatsapp/credentials";
+import {
+  createZernioTemplate,
+  listZernioTemplates,
+  sendZernioTemplate,
+} from "@/server/whatsapp/zernio-templates";
 import { callGraphSend, SendError } from "@/server/inbox/send";
 import { serializeMessage } from "@/server/inbox/ingest";
 import type { WebhookValue } from "@/server/inbox/webhook";
@@ -80,11 +88,14 @@ export async function createTemplate(
   const variableError = validateBodyVariables(input.body);
   if (variableError) throw new TemplateError("invalid", variableError);
 
-  const creds = await getCredentialsByOrg(organizationId);
-  if (!creds) {
+  // 142: el transporte decide a quién se le pide la plantilla. `meta` gana si
+  // existe; si no, la conexión por Zernio. Un `null` en los dos es «esta
+  // organización todavía no conectó WhatsApp».
+  const transporte = await transporteDePlantillas(organizationId);
+  if (transporte.tipo === "ninguno") {
     throw new TemplateError("not_connected", "Conecta tu número de WhatsApp primero");
   }
-  if (creds.status === "reconnect_required") {
+  if (transporte.status === "reconnect_required") {
     throw new TemplateError("reconnect_required", "Reconecta tu número antes de crear plantillas");
   }
 
@@ -103,6 +114,29 @@ export async function createTemplate(
     (_, i) => input.examples?.[i]?.trim() || `ejemplo ${i + 1}`
   );
   let waTemplateId: string | null = null;
+  if (transporte.tipo === "zernio") {
+    try {
+      const res = await createZernioTemplate({
+        credentials: transporte.zernio,
+        name,
+        language: input.language,
+        category: input.category,
+        body: input.body,
+        examples,
+      });
+      waTemplateId = res.waTemplateId;
+    } catch (err) {
+      throw errorDePlantilla(err, organizationId);
+    }
+    return guardarPlantilla({
+      organizationId,
+      name,
+      input,
+      waTemplateId,
+    });
+  }
+
+  const creds = transporte.meta;
   try {
     const res = await graphRequest<{ id?: string; status?: string }>(
       `${creds.wabaId}/message_templates`,
@@ -127,31 +161,75 @@ export async function createTemplate(
     );
     waTemplateId = res.id ?? null;
   } catch (err) {
-    if (err instanceof MetaApiError) {
-      if (err.isAuthError) {
-        await markReconnectRequired(organizationId);
-        throw new TemplateError("reconnect_required", "El token expiró: reconecta el número");
-      }
-      if (err.status === 0 || err.status >= 500) {
-        throw new TemplateError("meta_unavailable", "Meta no está disponible ahora");
-      }
-      throw new TemplateError("meta_error", err.message);
-    }
-    throw err;
+    throw errorDePlantilla(err, organizationId);
   }
 
+  return guardarPlantilla({ organizationId, name, input, waTemplateId });
+}
+
+/**
+ * 142 — Qué transporte sirve las plantillas de esta organización.
+ *
+ * `getCredentialsByOrg` devuelve null para una fila de Zernio a propósito
+ * (139), así que el único sitio donde las dos formas conviven es este.
+ */
+type TransporteDePlantillas =
+  | { tipo: "meta"; meta: Credentials; zernio: null; status: Credentials["status"] }
+  | { tipo: "zernio"; meta: null; zernio: ZernioWhatsapp; status: ZernioWhatsapp["status"] }
+  | { tipo: "ninguno"; meta: null; zernio: null; status: null };
+
+async function transporteDePlantillas(
+  organizationId: string
+): Promise<TransporteDePlantillas> {
+  const meta = await getCredentialsByOrg(organizationId);
+  if (meta) return { tipo: "meta", meta, zernio: null, status: meta.status };
+  const zernio = await getZernioWhatsappByOrg(organizationId);
+  if (zernio) {
+    return { tipo: "zernio", meta: null, zernio, status: zernio.status };
+  }
+  return { tipo: "ninguno", meta: null, zernio: null, status: null };
+}
+
+/**
+ * Traduce un fallo del proveedor al error tipado del servicio. Vale para los
+ * dos transportes porque `zernioFetch` ya devuelve `MetaApiError`.
+ */
+function errorDePlantilla(err: unknown, organizationId: string): unknown {
+  if (err instanceof MetaApiError) {
+    if (err.isAuthError) {
+      void markReconnectRequired(organizationId);
+      return new TemplateError(
+        "reconnect_required",
+        "El token expiró: reconecta el número"
+      );
+    }
+    if (err.status === 0 || err.status >= 500) {
+      return new TemplateError("meta_unavailable", "Meta no está disponible ahora");
+    }
+    return new TemplateError("meta_error", err.message);
+  }
+  return err;
+}
+
+/** El alta local, idéntica venga de donde venga la plantilla. */
+async function guardarPlantilla(opts: {
+  organizationId: string;
+  name: string;
+  input: { language: string; category: string; body: string };
+  waTemplateId: string | null;
+}): Promise<TemplateRow> {
   const db = getDb();
   const inserted = await db
     .insert(schema.template)
     .values({
       id: newId("template"),
-      organizationId,
-      name,
-      language: input.language,
-      category: input.category,
-      body: input.body,
+      organizationId: opts.organizationId,
+      name: opts.name,
+      language: opts.input.language,
+      category: opts.input.category,
+      body: opts.input.body,
       status: "pending",
-      waTemplateId,
+      waTemplateId: opts.waTemplateId,
     })
     .onConflictDoUpdate({
       target: [
@@ -160,11 +238,11 @@ export async function createTemplate(
         schema.template.language,
       ],
       set: {
-        category: input.category,
-        body: input.body,
+        category: opts.input.category,
+        body: opts.input.body,
         status: "pending",
         rejectionReason: null,
-        waTemplateId,
+        waTemplateId: opts.waTemplateId,
         updatedAt: new Date(),
       },
     })
@@ -190,8 +268,8 @@ function mapMetaStatus(
  * así que el pull es la vía universal (DV-VC-04/DV-VC-15).
  */
 export async function syncTemplates(organizationId: string): Promise<number> {
-  const creds = await getCredentialsByOrg(organizationId);
-  if (!creds) {
+  const transporte = await transporteDePlantillas(organizationId);
+  if (transporte.tipo === "ninguno") {
     throw new TemplateError("not_connected", "Conecta tu número de WhatsApp primero");
   }
 
@@ -199,9 +277,26 @@ export async function syncTemplates(organizationId: string): Promise<number> {
     data?: { id?: string; name?: string; language?: string; status?: string; category?: string; quality_score?: unknown; rejected_reason?: string }[];
   };
   try {
-    data = await graphRequest(`${creds.wabaId}/message_templates`, {
-      token: creds.token,
-    });
+    if (transporte.tipo === "zernio") {
+      // 142: Zernio lee la misma WABA por detrás, así que lo único que cambia
+      // es la forma de la respuesta. Se adapta a la de Graph y el resto de
+      // esta función no se entera de qué transporte la trajo.
+      const remotas = await listZernioTemplates(transporte.zernio);
+      data = {
+        data: remotas.map((t) => ({
+          id: t.id ?? undefined,
+          name: t.name,
+          language: t.language,
+          status: t.status,
+          category: t.category ?? undefined,
+          rejected_reason: t.rejectedReason ?? undefined,
+        })),
+      };
+    } else {
+      data = await graphRequest(`${transporte.meta.wabaId}/message_templates`, {
+        token: transporte.meta.token,
+      });
+    }
   } catch (err) {
     if (err instanceof MetaApiError) {
       if (err.isAuthError) {
@@ -346,11 +441,55 @@ export async function sendTemplate(input: {
     );
   }
 
-  const creds = await getCredentialsByOrg(input.organizationId);
-  if (!creds) throw new TemplateError("not_connected", "Sin número conectado");
-  if (creds.status === "reconnect_required") {
+  const transporte = await transporteDePlantillas(input.organizationId);
+  if (transporte.tipo === "ninguno") {
+    throw new TemplateError("not_connected", "Sin número conectado");
+  }
+  if (transporte.status === "reconnect_required") {
     throw new TemplateError("reconnect_required", "Reconecta el número");
   }
+
+  // 142: por Zernio, mandar la plantilla ES abrir la conversación. Por eso
+  // este camino alcanza a un número con el que nunca se habló — que es justo
+  // lo que necesita el aviso al equipo— mientras que el envío de texto
+  // (`zernio-send.ts`) exige un hilo que ya exista.
+  if (transporte.tipo === "zernio") {
+    if (!row.contact.phone) {
+      throw new TemplateError(
+        "meta_error",
+        "El contacto no tiene teléfono: por Zernio la plantilla se envía al número"
+      );
+    }
+    let enviado: Awaited<ReturnType<typeof sendZernioTemplate>>;
+    try {
+      enviado = await sendZernioTemplate({
+        credentials: transporte.zernio,
+        toPhone: row.contact.phone,
+        templateName: template.name,
+        templateLanguage: template.language,
+        params: values,
+      });
+    } catch (err) {
+      throw errorDePlantilla(err, input.organizationId);
+    }
+    // El hilo que devuelve Zernio es la referencia con la que entrará la
+    // respuesta: sin guardarla, la contestación abriría una conversación
+    // paralela.
+    if (enviado.conversationId && !row.conversation.channelThreadRef) {
+      await db
+        .update(schema.conversation)
+        .set({ channelThreadRef: enviado.conversationId })
+        .where(eq(schema.conversation.id, input.conversationId));
+    }
+    return registrarPlantillaEnviada({
+      organizationId: input.organizationId,
+      conversationId: input.conversationId,
+      waMessageId: enviado.platformMessageId,
+      texto: renderBody(template.body, values),
+    });
+  }
+
+  const creds = transporte.meta;
 
   // 003: destinatario = teléfono normalizado o BSUID.
   // 003: teléfono en `to`, BSUID en `recipient` — Meta los pide en campos
@@ -386,16 +525,37 @@ export async function sendTemplate(input: {
     },
   });
 
+  return registrarPlantillaEnviada({
+    organizationId: input.organizationId,
+    conversationId: input.conversationId,
+    waMessageId,
+    texto: renderBody(template.body, values),
+  });
+}
+
+/**
+ * 142 — El rastro local de una plantilla que salió: el mensaje en la bandeja,
+ * la conversación tocada y el evento por SSE. Es idéntico en los dos
+ * transportes, y es lo que hace que un aviso se pueda MIRAR después —el
+ * motivo por el que el destinatario del aviso es un contacto más del CRM.
+ */
+async function registrarPlantillaEnviada(opts: {
+  organizationId: string;
+  conversationId: string;
+  waMessageId: string;
+  texto: string;
+}): Promise<{ messageId: string }> {
+  const db = getDb();
   const inserted = await db
     .insert(schema.message)
     .values({
       id: newId("message"),
-      organizationId: input.organizationId,
-      conversationId: input.conversationId,
-      waMessageId,
+      organizationId: opts.organizationId,
+      conversationId: opts.conversationId,
+      waMessageId: opts.waMessageId,
       direction: "out",
       type: "template",
-      text: renderBody(template.body, values),
+      text: opts.texto,
       status: "pending",
       origin: "template",
     })
@@ -405,12 +565,12 @@ export async function sendTemplate(input: {
   await db
     .update(schema.conversation)
     .set({ lastMessageAt: new Date(), updatedAt: new Date() })
-    .where(eq(schema.conversation.id, input.conversationId));
+    .where(eq(schema.conversation.id, opts.conversationId));
 
-  publish(input.organizationId, {
+  publish(opts.organizationId, {
     type: "message.new",
     data: {
-      conversationId: input.conversationId,
+      conversationId: opts.conversationId,
       message: serializeMessage(message),
     },
   });

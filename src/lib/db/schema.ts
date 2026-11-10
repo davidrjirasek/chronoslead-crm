@@ -934,6 +934,17 @@ export const booking = pgTable(
     /** Conversación del Laboratorio: jamás llama a un conector real. */
     isTest: boolean("is_test").notNull().default(false),
     notes: text("notes"),
+    /**
+     * 142 — Cuándo salió cada recordatorio. Son la IDEMPOTENCIA del barrido:
+     * el worker corre cada pocos minutos y, sin esta marca, mandaría el mismo
+     * recordatorio en cada vuelta. Van en la cita y no en una tabla aparte
+     * porque pertenecen a la cita: si se cancela, se van con ella.
+     *
+     * Nulas también después de reprogramar: mover la cita vuelve a dejarlas en
+     * null a propósito, porque el recordatorio del horario viejo ya no sirve.
+     */
+    reminderTeamAt: timestamp("reminder_team_at"),
+    reminderClientAt: timestamp("reminder_client_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

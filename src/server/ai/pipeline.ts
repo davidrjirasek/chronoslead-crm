@@ -28,7 +28,14 @@ import {
   quedanDebidos,
 } from "@/server/ai/orden-turno";
 import { agendaEnabled } from "@/server/agenda/flag";
-import { bookSlot, offerSlots } from "@/server/agenda/agent";
+import {
+  bookSlot,
+  cancelSlot,
+  offerSlots,
+  rescheduleSlot,
+} from "@/server/agenda/agent";
+import { proximaCitaDeLaConversacion } from "@/server/agenda/service";
+import { avisoDelTurnoDeAgenda } from "@/server/ai/aviso-de-cita";
 import { contenidoParaElModelo } from "@/server/ai/contenido";
 import { avisarAtencionHumana } from "@/server/ai/aviso-de-atencion";
 import { respuestaRescatable } from "@/server/ai/rescate";
@@ -344,11 +351,23 @@ export async function runAgentTurn(
 
   // 015 — Agenda. Un fallo del motor degrada el turno (el agente responde sin
   // agendar), nunca lo tumba: quedarse callado es peor que no agendar.
-  if (action.action === "offer_slots" || action.action === "book_slot") {
+  if (
+    action.action === "offer_slots" ||
+    action.action === "book_slot" ||
+    action.action === "reschedule_slot" ||
+    action.action === "cancel_slot"
+  ) {
     if (!agenda) {
       action = degradeAction(action);
     } else {
       try {
+        // 142: `anterior` se lee ANTES de mover, porque después ya no existe.
+        // Un aviso de reprogramación sin el horario viejo no dice nada.
+        const anterior =
+          action.action === "reschedule_slot"
+            ? await proximaCitaDeLaConversacion(organizationId, conversationId)
+            : null;
+
         const turn =
           action.action === "offer_slots"
             ? await offerSlots({
@@ -356,14 +375,38 @@ export async function runAgentTurn(
                 conversationId,
                 intro: action.reply,
               })
-            : await bookSlot({
-                organizationId,
-                conversationId,
-                startUtc: action.startUtc,
-                confirmation: action.reply,
-              });
+            : action.action === "book_slot"
+              ? await bookSlot({
+                  organizationId,
+                  conversationId,
+                  startUtc: action.startUtc,
+                  confirmation: action.reply,
+                })
+              : action.action === "reschedule_slot"
+                ? await rescheduleSlot({
+                    organizationId,
+                    conversationId,
+                    startUtc: action.startUtc,
+                    confirmation: action.reply,
+                  })
+                : await cancelSlot({
+                    organizationId,
+                    conversationId,
+                    confirmation: action.reply,
+                  });
+
         await deliverReply(conversation, turn.text);
         if (turn.ok) {
+          // 142: el equipo se entera de lo que pasó con la cita. Va después
+          // de contestarle al cliente y nunca lanza: la cita ya está hecha, y
+          // un aviso que falla no puede deshacerla.
+          await avisoDelTurnoDeAgenda({
+            organizationId,
+            conversationId,
+            accion: action.action,
+            turn,
+            anterior,
+          });
           publish(organizationId, {
             type: "conversation.updated",
             data: { conversation: { id: conversationId } },

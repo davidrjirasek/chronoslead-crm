@@ -313,7 +313,16 @@ export async function rescheduleBooking(input: {
   try {
     const updated = await db
       .update(schema.booking)
-      .set({ scheduledAt: new Date(slot.startUtc), updatedAt: new Date() })
+      .set({
+        scheduledAt: new Date(slot.startUtc),
+        // 142: la cita cambió de hora, así que los recordatorios que ya
+        // salieron hablan de un horario que ya no existe. Se vuelven a armar
+        // para el nuevo: sin esto, mover una cita al día siguiente la dejaría
+        // sin recordatorio para siempre.
+        reminderTeamAt: null,
+        reminderClientAt: null,
+        updatedAt: new Date(),
+      })
       .where(eq(schema.booking.id, booking.id))
       .returning();
     next = updated[0]!;
@@ -419,6 +428,128 @@ export async function rescheduleForConversation(input: {
 }
 
 /** Idempotente: cancelar una cita ya cancelada no falla ni cambia nada. */
+/**
+ * 142 — Cancela la PRÓXIMA cita activa de la conversación.
+ *
+ * Espejo de `rescheduleForConversation`, y con la misma razón de ser: cuando
+ * el cliente dice que no va a poder, lo que no puede pasar es que el agente
+ * conteste «sin problema» y la cita siga en pie. El hueco se libera y el
+ * equipo se entera.
+ *
+ * Devuelve la cita que canceló para que quien llama pueda contar CUÁL era:
+ * un aviso que dice «se canceló una cita» sin decir cuál no sirve de nada.
+ */
+export async function cancelForConversation(input: {
+  organizationId: string;
+  conversationId: string;
+  now?: Date;
+}): Promise<{ booking: BookingRow; label: string }> {
+  const db = getDb();
+  const now = input.now ?? new Date();
+
+  const convRows = await db
+    .select({ contactId: schema.conversation.contactId })
+    .from(schema.conversation)
+    .where(
+      scoped(
+        schema.conversation.organizationId,
+        input.organizationId,
+        eq(schema.conversation.id, input.conversationId)
+      )
+    )
+    .limit(1);
+  const conv = convRows[0];
+  if (!conv) throw new BookingError("not_found", "Conversación no encontrada");
+
+  const rows = await db
+    .select()
+    .from(schema.booking)
+    .where(
+      scoped(
+        schema.booking.organizationId,
+        input.organizationId,
+        and(
+          eq(schema.booking.contactId, conv.contactId),
+          eq(schema.booking.kind, "session"),
+          eq(schema.booking.status, "agendada"),
+          gte(schema.booking.scheduledAt, now)
+        )
+      )
+    )
+    .orderBy(asc(schema.booking.scheduledAt))
+    .limit(1);
+
+  const target = rows[0];
+  if (!target) {
+    throw new BookingError("not_found", "No hay una cita activa que cancelar");
+  }
+
+  const settings = await getSettings(input.organizationId);
+  const label = labelInTz(
+    target.scheduledAt.toISOString(),
+    settings.timezone
+  );
+
+  await cancelBooking({
+    organizationId: input.organizationId,
+    bookingId: target.id,
+  });
+  await clearOffers(input.organizationId, input.conversationId).catch(() => {});
+
+  return { booking: target, label };
+}
+
+/**
+ * 142 — La etiqueta de la próxima cita activa de una conversación, o null.
+ *
+ * El pipeline la lee ANTES de mover una cita: después del cambio el horario
+ * viejo ya no existe en ningún lado, y un aviso de reprogramación sin el
+ * «era el…» no le sirve a nadie.
+ */
+export async function proximaCitaDeLaConversacion(
+  organizationId: string,
+  conversationId: string,
+  now: Date = new Date()
+): Promise<string | null> {
+  const db = getDb();
+  const convRows = await db
+    .select({ contactId: schema.conversation.contactId })
+    .from(schema.conversation)
+    .where(
+      scoped(
+        schema.conversation.organizationId,
+        organizationId,
+        eq(schema.conversation.id, conversationId)
+      )
+    )
+    .limit(1);
+  const conv = convRows[0];
+  if (!conv) return null;
+
+  const rows = await db
+    .select({ scheduledAt: schema.booking.scheduledAt })
+    .from(schema.booking)
+    .where(
+      scoped(
+        schema.booking.organizationId,
+        organizationId,
+        and(
+          eq(schema.booking.contactId, conv.contactId),
+          eq(schema.booking.kind, "session"),
+          eq(schema.booking.status, "agendada"),
+          gte(schema.booking.scheduledAt, now)
+        )
+      )
+    )
+    .orderBy(asc(schema.booking.scheduledAt))
+    .limit(1);
+
+  const target = rows[0];
+  if (!target) return null;
+  const settings = await getSettings(organizationId);
+  return labelInTz(target.scheduledAt.toISOString(), settings.timezone);
+}
+
 export async function cancelBooking(input: {
   organizationId: string;
   bookingId: string;

@@ -47,13 +47,20 @@ export function buildAgentSystemPrompt(input: {
     ? [
         '- {"action":"offer_slots","reply":"..."} — ofrecer horarios para agendar (reply es solo la frase de entrada; los horarios los pone el sistema).',
         '- {"action":"book_slot","startUtc":"<uno de los horarios que el sistema ofreció, en ISO UTC>","reply":"..."} — agendar el horario que el cliente eligió.',
+        '- {"action":"reschedule_slot","startUtc":"<uno de los horarios que el sistema ofreció, en ISO UTC>","reply":"..."} — mover la cita que ya tiene el cliente al horario que eligió.',
+        '- {"action":"cancel_slot","reply":"..."} — cancelar la cita que ya tiene el cliente.',
       ]
     : [];
   const agendaRules = input.agenda
     ? [
         "- NUNCA escribas tú los horarios ni los inventes: usa offer_slots y el sistema pega los reales.",
         "- book_slot solo acepta un horario que el sistema ofreció antes en ESTA conversación. Si el cliente pide otro, vuelve a ofrecer con offer_slots.",
-        "- Si el cliente quiere CANCELAR una cita → handoff: esa decisión no es tuya.",
+        // 142 — Antes esto decía «si quiere cancelar → handoff». Lo cambió el
+        // dueño el 10-nov-2026, después de que el agente le prometiera a una
+        // clienta que movía su cita, escalara, y la cita siguiera donde estaba.
+        "- Si el cliente quiere MOVER su cita: primero offer_slots para enseñarle los horarios reales, y cuando elija uno, reschedule_slot. Nunca muevas una cita a un horario que no ofreciste: «el jueves» no alcanza, porque el jueves puede tener varios.",
+        "- Si el cliente quiere CANCELAR: ofrécele primero moverla a otro horario. Cancelar es la última opción, no la primera. Si aun así quiere cancelar, usa cancel_slot y no lo hagas sentir mal por eso.",
+        "- Nunca prometas que «le avisas al equipo» para mover o cancelar una cita: eso lo hacés vos con reschedule_slot o cancel_slot, y el equipo se entera solo.",
       ]
     : [];
   return [

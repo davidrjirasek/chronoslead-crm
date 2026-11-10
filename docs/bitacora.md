@@ -2223,6 +2223,320 @@ el título sale de la resolución por Host: un fallo ahí pondría el nombre de 
 cliente en la pestaña de otro. Cosmético, pero es una filtración de nombre que
 se ve en la barra del navegador. **107/107.**
 
+### Los nueve agentes, escritos para pegar (2026-11-08)
+
+Las nueve configuraciones de agente y sus bases de conocimiento quedaron
+redactadas a partir de los nueve mega briefs, en una sola página con un botón
+de copiar por campo: identidad, tono, saludo, instrucciones, reglas de
+derivación, los bloques de conocimiento y las preguntas frecuentes. 45 campos,
+59 bloques y 62 preguntas.
+
+**El contenido no vive en el repo**, que es público: la página es un artifact
+privado y los briefs siguen en `~/Documents/ChronosLead/`. Lo que sí queda acá
+es la decisión: las reglas internas de cada cliente —las que el agente tiene
+que cumplir pero no anunciar, como que Castell no hace visitas antes de cerrar,
+o que el panel de mantenimientos de ZA Climatización es del equipo— están
+escritas **dentro de las instrucciones y marcadas como internas**, no omitidas.
+Omitirlas deja al agente improvisando justo donde más caro sale.
+
+La página se escribió como HTML estático, sin render por JavaScript: si el
+script fallara, el texto igual está y se selecciona a mano. El botón intenta el
+portapapeles, cae a `execCommand` y, si las dos fallan, selecciona el bloque.
+
+**Dos preguntas quedaron abiertas y los agentes derivan en vez de responder:**
+si la alimentación está incluida en EDI Cerritos —el brochure dice que sí y el
+agente anterior contestó que no— y el precio del devocional de Jerovia. Están
+marcadas dentro de sus propias instrucciones, no en una nota aparte, para que
+quien las cargue las vea.
+
+### La agenda dice una cosa y el conocimiento otra (2026-11-09)
+
+Cargando el primer agente real apareció un desajuste que **ninguna prueba
+podía ver**, porque las dos mitades estaban bien por separado.
+
+El agente **cuenta** los horarios desde la base de conocimiento y **ofrece**
+turnos desde el módulo de Agenda. En ZA Climatización el conocimiento decía
+martes, miércoles y jueves de 10 a 11 y de 16 a 17; la Agenda seguía en los
+valores de fábrica y ofreció **mañana lunes a las 09:00**. Las dos pantallas
+mostraban datos correctos; lo que estaba mal era que nadie las había casado.
+
+Si un cliente aceptaba ese turno, se presentaba un lunes a las nueve a una
+asesoría que no existía.
+
+**Y la zona horaria de fábrica es `America/Mexico_City`**, heredada de Vocero,
+que es un producto mexicano. Los nueve clientes son paraguayos. En una
+instancia recién creada eso no se ve: los huecos se calculan consistentes
+consigo mismos, así que la pantalla no miente — miente contra el mundo.
+
+Las dos cosas van al alta de cliente: **configurar la Agenda es parte de
+cargar el agente, no un paso aparte**, y la zona horaria se cambia siempre.
+
+**Decisión del dueño sobre el aviso mínimo:** 24 horas, no las 48 que pedía
+el brief. Con 48, una consulta del lunes ya no alcanza el martes y se pierde
+uno de los seis turnos semanales. Al bajarlo hubo que corregir también el
+conocimiento, que decía «dos días» — el mismo desajuste de arriba, esta vez
+provocado por nosotros.
+
+### El agente sabe el nombre, el cliente oye el cargo (2026-11-09)
+
+Decisión del dueño: el agente **nunca le da al cliente el nombre propio de la
+persona a la que deriva**. Dice el cargo —«nuestra Gerente de Climatización»,
+«nuestra arquitecta», «nuestro asesor educativo»— y el nombre vive solo donde
+el cliente no lo ve: las reglas de escalado y el aviso de derivación.
+
+**Por qué importa más de lo que parece:** si mañana esa persona cambia de
+puesto o se va, el cargo sigue siendo cierto y no hay que reescribir nueve
+bases de conocimiento. Y de paso no se reparte el nombre del personal a
+cualquiera que escriba al WhatsApp.
+
+La regla vive **dentro de las instrucciones de cada agente**, no en una nota
+aparte, porque es comportamiento y no documentación.
+
+### La disponibilidad y el enlace no tendrían que ser la misma elección (2026-11-09)
+
+Dos clientes comparten una profesional: Castell Muebles y ZA Constructora
+agendan con la misma arquitecta, ocho turnos por semana entre las dos
+instancias. `getBusyIntervals()` lee **la tabla `booking` de su organización y
+nada más**, así que cada agente ofrece los ocho sin ver los de la otra. El doble
+agendamiento no es un riesgo: es lo seguro.
+
+**Un dato que estaba mal documentado.** La nota del cliente decía que el
+conector de Google «solo escribe» porque `calendar.events` no alcanza para leer
+el calendario. Es falso, y el propio conector lo explica tras el bug #50:
+`Calendars.Get` necesita `calendar.readonly`, pero **listar eventos entra en
+`calendar.events`** — `testConnection` ya lista eventos. El arreglo de raíz es,
+entonces, más barato de lo que parecía: que los huecos libres consulten también
+los eventos del calendario conectado.
+
+**Pero el conector lo decide todo, y hoy es una sola elección.** `enlace-fijo`,
+`zoom` y `google` responden a «cómo se entrega la reunión». Solo `google` tiene
+eventos que listar: Zoom crea dos reuniones a la misma hora sin chistar.
+
+**Y Zoom se elige por una razón que no es el costo.** La cuenta paga del holding
+**graba las reuniones en la nube**, y eso alimenta lo que el producto hace bien:
+resumen de la conversación y próximo paso. Es una capacidad que el otro conector
+no da igual, así que la decisión no es «lo barato contra lo correcto» — son dos
+capacidades distintas y hay que elegir cuál pesa más.
+
+> **Lo que el caso pide es separar dos cosas que hoy van juntas: de dónde sale
+> la disponibilidad, y cómo se entrega la reunión.** Zoom para el enlace,
+> Google para los huecos ocupados. No está construido y no se construye ahora,
+> pero es la forma del problema.
+
+**Mientras tanto manda «Bloquear horario»** (spec 215), que ya hace exactamente
+lo que hace falta: se toca el hueco en la otra instancia, se escribe el nombre
+de la unidad en Motivo, y ese tiempo deja de ofrecerse mostrando ese texto. El
+nombre del cliente nunca cruza entre instancias.
+
+**Se descartó que los agentes se avisaran entre sí por WhatsApp.** El diseño del
+dueño llegaba al mismo resultado que el botón, pero el agente no tiene acción
+para escribir a otro número, el agente receptor trataría el aviso como un lead,
+ensuciaría bandeja y Resultados de los dos clientes, y al fallar lo haría en
+silencio. **Un mecanismo de sincronización que depende de que un LLM interprete
+un protocolo no es un mecanismo de sincronización.**
+
+### Un agente entero cargado en la instancia equivocada (2026-11-09)
+
+Al cargar EDI Cerritos apareció que su instancia **ya tenía configurado el
+agente del COLEGIO Cerritos**: nombre, tono, saludo, instrucciones, reglas de
+escalado, el aviso a otra persona, **toda la base de conocimiento 2027 y 24
+preguntas frecuentes**. 27.545 caracteres que no eran suyos.
+
+**Lo primero fue descartar un fallo de aislamiento**, que habría sido el peor
+problema posible del producto. No lo era: si fuera una fuga de lectura, el
+material estaría en la fila del Colegio y se vería desde EDI — pero la
+instancia del Colegio estaba **vacía**, 22 caracteres. Los datos estaban
+físicamente en la fila de EDI. Alguien los escribió ahí. `scoped()` hizo su
+trabajo.
+
+**Cómo llegó.** La hipótesis que encaja: se peg
+ó en la pestaña equivocada. Hasta
+**el 8-nov** las nueve instancias tenían el mismo título de pestaña —
+«ChronosLead — CRM multicanal»— y EDI y Colegio Cerritos son las dos que más se
+confunden de la cartera. La spec 141, que el dueño pidió por comodidad, era en
+realidad una salvaguarda: **llegó un día tarde.**
+
+> **Y no se puede saber quién fue.** `team_audit` registra altas, bajas, roles
+> y enlaces, pero **la configuración del agente y el conocimiento no se
+> auditan**: guardan `created_at` y `updated_at`, no el actor. En una instancia
+> entran los cinco administradores de la agencia más la gente del cliente.
+> **Auditar los cambios de agente es barato y evita exactamente esta
+> conversación.** Pendiente.
+
+**Lo bueno.** El material era excelente —precios 2027 por nivel y plan, el
+cronograma de admisiones, el Plan Full hora por hora, los requisitos— así que
+Colegio Cerritos no hubo que escribirlo: se recuperó, se corrigió con el mega
+brief y se cargó en su instancia. Está respaldado en
+`~/Documents/ChronosLead/recuperado/`.
+
+**Y nunca llegó a contestarle a nadie**: EDI figuraba «sin uso, último mensaje
+nunca», porque tenía agente pero no llave de IA ni canal. Ninguna familia
+recibió precios del Colegio preguntando por la guardería.
+
+> **La lección operativa, ya incorporada: mirar qué hay en la instancia ANTES
+> de escribir.** Las seis anteriores estaban en blanco de fábrica («Asistente»,
+> tono vacío); esta no, y sobrescribir a ciegas habría borrado un trabajo de
+> semanas sin dejar rastro.
+
+### Cuatro calendarios idénticos y una cadena de URLs que los explica (2026-11-09)
+
+Los días y horarios de las entrevistas de admisión de Colegio Cerritos no
+estaban en ningún documento: el mega brief tenía el criterio de reparto por
+grado, pero no las horas. El dueño recordó que sí estaban en Go High Level, y
+estaban.
+
+**El dato:** martes, miércoles y jueves, **13:30 a 16:40**, entrevistas de 30
+minutos cada 40 → 5 por día, 15 por semana. Sin aviso mínimo. Ventana de 2
+meses. Bloqueo cargado del 11-dic-2026 al 31-may-2027. Zona horaria
+**America/Argentina**, no Asunción: hoy las dos dan GMT-03:00, pero el horario
+de verano no se mueve igual y el día que una cambie, todos los turnos se corren
+una hora sin que nadie toque nada.
+
+**Lo que no se esperaba:** hay **cuatro** calendarios activos, no dos. Dos
+llamados «nivel 1 / nivel 2 Agente 2027» y dos «Entrevistas 2027 hasta 3er /
+desde 4to grado». Los cuatro con la misma disponibilidad y el mismo título de
+invitación. La hipótesis natural —uno para el agente, otro para la landing— la
+descarta la URL pública de cada uno:
+
+```
+admisiones-cerritos-2027                 ← nivel 1 (original, escrita a mano)
+admisiones-cerritos-2027dxnys3           ← nivel 2
+admisiones-cerritos-20272fufgh           ← desde 4to grado
+admisiones-cerritos-20272fufgh66u64w     ← hasta 3er grado
+```
+
+Esos sufijos de letras al azar **los pone Go High Level solo** cuando se duplica
+un calendario y la dirección que copiaría ya existe. La cadena es un árbol
+genealógico: cada uno es copia del anterior. No son canales, son duplicados.
+
+**Por qué importa más allá de Cerritos:** los cuatro están activos y los cuatro
+tienen URL pública. Una familia que entre por «nivel 1» reserva un turno que el
+director no ve en la agenda que mira. Es la misma superposición que en ZA
+estamos resolviendo con el botón «Bloquear horario» — acá nació de duplicar en
+vez de renombrar.
+
+**Esa cuenta no es nuestra.** La maneja Dan, el programador del colegio, y está
+en producción: acá solo se leyó, no se cambió nada. La observación se le pasa a
+él. Lo que sí es nuestro es replicar los dos calendarios de grado en
+ChronosLead.
+
+**La lección operativa:** cuando un calendario tiene que cambiar de nombre, se
+renombra. Duplicarlo y renombrar la copia deja el viejo recibiendo reservas, y
+nada en la lista avisa cuál es cuál: los cinco se ven iguales, mismo tipo, misma
+duración, todos «Activo». Lo único que delata el parentesco es la URL, que hay
+que abrir uno por uno para verla.
+
+Escrito en `briefs/colegio-cerritos.md`. Falta que el colegio confirme el
+bloqueo hasta mayo y la zona horaria antes de replicarlo en ChronosLead.
+
+### Un precio vive en tres lugares, y uno no se ve (2026-11-09)
+
+El dueño avisó que el plato de Store Fit cuesta Gs. 35.000, no 34.000. Cambiar
+un número parecía trivial. Estaba en **tres sitios distintos**, y el tercero no
+aparece buscando en la base de conocimiento:
+
+1. El mega brief en disco — y su PDF, que hay que regenerar aparte
+2. La base de conocimiento de la instancia — un bloque de texto y dos P/R
+3. **El campo «Instrucciones» del agente** — tres menciones más
+
+El tercero es el que muerde. El texto de las instrucciones **no está en la base
+de conocimiento**, así que leer la base y darla por limpia deja al agente
+diciendo el precio viejo igual. Tampoco sale en el `innerText` de la página,
+porque vive dentro de un `<textarea>`: hay que leer el `value` de los campos.
+
+**La comprobación que vale** es contar las dos cifras en los campos del
+formulario *y* en la base, después de recargar:
+
+```js
+const campos = [...document.querySelectorAll('textarea,input')].map(e => e.value).join('\n')
+const kb = document.querySelector('main').innerText
+// contar la cifra vieja en los dos: tiene que dar 0
+```
+
+Store Fit tenía el agente **encendido** mientras se corregía, así que primero se
+borró la entrada vieja y enseguida se cargó la nueva: una ventana corta sin el
+dato es menos dañina que una ventana con dos precios contradictorios.
+
+**Lo que esto pide a futuro:** que un dato que cambia —un precio, un horario, un
+número— no esté escrito en dos superficies del producto. Hoy las instrucciones y
+el conocimiento se escriben a mano y por separado, y nada avisa cuando uno
+contradice al otro. El Laboratorio lo detectaría solo si alguien ensaya justo esa
+pregunta.
+
+También se corrigió en el HTML de los nueve agentes, que es de donde se pega.
+
+### El agente prometió mover una cita y no podía (2026-11-10, spec 142)
+
+Una clienta real de ZA Climatización, Lucía Jazmín Franco, pidió mantenimiento
+a las 08:24. El agente relevó bien —3 equipos en San Lorenzo—, ofreció horarios
+reales y **agendó correctamente** el miércoles a las 10:00. Nueve minutos
+después ella escribió: *«justo mañana no voy a poder, ¿podemos reprogramar para
+el jueves?»*. El agente contestó:
+
+> *«Claro, sin problema. Le aviso ahora mismo a nuestro equipo para que te pasen
+> al jueves.»*
+
+Y escaló. Lo correcto, dado que no podía hacerlo. Pero el resultado fue que la
+cita siguió en miércoles, nadie se enteró, y la clienta quedó convencida de que
+estaba resuelto.
+
+**Tres fallos encadenados, y ninguno se veía desde la bandeja:**
+
+1. **El agente no podía mover una cita.** Sus acciones de agenda eran dos,
+   `offer_slots` y `book_slot`. Reprogramar y cancelar no existían.
+2. **Agendar nunca avisó a nadie.** El aviso solo se disparaba en el handoff.
+   De la cita original del miércoles tampoco se enteró el equipo.
+3. **El aviso del handoff tampoco salió.** Necesita la plantilla
+   `aviso_atencion_humana` aprobada, y ZA Climatización no tenía ninguna
+   plantilla. El código lo registra con un `console.warn` y sigue —a propósito,
+   para que un aviso fallido no tumbe la conversación— así que el silencio era
+   invisible.
+
+**El hallazgo de fondo:** por el transporte de Zernio (coexistencia) las
+plantillas no existían en absoluto. `getCredentialsByOrg` devuelve `null` para
+una fila de Zernio por diseño (139), así que crear, listar y enviar plantillas
+respondían «conectá tu número primero» en Castell y ZA. Y el envío por Zernio
+—`POST /inbox/conversations/{id}/messages`— solo sabe **contestar dentro de un
+hilo que ya existe**: a Nathalia, un número con el que nunca se habló, no había
+forma de alcanzarla.
+
+Zernio sí lo soporta, era el producto el que no lo usaba: `POST
+/inbox/conversations` con `participantId` y `templateName` **abre** la
+conversación. Esa es la pieza que desbloqueó todo lo demás, y de paso arregló
+el aviso de atención humana, que llevaba mudo en dos clientes desde que se
+conectaron.
+
+**Lo que se construyó** (specs/142): la rama de Zernio para plantillas, las
+acciones `reschedule_slot` y `cancel_slot`, los avisos al equipo al agendar,
+mover y cancelar, y el barrido de recordatorios una hora antes —la primera
+pieza del producto que la dispara el reloj y no un mensaje entrante.
+
+**Dos decisiones del dueño que quedaron escritas en el código:**
+
+- **El teléfono del cliente va en TODOS los avisos al equipo.** *«Por si algo
+  falle, no puede entrar a la plataforma, o le pueda llamar directo.»*
+- **Todo lo que oye el cliente va en afirmativo.** No «no hay acceso en vivo»
+  sino «para resguardo de los niños, circuito cerrado de seguridad». No «turno
+  tarde, solo frutas» sino «turno tarde incluye frutas». Se aplicó a los nueve
+  agentes el mismo día.
+
+**Y una regla previa que el dueño revirtió, con razón.** `api/bot/bookings`
+decía: *«Cancelar NO existe por esta superficie a propósito: esa decisión es
+del dueño del negocio, no del agente. El camino es el handoff.»* La intención
+era buena —no perder un lead por una respuesta automática— pero el caso de
+Lucía mostró el costo: escalar dejaba la cita en pie y la promesa sin cumplir.
+Lo que se conservó de aquella intención vive ahora en el prompt: **antes de
+cancelar, el agente ofrece mover.**
+
+**Trampas que costaron un reintento:**
+
+- **Meta rechaza una plantilla que termine en variable.** Las tres que cerraban
+  con `{{N}}.` hubo que reescribirlas con una frase detrás.
+- **Las marcas de recordatorio se borran al reprogramar.** Sin eso, mover una
+  cita al día siguiente la dejaba sin recordatorio para siempre.
+- **La marca se escribe ANTES de enviar.** Al revés, un reinicio a mitad
+  repetiría el mensaje al cliente: molestar dos veces es peor que no avisar.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:

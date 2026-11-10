@@ -45,6 +45,25 @@ const agendaActions = [
     startUtc: z.string().min(1),
     reply: z.string().optional(),
   }),
+  /**
+   * 142 — Mover y cancelar. Hasta la 142 el agente solo sabía CREAR citas: si
+   * el cliente pedía otro día, lo único que podía hacer era prometer que
+   * avisaba al equipo y escalar. Eso dejaba la cita donde estaba y, si el
+   * aviso no salía, la promesa no llegaba a nadie.
+   *
+   * `startUtc` tiene la misma regla que al reservar: solo vale un instante que
+   * el sistema ofreció en ESTA conversación. El modelo no inventa horarios ni
+   * para mover.
+   */
+  z.object({
+    action: z.literal("reschedule_slot"),
+    startUtc: z.string().min(1),
+    reply: z.string().optional(),
+  }),
+  z.object({
+    action: z.literal("cancel_slot"),
+    reply: z.string().optional(),
+  }),
 ] as const;
 
 export const AgentAction = z.discriminatedUnion("action", [
@@ -80,7 +99,9 @@ export function degradeAction(action: AgentActionType): AgentActionType {
   if (
     action.action === "move_stage" ||
     action.action === "offer_slots" ||
-    action.action === "book_slot"
+    action.action === "book_slot" ||
+    action.action === "reschedule_slot" ||
+    action.action === "cancel_slot"
   ) {
     return action.reply
       ? { action: "reply", text: action.reply }

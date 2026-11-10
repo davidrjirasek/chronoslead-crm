@@ -2,7 +2,12 @@ import { computeAvailability } from "@/server/agenda/availability";
 import { getSettings } from "@/server/agenda/settings";
 import { spreadByDay } from "@/server/agenda/spread";
 import { replaceOffers } from "@/server/agenda/offers";
-import { BookingError, createSessionBooking } from "@/server/agenda/service";
+import {
+  BookingError,
+  cancelForConversation,
+  createSessionBooking,
+  rescheduleForConversation,
+} from "@/server/agenda/service";
 
 /**
  * 015 — Lo que el agente incluido puede hacer con la agenda.
@@ -75,7 +80,7 @@ export async function bookSlot(input: {
   conversationId: string;
   startUtc: string;
   confirmation?: string;
-}): Promise<AgendaTurn> {
+}): Promise<AgendaTurn & { label?: string }> {
   try {
     const result = await createSessionBooking({
       organizationId: input.organizationId,
@@ -87,17 +92,24 @@ export async function bookSlot(input: {
 
     const base =
       input.confirmation?.trim() || `¡Listo! Te agendé para ${result.label}.`;
+    // 142: la etiqueta sube con el turno porque el aviso al equipo la
+    // necesita, y recalcularla después sería leer dos veces lo mismo.
     if (result.meetingLink) {
-      return { ok: true, text: `${base}\nEnlace: ${result.meetingLink}` };
+      return {
+        ok: true,
+        label: result.label,
+        text: `${base}\nEnlace: ${result.meetingLink}`,
+      };
     }
     if (result.linkPending) {
       // La cita existe; el enlace no. No se promete lo que no se tiene.
       return {
         ok: true,
+        label: result.label,
         text: `${base}\nEn un momento te comparto el enlace por aquí.`,
       };
     }
-    return { ok: true, text: base };
+    return { ok: true, label: result.label, text: base };
   } catch (err) {
     if (!(err instanceof BookingError)) throw err;
 
@@ -117,6 +129,104 @@ export async function bookSlot(input: {
     return {
       ok: false,
       text: "No pude agendarlo en este momento. Lo reviso con el equipo y te confirmo.",
+    };
+  }
+}
+
+/**
+ * 142 — Mover la cita de esta conversación.
+ *
+ * Mismas reglas que reservar: el instante tiene que estar entre los ofrecidos.
+ * Si el cliente dice «el jueves» a secas, el modelo tiene que pedir `offer_slots`
+ * primero — el jueves puede tener dos horarios y elegir por él es inventar.
+ */
+export async function rescheduleSlot(input: {
+  organizationId: string;
+  conversationId: string;
+  startUtc: string;
+  confirmation?: string;
+}): Promise<AgendaTurn & { label?: string; anterior?: string }> {
+  try {
+    const result = await rescheduleForConversation({
+      organizationId: input.organizationId,
+      conversationId: input.conversationId,
+      startUtc: input.startUtc,
+    });
+    const base =
+      input.confirmation?.trim() || `¡Listo! La moví para ${result.label}.`;
+    if (result.meetingLink) {
+      return {
+        ok: true,
+        label: result.label,
+        text: `${base}\nEnlace: ${result.meetingLink}`,
+      };
+    }
+    return { ok: true, label: result.label, text: base };
+  } catch (err) {
+    if (!(err instanceof BookingError)) throw err;
+
+    if (err.code === "not_found") {
+      // No hay cita que mover: lo honesto es decirlo y ofrecer agendar.
+      return {
+        ok: false,
+        text: "No encuentro una cita activa tuya para mover. ¿Querés que te agende una?",
+      };
+    }
+    if (err.slots.length > 0) {
+      const lista = err.slots
+        .slice(0, SHOWN)
+        .map((s) => `• ${s.label}`)
+        .join("\n");
+      const disculpa =
+        err.code === "slot_taken"
+          ? "Se me acaba de ocupar ese horario, ¡perdón!"
+          : "Déjame confirmarte los horarios que tengo:";
+      return { ok: false, text: `${disculpa}\n${lista}` };
+    }
+    return {
+      ok: false,
+      text: "No pude moverla en este momento. Lo reviso con el equipo y te confirmo.",
+    };
+  }
+}
+
+/**
+ * 142 — Cancelar la cita de esta conversación.
+ *
+ * Hasta la 142 esto no existía a propósito: la nota de `api/bot/bookings`
+ * decía que cancelar era decisión del dueño y que el camino era el handoff.
+ * El dueño pidió lo contrario el 10-nov-2026, con un motivo fuerte: escalar
+ * dejaba la cita en pie y la promesa sin cumplir.
+ *
+ * Lo que se conserva de aquella intención está en el prompt, no acá: antes de
+ * cancelar, el agente ofrece mover. Cancelar es la última opción, no la
+ * primera.
+ */
+export async function cancelSlot(input: {
+  organizationId: string;
+  conversationId: string;
+  confirmation?: string;
+}): Promise<AgendaTurn & { label?: string }> {
+  try {
+    const result = await cancelForConversation({
+      organizationId: input.organizationId,
+      conversationId: input.conversationId,
+    });
+    const base =
+      input.confirmation?.trim() ||
+      `Listo, cancelé tu cita de ${result.label}. Cuando quieras retomarla, avisame y la agendamos.`;
+    return { ok: true, label: result.label, text: base };
+  } catch (err) {
+    if (!(err instanceof BookingError)) throw err;
+    if (err.code === "not_found") {
+      return {
+        ok: false,
+        text: "No encuentro una cita activa tuya para cancelar. ¿Querés que revise algo más?",
+      };
+    }
+    return {
+      ok: false,
+      text: "No pude cancelarla en este momento. Lo reviso con el equipo y te confirmo.",
     };
   }
 }
