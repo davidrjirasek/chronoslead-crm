@@ -2638,9 +2638,22 @@ pendiente, no en un paso operativo. Enlaza con dos cosas ya anotadas:
 - **Reservar el identificador `za-propiedades`** para que nadie lo tome
   mientras tanto.
 
-Queda abierto qué significa exactamente «otra versión»: una instancia aparte,
-una bandera sobre la misma base, o un fork. Esa pregunta hay que contestarla
-antes de prometer fecha.
+**Resuelto el mismo día por el dueño: es un PROYECTO APARTE, no otra
+instancia.** La versión inmobiliaria que tiene Kevin se adapta para armar una
+variante propia de ChronosLead: **ChronosLead Realty** (confirmado por el
+dueño el 11-nov-2026, esa grafía). ZA Propiedades vive ahí.
+
+Eso lo saca por completo de esta cola y de este repo tal como está hoy. No es
+un cliente más esperando turno: es otro producto, con su propio ciclo.
+
+Y cambia lo que dijo el análisis del 30-oct, que recomendaba **no** traer la
+vertical inmobiliaria (5.733 líneas en 22 archivos) porque lo único que
+hacía falta de ella era mandar archivos. Esa recomendación valía para meterla
+en ESTE producto. Como base de un producto separado, es justo lo contrario:
+ahí la vertical entera es el punto de partida, no un injerto.
+
+Lo que sigue valiendo del análisis es la otra mitad: **la agenda de recursos
+sí entra acá**, porque resuelve Cerritos y sus dos directoras.
 
 ### Pendiente
 
