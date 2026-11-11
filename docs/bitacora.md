@@ -2594,6 +2594,54 @@ concreta, muestra alternativas, señala oportunidades de mejora, propone la
 solución adecuada y deja un presupuesto previo. El agente ahora la ofrece con
 eso y no con «¿te agendo una reunión?».
 
+### El orden de las conexiones de WhatsApp (2026-11-11)
+
+Dicho por el dueño. **Nueve organizaciones: la agencia y ocho clientes.**
+
+Creativo 4D Group va aparte: somos nosotros, ya está todo, y lo suyo es la
+campaña.
+
+De los ocho clientes, dos tienen WhatsApp conectado y seis esperan:
+
+| Cliente | WhatsApp |
+|---|---|
+| ZA Climatización | **Conectado** |
+| Castell Muebles | **Conectado** |
+| ZA Group | Falta |
+| Jerovia Ediciones | Falta |
+| Store Fit | Falta |
+| The Student Store | Falta |
+| EDI Cerritos | Falta |
+| **Colegio Cerritos** | Falta — **va ÚLTIMO** |
+
+**Por qué Cerritos va último: tiene campaña activa.** Mover el número de un
+cliente con tráfico real es lo más delicado del alta — si algo falla ahí se
+pierden leads que ya están pagados. Los que no tienen campaña se conectan con
+calma y se prueban sin riesgo. Se deja para cuando el procedimiento esté
+rodado con los otros cinco.
+
+**Lo que cada uno va a necesitar además del número**, aprendido el 11-nov:
+medio de pago en su cuenta de WhatsApp Business, y la carta al banco emisor
+para que no lo bloquee. Sin eso el agente contesta pero ningún aviso sale.
+Procedimiento en `docs/alta-de-cliente.md`, paso 8.
+
+### ZA Propiedades va por otro producto (2026-11-11)
+
+**No es un alta más.** El dueño lo definió: ZA Propiedades usaría **la versión
+de Vocero para inmobiliarias**, no la que corre hoy en ChronosLead.
+
+Eso lo saca de la cola de los ocho y lo convierte en una decisión de producto
+pendiente, no en un paso operativo. Enlaza con dos cosas ya anotadas:
+
+- **El paquete de verticales de Kevin**, medido y decidido el 30-oct, que se
+  despliega con la bandera apagada. De ahí saldría esa versión.
+- **Reservar el identificador `za-propiedades`** para que nadie lo tome
+  mientras tanto.
+
+Queda abierto qué significa exactamente «otra versión»: una instancia aparte,
+una bandera sobre la misma base, o un fork. Esa pregunta hay que contestarla
+antes de prometer fecha.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
