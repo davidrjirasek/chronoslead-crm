@@ -2537,6 +2537,63 @@ cancelar, el agente ofrece mover.**
 - **La marca se escribe ANTES de enviar.** Al revés, un reinicio a mitad
   repetiría el mensaje al cliente: molestar dos veces es peor que no avisar.
 
+### El reloj disparó solo (2026-11-11, cierre de la spec 142)
+
+A las 15:03, una hora antes de una cita de las 16:00, salieron los dos
+recordatorios de ZA Climatización sin que nadie tocara nada: a Nathalia
+**entregado**, a la clienta **leído**.
+
+Es la primera pieza del producto que la dispara el reloj y no un mensaje
+entrante. Todo lo demás —el agente, los avisos, el handoff— nace de alguien
+escribiendo. Esto tenía que salir solo, y salió a la primera en producción.
+
+El ciclo entero quedó probado con una clienta real: el agente agenda y avisa al
+equipo, el cliente pide mover y el agente mueve de verdad y vuelve a avisar, y
+si alguien que ya tiene cita pide otra, pregunta en vez de duplicar. Lo mismo
+en Castell Muebles.
+
+**Lo que casi la deja muerta no era código.** Meta rechazó los tres primeros
+avisos con `131042 · Business eligibility payment issue`. La lección, que
+quedó en `docs/alta-de-cliente.md`:
+
+> **Todo lo que el negocio INICIA se cobra.** Avisos, recordatorios, aviso de
+> atención humana. Lo que no se cobra son las respuestas dentro de las 24 h
+> desde que el cliente escribió. Por eso el síntoma engaña: **el agente
+> contesta perfecto y parece que todo anda, mientras ningún aviso llega a
+> nadie.**
+
+Y tres detalles que cuestan horas si no se saben: es **por cada cuenta** de
+WhatsApp Business (Creativo 4D funcionaba desde siempre porque la suya ya tenía
+tarjeta); **cargar la tarjeta no alcanza**, porque el banco bloquea un cargo
+internacional, recurrente, de monto variable y sin clave —para eso se escribió
+la carta al emisor, en `~/Documents/ChronosLead/carta-banco-meta.md`—; y
+**tarda en propagarse**, unos 40 minutos en ZA.
+
+### Lo que el agente inventa cuando le falta un dato (2026-11-11)
+
+El dueño probó el agente de ZA Climatización haciéndose pasar por cliente y
+preguntó dónde era la asesoría. El agente contestó: *«por videollamada o
+presencial, según lo que te resulte más cómodo»*.
+
+La asesoría es **solo por videollamada**. La visita al lugar viene después,
+cuando el cliente ya está convencido.
+
+Buscando la causa: **en el conocimiento no decía en ningún lado que fuera
+virtual**. No había un dato equivocado que corregir — había un hueco, y el
+modelo lo llenó con lo que sonaba razonable. La regla «lo que no está en tu
+conocimiento, no existe» no alcanza cuando el agente ni siquiera registra que
+le falta algo: ofrecer las dos opciones le parece servicial, no inventado.
+
+Es el segundo caso en cuatro días del mismo patrón —el primero fue Castell
+inventando prueba social— y los dos aparecieron **probando como cliente**, no
+revisando el conocimiento. Leer lo que está cargado no muestra lo que falta.
+
+De paso se cargó lo que sí hacía falta y nadie había escrito: **por qué la
+asesoría vale la pena.** Quince años de experiencia, mira la situación
+concreta, muestra alternativas, señala oportunidades de mejora, propone la
+solución adecuada y deja un presupuesto previo. El agente ahora la ofrece con
+eso y no con «¿te agendo una reunión?».
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:

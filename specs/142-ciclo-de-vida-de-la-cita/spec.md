@@ -137,7 +137,7 @@ La primera respeta la soberania (constitucion II) y no agrega terceros.
 | 3 | `reschedule_slot` y `cancel_slot` | **Hecho.** Accion, turno, prompt y servicio |
 | 4 | Avisos al equipo al agendar, mover y cancelar | **Hecho.** `aviso-de-cita.ts` |
 | 5 | Recordatorios una hora antes | **Hecho.** `recordatorios.ts` + `recordatorio-de-cita.ts` |
-| 6 | **Probarlo en vivo** | **Pendiente: necesita despliegue** |
+| 6 | **Probarlo en vivo** | **HECHO (11-nov-2026). Ver abajo** |
 
 ### Lo que hubo que descubrir por el camino
 
@@ -162,6 +162,47 @@ La primera respeta la soberania (constitucion II) y no agrega terceros.
    Meta pero todavia no en la tabla `template` de cada organizacion, y el
    codigo busca ahi. La rama nueva de `syncTemplates` las trae.
 3. Correr el caso de Lucia de punta a punta.
+
+## Probado en producción (11-nov-2026)
+
+El caso de Lucia Jazmin Franco, de punta a punta y con WhatsApp reales:
+
+| Momento | Resultado |
+|---|---|
+| El agente agenda | Aviso a Nathalia **entregado** |
+| Se pide mover | El agente ofrece horarios reales y **mueve la cita** |
+| Ya tiene cita y pide otra | Pregunta si mover o dejar las dos, **sin duplicar** |
+| **Una hora antes** | Recordatorio al equipo **entregado** y a la clienta **leido**, 15:03 para una cita de 16:00 |
+
+Lo mismo en Castell Muebles: aviso de cita agendada **entregado y leido**.
+
+**El recordatorio es el que importaba.** Todo lo demas lo dispara alguien
+escribiendo; ese lo dispara el reloj, sin que nadie toque nada. Es la primera
+pieza del producto que funciona asi, y funciono a la primera en produccion.
+
+### Lo que casi la deja muerta, y no era codigo
+
+Meta rechazo los tres primeros avisos con `131042 · Business eligibility
+payment issue`: la cuenta de WhatsApp Business no tenia medio de pago.
+
+**Todo lo que el negocio INICIA se cobra** — avisos, recordatorios, aviso de
+atencion humana. Lo que NO se cobra son las respuestas dentro de las 24 h desde
+que el cliente escribio. Por eso el sintoma enganaba: el agente contestaba
+perfecto y parecia que todo andaba, mientras ningun aviso llegaba a nadie.
+
+Tres cosas que costaron horas aprender:
+
+1. **Es por cada cuenta de WhatsApp Business**, no por la agencia. Creativo 4D
+   funcionaba desde siempre porque su cuenta ya tenia tarjeta.
+2. **Cargar la tarjeta no alcanza:** el banco bloquea el cargo por ser
+   internacional, recurrente, de monto variable y sin clave. Hay que pedirle al
+   emisor que lo habilite. La carta quedo en
+   `~/Documents/ChronosLead/carta-banco-meta.md`.
+3. **Tarda en propagarse.** En ZA fueron unos 40 minutos entre cargar la
+   tarjeta y que Meta la aceptara. Si falla justo despues de cargarla, esperar
+   antes de buscar otra causa.
+
+Esta anotado en `docs/alta-de-cliente.md`, paso 8.
 
 ## El caso que hay que poder contar al terminar
 
