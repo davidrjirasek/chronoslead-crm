@@ -2655,6 +2655,41 @@ ahí la vertical entera es el punto de partida, no un injerto.
 Lo que sigue valiendo del análisis es la otra mitad: **la agenda de recursos
 sí entra acá**, porque resuelve Cerritos y sus dos directoras.
 
+### Dos Instagram, una llave, cero cruces (2026-11-12)
+
+Castell Muebles quedó con Instagram conectado por Zernio: `@castellmuebles`,
+cuenta activa y webhook activo, junto a su WhatsApp.
+
+Lo que vale la pena anotar no es la conexión sino **la prueba que hizo el
+dueño en producción**: mandó mensajes reales al Instagram de Castell y al de
+Creativo 4D, con **la misma llave de Zernio sirviendo a las dos instancias**.
+
+- El de Castell entró en Castell.
+- El de Creativo entró en Creativo.
+- Conectar el segundo **no cortó** el primero.
+- **Ningún mensaje se cruzó.**
+
+El guion de aislamiento ya cubría esto para WhatsApp —su sección 15 se llama
+literalmente «dos clientes, UNA llave»— pero **para Instagram no, y nunca en
+producción con mensajes de verdad.** Ahora sí.
+
+### La trampa que aparece al crecer: elegir la cuenta, no aislarla
+
+Al conectar apareció algo que va a repetirse. La pantalla dice que «con esa
+llave Vocero encuentra tu cuenta de Instagram en Zernio», y eso **solo
+funciona mientras haya UNA sola** de esa plataforma en el espacio de trabajo.
+
+Con dos ya no puede adivinar, y hay que usar «Pegar el accountId a mano».
+
+**No es un problema de aislamiento** —ese está probado y funciona— **sino de
+elección al conectar.** El riesgo concreto es enchufar la cuenta de un cliente
+en la instancia de otro, que es primo hermano del incidente del 9-nov con el
+agente de Colegio Cerritos cargado en EDI.
+
+A medida que se conecten más clientes, pegar el `accountId` a mano deja de ser
+la excepción y pasa a ser lo normal. Y después de conectar, conviene mirar en
+Ajustes → Estado qué cuenta quedó: ahí se ve el nombre, no solo «Conectado».
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
