@@ -8,6 +8,7 @@ import { useEsPlataforma, usePuerta } from "@/components/auth/edicion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { CampoContrasena } from "@/components/ui/campo-contrasena";
 import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
@@ -73,9 +74,8 @@ export default function LoginPage() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="password-pl">Contraseña</Label>
-            <Input
+            <CampoContrasena
               id="password-pl"
-              type="password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -117,9 +117,8 @@ export default function LoginPage() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="password">Contraseña</Label>
-            <Input
+            <CampoContrasena
               id="password"
-              type="password"
               autoComplete="current-password"
               required
               value={password}

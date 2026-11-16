@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { CampoContrasena } from "@/components/ui/campo-contrasena";
 import { Label } from "@/components/ui/label";
 
 const MIN = 8;
@@ -95,9 +95,8 @@ export function ElegirContrasena({
         <form onSubmit={onSubmit} className="space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor="contrasena">Contraseña</Label>
-            <Input
+            <CampoContrasena
               id="contrasena"
-              type="password"
               autoComplete="new-password"
               value={contrasena}
               onChange={(e) => setContrasena(e.target.value)}
@@ -106,9 +105,8 @@ export function ElegirContrasena({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="repetida">Repítela</Label>
-            <Input
+            <CampoContrasena
               id="repetida"
-              type="password"
               autoComplete="new-password"
               value={repetida}
               onChange={(e) => setRepetida(e.target.value)}

@@ -463,3 +463,13 @@
       0 8px 24px -12px rgb(11 11 11 / 0.12);
   }
 }
+
+/* 144 — Edge dibuja SU ojito dentro del campo de contraseña. Con el nuestro
+   puesto quedarían dos, uno al lado del otro, y el de Edge además no respeta
+   el tema. Chrome en Android también dibuja uno y no es ocultable por CSS:
+   ahí se superpone, que es el precio de tener un ojito que funciona en TODOS
+   los navegadores en vez de uno que funciona en algunos. */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}

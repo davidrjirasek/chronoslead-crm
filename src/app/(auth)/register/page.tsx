@@ -7,6 +7,7 @@ import { signUp } from "@/lib/auth/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { CampoContrasena } from "@/components/ui/campo-contrasena";
 import { Label } from "@/components/ui/label";
 
 export default function RegisterPage() {
@@ -74,9 +75,8 @@ export default function RegisterPage() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="password">Contraseña</Label>
-            <Input
+            <CampoContrasena
               id="password"
-              type="password"
               autoComplete="new-password"
               required
               minLength={8}
