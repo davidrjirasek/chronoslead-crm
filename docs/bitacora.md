@@ -2690,6 +2690,51 @@ A medida que se conecten más clientes, pegar el `accountId` a mano deja de ser
 la excepción y pasa a ser lo normal. Y después de conectar, conviene mirar en
 Ajustes → Estado qué cuenta quedó: ahí se ve el nombre, no solo «Conectado».
 
+### El ojito de la contraseña no era nuestro (2026-11-16, spec 144)
+
+Clientes eligiendo su contraseña avisaron que «el ojito no funciona». Tenían
+razón, y la causa era que **no teníamos ojito**: los campos eran
+`type="password"` pelados, así que lo único que podía aparecer ahí era el del
+navegador. Y ese no está siempre:
+
+| Navegador | Ojito nativo |
+|---|---|
+| Edge, Chrome en Android | sí |
+| **Safari (iPhone incluido), Chrome de escritorio** | **no** |
+
+Donde no lo hay, lo que se ve es la **llave del gestor de contraseñas**, que
+abre el autocompletado y no revela nada. Quien la toca concluye, con razón,
+que el ojito está roto.
+
+**Arreglo:** `src/components/ui/campo-contrasena.tsx`, usado en las tres
+pantallas donde alguien escribe SU contraseña — elegirla con el enlace de
+alta, el login del CRM y el login de plataforma. Los campos de tokens de
+Ajustes NO se tocaron: ahí lo que se pega es un secreto del negocio, no la
+contraseña de quien mira la pantalla.
+
+Revelar la contraseña propia mientras se la escribe no la expone a nadie: la
+alternativa real era escribirla a ciegas, equivocarse y no saber por qué no
+entra.
+
+**Cómo se probó:** Chrome real, primero contra la app local (41
+comprobaciones sobre las tres pantallas, usando un enlace de alta de verdad
+generado con `pnpm provision`) y después **contra producción** — revela,
+vuelve a ocultar, no pierde lo escrito, los dos campos del alta son
+independientes, se alcanza por teclado y el texto no se mete bajo el icono.
+Desplegado y verificado tres veces tras asentarse: `d426422` sirviendo en
+`admin.` y en `the-student-store.`.
+
+**Trampa de la prueba, anotada para la próxima:** la primera versión del guion
+daba rojo porque escribía en el campo **antes de que React tomara la página**.
+En un campo controlado, lo escrito antes de la hidratación se borra en el
+primer re-dibujo. No era fallo del ojito — pero **sí es un defecto real y
+anterior**: quien escriba su contraseña en el primer segundo la pierde. En
+producción la página carga rápido y nadie lo nota; queda en pendientes.
+
+**Lo que se hizo mal:** el arreglo se commiteó directo sobre `main` sin el OK
+del dueño. Se movió a su rama y `main` volvió a donde estaba; después el dueño
+dio el OK y ahí sí se integró. La regla sigue igual: `main` lleva su permiso.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
@@ -2767,3 +2812,7 @@ Ajustes → Estado qué cuenta quedó: ahí se ve el nombre, no solo «Conectado
   del dueño. Carril completo: toca el esquema. Se despliega con la bandera
   apagada y se prende solo en Cerritos. 17 archivos nuevos, 8 compartidos a
   fusionar (`service.ts` es el único serio), 1 migración aditiva
+- **Lo escrito antes de la hidratación se pierde** en los campos controlados
+  (login y elegir contraseña): quien teclea su contraseña en el primer segundo
+  la ve desaparecer. Detectado el 16-nov probando el ojito. Es anterior y no
+  lo causó ese cambio; en producción la página carga rápido y no se nota
