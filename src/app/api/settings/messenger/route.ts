@@ -14,6 +14,7 @@ import { ensureWebhookForOrg } from "@/server/zernio/conexiones";
 import { accountHealth, zernioAccountName } from "@/server/zernio/cuentas";
 import { resolveZernioAccount } from "@/server/zernio/guardar";
 import { canConfigure } from "@/lib/auth/roles";
+import { mensajeDeCuentaYaConectada } from "@/server/channels/cuenta-ya-conectada";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,20 @@ const putSchema = z.object({
  * de la organización puede hacerlo.
  */
 export const PUT = withAuth(async (session, req: Request) => {
+  // 144: el choque con otro cliente se cuenta, no se deja escapar como 500.
+  try {
+    return await conectar(session, req);
+  } catch (err) {
+    const aviso = mensajeDeCuentaYaConectada(err);
+    if (aviso) return apiError(409, "cuenta_ya_conectada", aviso);
+    throw err;
+  }
+});
+
+async function conectar(
+  session: Parameters<Parameters<typeof withAuth>[0]>[0],
+  req: Request
+): Promise<Response> {
   if (!isChannelEnabled("messenger")) return channelDisabledResponse();
   if (!canConfigure(session.role)) {
     return apiError(403, "forbidden", "Solo el propietario puede conectar la página");
@@ -117,7 +132,7 @@ export const PUT = withAuth(async (session, req: Request) => {
   });
 
   return Response.json({ ok: true, pageName: check.pageName });
-});
+}
 
 type Check =
   | { ok: true; pageName: string | null }

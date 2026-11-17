@@ -11,6 +11,7 @@ import {
 import { ensureWebhookForOrg } from "@/server/zernio/conexiones";
 import { accountHealth, zernioAccountName } from "@/server/zernio/cuentas";
 import { resolveZernioAccount } from "@/server/zernio/guardar";
+import { mensajeDeCuentaYaConectada } from "@/server/channels/cuenta-ya-conectada";
 import {
   registerWebhookForNumber,
   testConnection,
@@ -82,6 +83,20 @@ const putSchema = z.object({
  * reintentar (o pegar la URL a mano, que sigue a la vista).
  */
 export const PUT = withAuth(async (session, req: Request) => {
+  // 144: el choque con otro cliente se cuenta, no se deja escapar como 500.
+  try {
+    return await conectar(session, req);
+  } catch (err) {
+    const aviso = mensajeDeCuentaYaConectada(err);
+    if (aviso) return apiError(409, "cuenta_ya_conectada", aviso);
+    throw err;
+  }
+});
+
+async function conectar(
+  session: Parameters<Parameters<typeof withAuth>[0]>[0],
+  req: Request
+): Promise<Response> {
   const body = await parseBody(req, putSchema);
   if (!body.ok) return body.response;
 
@@ -164,7 +179,7 @@ export const PUT = withAuth(async (session, req: Request) => {
     displayPhoneNumber: check.displayPhoneNumber,
     webhook,
   });
-});
+}
 
 /**
  * Desconectar el número. Sin esto, conectar era una calle de un solo
