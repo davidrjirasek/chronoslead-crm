@@ -1839,6 +1839,61 @@ contesta 503 y la aplicación ni se entera — el paso 2 del manual, el que se
 olvida. Dominio primero, despliegue después: uno solo trae el código y aplica el
 dominio.
 
+### Un número de director que no avisaba a nadie (2026-11-18)
+
+El agente de Colegio Cerritos tenía escrito, en **Reglas de escalado**, el
+teléfono del director académico de media. El dueño lo vio y dijo que
+nunca lo había visto, que él tiene otro número de Rodrigo, y que ese número sin
+embargo tiene WhatsApp activo.
+
+**De dónde salió:** del brief maestro que mandó el propio colegio
+(`Brief_Maestro_Colegio_Cerritos_CRM_Agente_IA_2027.pdf`, sección «15 |
+Directorio y canales»), leído el 29-oct-2026. No está en el conocimiento
+recuperado del agente de Go High Level, ni en los brochures, ni en ninguna otra
+fuente.
+
+**Qué es realmente:** una línea institucional, no el celular del director. Se ve
+en el bloque de donde sale: una serie correlativa de internos del colegio
+—soporte, Dirección Académica, los tres ciclos, psicología—, numerados de
+corrido. El dato era
+correcto y la etiqueta también; lo que estaba mal era usarlo como si fuera el
+contacto de una persona.
+
+**Lo que enseñó sobre verificar:** el número existía en una fuente del cliente,
+escrita, con nombre y apellido al lado. Eso no alcanzó. Un dato puede estar bien
+copiado y aun así estar mal usado, y lo que lo delata no es la fuente sino quien
+lo usa todos los días.
+
+**A quién avisa Go High Level de verdad** — leído en las automatizaciones ese
+mismo día, a pedido del dueño. Dos workflows publicados, uno por nivel:
+
+| | Nivel Inicial Aviso (hasta 3.º) | Nivel Secundaria Aviso (4.º+) |
+|---|---|---|
+| SMS | dos números fijos | **los mismos dos** |
+| Correo | la directora de inicial y la psicóloga, más dirección general | el director de media, más dirección general |
+
+**El ruteo por director existe solo en el correo.** Por teléfono llegan siempre
+los mismos dos números, sea 1.er grado o bachillerato. El número que estaba en
+el agente no aparece en ninguna de las dos automatizaciones: nunca avisó a
+nadie.
+
+**Hecho:** se sacó el número de las Reglas de escalado del agente de
+`colegio-cerritos.chronoslead.com` y se verificó recargando — no queda en
+Instrucciones, ni en escalado, ni en el conocimiento. La regla de ruteo por
+grado se conserva entera; lo único que se fue es el paréntesis con el teléfono.
+
+**Los celulares reales los confirmó el dueño ese día** y están en el brief del
+cliente, fuera de este repo (`briefs/colegio-cerritos.md`, sección «A quién
+avisa cada entrevista»): la directora de comunicación en las dos ramas, la
+directora de inicial y la psicóloga hasta 3.º grado, el director de media desde
+4.º. El supervisor de nuestro equipo está en los avisos de Go High Level y **no
+va** en los de ChronosLead: lo descartó el dueño.
+
+**Lo que falta:** la organización tiene un solo `alertPhone`/`alertName` —hoy
+Samantha— así que avisar a dos o tres personas, ruteado por grado, todavía no se
+puede. Va junto con la agenda de recursos, que es la otra mitad del mismo
+problema: dos directores, dos agendas, dos listas de avisos.
+
 ### Pendiente de esta spec
 
 - **La tabla `member` NO tiene índice único sobre (organización, usuario).** Se
@@ -2807,6 +2862,11 @@ dio el OK y ahí sí se integró. La regla sigue igual: `main` lleva su permiso.
 - ~~Revisión en móvil (375 px)~~ — **HECHO**: la revisó el dueño y está bien
   (24-oct). Estaba marcada «pendiente de verificación humana» porque Claude no
   podía probarla; la verificación humana es él, y la dio.
+- **Avisar a varias personas, ruteado por grado** (Colegio Cerritos). Hoy la
+  organización tiene un solo `alertPhone`/`alertName`. Hacen falta: una lista de
+  destinatarios por organización, y un criterio de ruteo —en Cerritos, el grado—
+  que elija a quién se avisa. Los cuatro números están en el brief del
+  cliente, no acá. Va junto con la agenda de recursos
 - **Traer la agenda de recursos del paquete de Kevin** — medida y decidida el
   30-oct (ver la entrada de ese día). Va **después de las altas**, por decisión
   del dueño. Carril completo: toca el esquema. Se despliega con la bandera
