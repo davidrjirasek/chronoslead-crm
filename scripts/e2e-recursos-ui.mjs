@@ -72,41 +72,65 @@ try {
 
   const ajustes = await abrir("/settings/calendar", "Quién atiende");
   ok("Ajustes → Agenda enseña «Quién atiende»", ajustes.includes("Quién atiende"));
-  ok("con la directora", ajustes.includes("Ana Vera"));
+  ok("con la directora", ajustes.includes("Ana Benítez"));
   ok("y el director", ajustes.includes("Beto Ruiz"));
   ok(
     "el criterio que lee el agente está a la vista",
-    ajustes.includes("4.º grado en adelante"),
+    ajustes.includes("desde 4.º grado"),
     "no se ve el criterio"
   );
   ok(
     "y los destinatarios de aviso del recurso",
-    ajustes.includes("595900000001") && ajustes.includes("595900000002"),
+    ajustes.includes("595900000001") && ajustes.includes("595900000003"),
     "no se ven los avisos"
   );
 
-  const citas = await abrir("/bookings?vista=semana", "Familia Benítez");
+  const citas = await abrir("/bookings?vista=semana", "Familia Uno");
   ok("Citas enseña el filtro con «Todos»", citas.includes("Todos"));
-  ok("y los dos nombres en el filtro", citas.includes("Ana Vera") && citas.includes("Beto Ruiz"));
+  ok("y los dos nombres en el filtro", citas.includes("Ana Benítez") && citas.includes("Beto Ruiz"));
   ok(
     "las dos familias aparecen, a la misma hora",
-    citas.includes("Familia Benítez") && citas.includes("Familia Rojas"),
+    citas.includes("Familia Uno") && citas.includes("Familia Dos"),
     "falta alguna de las dos citas simultáneas"
   );
 
   // Filtrar por una persona deja ver solo la suya.
-  const chip = page.getByRole("button", { name: /Ana Vera/ }).first();
+  const chip = page.getByRole("button", { name: /Ana Benítez/ }).first();
   if (await chip.count()) {
     await chip.click();
     await page.waitForTimeout(800);
     const soloAna = await page.content();
     ok(
       "filtrar por Ana esconde la cita de Beto",
-      soloAna.includes("Familia Benítez") && !soloAna.includes("Familia Rojas"),
+      soloAna.includes("Familia Uno") && !soloAna.includes("Familia Dos"),
       "el filtro no filtró"
     );
   } else {
     ok("el filtro por recurso existe", false, "no encontré el botón");
+  }
+
+  /**
+   * 146 — Elegir un color NO puede borrar lo que todavía no se guardó.
+   *
+   * La primera versión guardaba el color en el acto, y guardar recarga la
+   * lista desde el servidor: al cargar a los dos directores de Cerritos, un
+   * clic en el círculo se llevó puesto el criterio recién escrito. Esto lo
+   * fija para que no vuelva.
+   */
+  console.log("\n== El color no se lleva puesto lo escrito ==");
+  {
+    await abrir("/settings/calendar", "Quién atiende");
+    const criterio = page
+      .getByPlaceholder("cuando el alumno va de 4.º grado en adelante")
+      .first();
+    await criterio.fill("texto sin guardar");
+    await page.getByRole("button", { name: "Violeta" }).first().click();
+    await page.waitForTimeout(1200);
+    ok(
+      "el criterio sigue escrito después de elegir un color",
+      (await criterio.inputValue()) === "texto sin guardar",
+      "elegir color borró lo que no estaba guardado"
+    );
   }
 
   console.log("\n== Con el interruptor apagado (los otros ocho clientes) ==");
@@ -114,18 +138,18 @@ try {
 
   const ajustesSin = await abrir("/settings/calendar", "Horario de atención");
   ok("Ajustes → Agenda NO enseña «Quién atiende»", !ajustesSin.includes("Quién atiende"));
-  ok("ni los nombres de nadie", !ajustesSin.includes("Ana Vera"));
+  ok("ni los nombres de nadie", !ajustesSin.includes("Ana Benítez"));
   ok(
     "pero el horario de atención sigue ahí",
     ajustesSin.includes("Horario de atención"),
     "se rompió la pantalla de siempre"
   );
 
-  const citasSin = await abrir("/bookings?vista=semana", "Familia Benítez");
+  const citasSin = await abrir("/bookings?vista=semana", "Familia Uno");
   ok("Citas NO enseña el filtro por persona", !citasSin.includes("Beto Ruiz"));
   ok(
     "y las citas se siguen viendo",
-    citasSin.includes("Familia Benítez") || citasSin.includes("Familia Rojas"),
+    citasSin.includes("Familia Uno") || citasSin.includes("Familia Dos"),
     "la pantalla de siempre se quedó vacía"
   );
 } finally {

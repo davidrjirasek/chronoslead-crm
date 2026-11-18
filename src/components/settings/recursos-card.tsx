@@ -197,6 +197,16 @@ function FichaDeRecurso({
   onBaja: () => void;
 }) {
   const [name, setName] = useState(recurso.name);
+  /**
+   * 146 — El color se guarda con «Guardar», como todo lo demás.
+   *
+   * La primera versión lo guardaba en el acto, al hacer clic en el círculo.
+   * Parecía cómodo y era una trampa: guardar recarga la lista desde el
+   * servidor, así que elegir un color BORRABA el criterio y los teléfonos que
+   * todavía no se habían guardado. Lo descubrí cargando a los dos directores
+   * de Cerritos, perdiendo lo que acababa de escribir.
+   */
+  const [color, setColor] = useState(recurso.color);
   const [criterio, setCriterio] = useState(recurso.criterio ?? "");
   const [avisos, setAvisos] = useState<Aviso[]>(recurso.avisos);
   const [horas, setHoras] = useState<WeeklyHours | null>(recurso.weeklyHours);
@@ -226,11 +236,11 @@ function FichaDeRecurso({
                 key={c}
                 type="button"
                 aria-label={RESOURCE_COLORS[c].label}
-                onClick={() => onGuardar({ color: c })}
+                onClick={() => setColor(c)}
                 className={cn(
                   "h-6 w-6 rounded-full border-2 transition-transform",
                   RESOURCE_COLORS[c].bg,
-                  recurso.color === c
+                  color === c
                     ? "border-foreground scale-110"
                     : "border-transparent hover:scale-105"
                 )}
@@ -241,7 +251,7 @@ function FichaDeRecurso({
         <span
           className={cn(
             "ml-auto h-6 w-6 shrink-0 rounded-full",
-            resourceColorClass(recurso.color, indice)
+            resourceColorClass(color, indice)
           )}
           aria-hidden
         />
@@ -397,6 +407,7 @@ function FichaDeRecurso({
           onClick={() =>
             onGuardar({
               name,
+              color,
               criterio: criterio.trim() || null,
               avisos: avisos.filter((a) => a.phone.trim()),
               weeklyHours: horas,
