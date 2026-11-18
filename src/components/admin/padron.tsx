@@ -21,6 +21,7 @@ import {
   sumarSoporteACliente,
   quitarSoporteDeCliente,
   marcarPago,
+  agendaDeRecursos,
   reactivarCliente,
   suspenderCliente,
   type ResultadoAccion,
@@ -341,11 +342,21 @@ function Acciones({
     enlaceDeAcceso,
     SIN_RESULTADO
   );
+  const [recursos, accionRecursos, recursosEnCurso] = useActionState(
+    agendaDeRecursos,
+    SIN_RESULTADO
+  );
 
   const suspendidoAMano =
     cliente.estado.estado === "suspendida" && cliente.estado.motivo === "manual";
   const error =
-    pago.error ?? susp.error ?? reac.error ?? enlace.error ?? soporte.error ?? baja.error;
+    pago.error ??
+    susp.error ??
+    reac.error ??
+    enlace.error ??
+    soporte.error ??
+    baja.error ??
+    recursos.error;
 
   return (
     <div className="space-y-4 border-t border-line bg-brand-tint/50 px-4 py-4">
@@ -476,6 +487,43 @@ function Acciones({
             cliente.estado.razon && (
               <p className="text-xs text-text-3">Motivo registrado: {cliente.estado.razon}</p>
             )}
+        </Bloque>
+
+        {/* 146 — El interruptor de la agenda por recurso. Vive acá y no en el
+            panel del cliente porque es una decisión de alta: el dueño pidió
+            que los demás clientes no vean nada y que activarlo sea algo que
+            pide él. */}
+        <Bloque
+          titulo="Agenda por recurso"
+          ayuda={
+            cliente.agendaResources
+              ? "Este cliente tiene varias agendas, una por persona. Apagarlo devuelve la agenda única y deja los recursos cargados esperando: no se borra nada."
+              : "Hoy tiene UNA agenda: si una persona ocupa un horario, queda ocupado para todas. Encendelo solo si el cliente atiende con varias personas en paralelo."
+          }
+        >
+          <form action={accionRecursos} className="flex items-center gap-3">
+            <input type="hidden" name="organizationId" value={cliente.id} />
+            <input
+              type="hidden"
+              name="encender"
+              value={cliente.agendaResources ? "0" : "1"}
+            />
+            <Button
+              type="submit"
+              size="sm"
+              variant="outline"
+              disabled={recursosEnCurso}
+            >
+              {recursosEnCurso
+                ? "Guardando…"
+                : cliente.agendaResources
+                  ? "Apagar"
+                  : "Encender"}
+            </Button>
+            <span className="text-xs text-text-3">
+              {cliente.agendaResources ? "Encendida" : "Apagada"}
+            </span>
+          </form>
         </Bloque>
 
         <Bloque

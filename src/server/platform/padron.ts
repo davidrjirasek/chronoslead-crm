@@ -31,6 +31,8 @@ export type FilaDelPadron = {
    * esperan» es una cuenta; qué dicen, no se muestra ni se consulta.
    */
   supervision: Supervision;
+  /** 146 — Si este cliente usa agenda por recurso. Lo prende el superadmin. */
+  agendaResources: boolean;
 };
 
 export type Supervision = {
@@ -57,6 +59,7 @@ export async function listarPadron(): Promise<FilaDelPadron[]> {
       paidThrough: schema.organization.paidThrough,
       suspendedAt: schema.organization.suspendedAt,
       suspendedReason: schema.organization.suspendedReason,
+      agendaResources: schema.organization.agendaResources,
       /*
        * Con los identificadores de Drizzle interpolados aquí dentro, la
        * subconsulta se generaba mal y devolvía 0 para TODOS los clientes —un
@@ -145,6 +148,7 @@ export async function listarPadron(): Promise<FilaDelPadron[]> {
     slug: f.slug,
     altaEn: f.altaEn,
     usuarios: f.usuarios,
+    agendaResources: f.agendaResources,
     pagadoHasta: f.paidThrough,
     pagos: porOrganizacion.get(f.id) ?? [],
     supervision: {

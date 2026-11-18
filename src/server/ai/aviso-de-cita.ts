@@ -72,6 +72,48 @@ export function nombreDelContacto(nombre: string | null | undefined): string {
   return nombre?.trim() || "un contacto";
 }
 
+/** 146 — Cada persona que tiene que enterarse de esta cita. */
+export type DestinatarioDeAviso = { phone: string; name: string | null };
+
+/**
+ * 146 — PURA: quién recibe el aviso de una cita.
+ *
+ * El destinatario de la ORGANIZACIÓN va siempre y va primero — en Cerritos es
+ * Samantha, que recibe todas las entrevistas sean del grado que sean. Los del
+ * recurso se suman: la directora que va a dar esa entrevista y, cuando
+ * corresponde, la psicóloga.
+ *
+ * Sin recurso la lista tiene un solo nombre, que es exactamente el
+ * comportamiento anterior a esta spec y el de los clientes que no usan
+ * recursos.
+ *
+ * El deduplicado es por teléfono NORMALIZADO, no por el texto: el mismo
+ * número escrito «0981 123 456» en un lado y «+595981123456» en el otro es
+ * una persona, y recibir el mismo aviso dos veces enseña a ignorarlos.
+ */
+export function destinatariosDelAviso(opts: {
+  org: { alertPhone: string | null; alertName: string | null };
+  delRecurso: DestinatarioDeAviso[];
+  /** Cómo se compara un teléfono con otro. */
+  normalizar: (telefono: string) => string;
+}): DestinatarioDeAviso[] {
+  const out: DestinatarioDeAviso[] = [];
+  const vistos = new Set<string>();
+
+  const sumar = (phone: string | null, name: string | null) => {
+    const bruto = phone?.trim();
+    if (!bruto) return;
+    const clave = opts.normalizar(bruto);
+    if (!clave || vistos.has(clave)) return;
+    vistos.add(clave);
+    out.push({ phone: bruto, name: name?.trim() || null });
+  };
+
+  sumar(opts.org.alertPhone, opts.org.alertName);
+  for (const d of opts.delRecurso) sumar(d.phone, d.name);
+  return out;
+}
+
 /**
  * Las variables de cada plantilla, en el orden exacto en que Meta las espera.
  * Cambiar este orden manda el aviso con los datos cruzados, y Meta no avisa.
@@ -121,6 +163,7 @@ import { normalizeMx } from "@/lib/meta/client";
 import { getOrCreateContactByIdentity } from "@/server/inbox/identity";
 import { getOrCreateConversation } from "@/server/inbox/ingest";
 import { sendTemplate } from "@/server/whatsapp/templates";
+import { recursoPorId } from "@/server/agenda/recursos";
 
 /**
  * 145 — Busca una plantilla aprobada por nombre. Null si no está, para que
@@ -157,6 +200,8 @@ export async function avisarDeCita(opts: {
   cuandoAntes?: string;
   /** 145 — El enlace de la reunión, si la cita lo tiene. */
   enlace?: string | null;
+  /** 146 — De qué recurso es la cita: suma a sus destinatarios. */
+  resourceId?: string | null;
 }): Promise<void> {
   try {
     const db = getDb();
@@ -193,9 +238,22 @@ export async function avisarDeCita(opts: {
     const conv = convs[0];
     if (!conv) return;
 
+    // 146 — El de la organización más los del recurso, sin repetidos.
+    const recurso = opts.resourceId
+      ? await recursoPorId(opts.organizationId, opts.resourceId)
+      : null;
+    const destinatarios = destinatariosDelAviso({
+      org: {
+        alertPhone: org?.alertPhone ?? null,
+        alertName: org?.alertName ?? null,
+      },
+      delRecurso: recurso?.avisos ?? [],
+      normalizar: (t) => normalizeMx(t.replace(/\D/g, "")),
+    });
+
     if (
       !hayQueAvisarDeCita({
-        telefonoDestino: org?.alertPhone,
+        telefonoDestino: destinatarios[0]?.phone,
         esDePrueba: conv.isTest,
       })
     ) {
@@ -230,35 +288,51 @@ export async function avisarDeCita(opts: {
     }
     const llevaEnlace = plantilla.name === conEnlace;
 
-    // El destinatario es un contacto más del CRM: así el aviso queda en la
-    // bandeja y se ve a quién se le avisó y cuándo.
-    const telefono = normalizeMx(org!.alertPhone!.replace(/\D/g, ""));
-    const destino = await getOrCreateContactByIdentity(opts.organizationId, {
-      identity: telefono,
-      phone: telefono,
-      waUserId: null,
-      profileName: org!.alertName?.trim() || null,
-      channel: "whatsapp",
-    });
-    const conversacionDelAviso = await getOrCreateConversation(
-      opts.organizationId,
-      destino.contact.id
-    );
+    // 146 — Uno por uno, y cada uno en su propio try: que el aviso a Lea
+    // falle no puede dejar sin aviso a Mariel ni a Samantha. Vale la misma
+    // regla del 142 — un aviso nunca tumba nada de lo que ya pasó.
+    for (const d of destinatarios) {
+      try {
+        // El destinatario es un contacto más del CRM: así el aviso queda en la
+        // bandeja y se ve a quién se le avisó y cuándo.
+        const telefono = normalizeMx(d.phone.replace(/\D/g, ""));
+        const destino = await getOrCreateContactByIdentity(
+          opts.organizationId,
+          {
+            identity: telefono,
+            phone: telefono,
+            waUserId: null,
+            profileName: d.name,
+            channel: "whatsapp",
+          }
+        );
+        const conversacionDelAviso = await getOrCreateConversation(
+          opts.organizationId,
+          destino.contact.id
+        );
 
-    await sendTemplate({
-      organizationId: opts.organizationId,
-      conversationId: conversacionDelAviso.id,
-      templateId: plantilla.id,
-      variables: variablesDeCita({
-        evento: opts.evento,
-        nombreDestino: org!.alertName,
-        nombreDelContacto: conv.contactName,
-        telefonoDelContacto: conv.contactPhone,
-        cuando: opts.cuando,
-        cuandoAntes: opts.cuandoAntes,
-        enlace: llevaEnlace ? opts.enlace : null,
-      }),
-    });
+        await sendTemplate({
+          organizationId: opts.organizationId,
+          conversationId: conversacionDelAviso.id,
+          templateId: plantilla.id,
+          variables: variablesDeCita({
+            evento: opts.evento,
+            nombreDestino: d.name,
+            nombreDelContacto: conv.contactName,
+            telefonoDelContacto: conv.contactPhone,
+            cuando: opts.cuando,
+            cuandoAntes: opts.cuandoAntes,
+            enlace: llevaEnlace ? opts.enlace : null,
+          }),
+        });
+      } catch (err) {
+        console.error(
+          `[aviso-cita] ${opts.organizationId}: falló el aviso a un destinatario: ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        );
+      }
+    }
   } catch (err) {
     console.error(
       `[aviso-cita] no se pudo avisar de ${opts.conversationId}: ${
@@ -281,7 +355,13 @@ export async function avisoDelTurnoDeAgenda(opts: {
   organizationId: string;
   conversationId: string;
   accion: "offer_slots" | "book_slot" | "reschedule_slot" | "cancel_slot";
-  turn: { ok: boolean; label?: string; enlace?: string | null };
+  turn: {
+    ok: boolean;
+    label?: string;
+    enlace?: string | null;
+    /** 146 — De qué agenda era la cita. */
+    resourceId?: string | null;
+  };
   /** El horario que tenía la cita antes de moverla. */
   anterior: string | null;
 }): Promise<void> {
@@ -312,5 +392,6 @@ export async function avisoDelTurnoDeAgenda(opts: {
     cuando,
     cuandoAntes: opts.anterior ?? undefined,
     enlace: opts.turn.enlace ?? null,
+    resourceId: opts.turn.resourceId ?? null,
   });
 }

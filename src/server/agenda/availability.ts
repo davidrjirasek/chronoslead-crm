@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import {
@@ -13,6 +13,7 @@ import {
   type SlotUtc,
 } from "@/lib/time/slots";
 import { getSettings, type CalendarSettings } from "@/server/agenda/settings";
+import type { Recurso } from "@/server/agenda/recursos";
 
 /**
  * 015 — Motor de disponibilidad:
@@ -75,6 +76,18 @@ export function filterFreeSlots(
     .map((c) => ({ ...c, label: labelInTz(c.startUtc, opts.timezone) }));
 }
 
+/**
+ * 146 — El horario que rige para este recurso: el suyo si lo tiene cargado, el
+ * del negocio si no. PURA, para poder probar la herencia sin base.
+ */
+export function horarioDelRecurso(
+  settings: CalendarSettings,
+  recurso?: Recurso | null
+): CalendarSettings {
+  if (!recurso?.weeklyHours) return settings;
+  return { ...settings, weeklyHours: recurso.weeklyHours };
+}
+
 export async function computeAvailability(
   organizationId: string,
   opts?: {
@@ -83,9 +96,15 @@ export async function computeAvailability(
     excludeBookingId?: string;
     now?: Date;
     settings?: CalendarSettings;
+    /**
+     * 146 — De quién es la agenda. Sin recurso, el comportamiento es el de
+     * siempre: TODAS las citas de la organización ocupan.
+     */
+    recurso?: Recurso | null;
   }
 ): Promise<AvailableSlot[]> {
-  const settings = opts?.settings ?? (await getSettings(organizationId));
+  const base = opts?.settings ?? (await getSettings(organizationId));
+  const settings = horarioDelRecurso(base, opts?.recurso);
   const now = opts?.now ?? new Date();
   const tz = settings.timezone;
 
@@ -101,6 +120,7 @@ export async function computeAvailability(
       zonedWallClockToUtc(addDaysISO(to, 1), "00:00", tz) ??
       new Date(now.getTime() + 86_400_000 * 61),
     excludeBookingId: opts?.excludeBookingId,
+    resourceId: opts?.recurso?.id ?? null,
   });
 
   return filterFreeSlots(candidates, busy, {
@@ -125,7 +145,13 @@ export async function computeAvailability(
 export async function findSlot(
   organizationId: string,
   whenISO: string,
-  opts?: { excludeBookingId?: string; now?: Date; settings?: CalendarSettings }
+  opts?: {
+    excludeBookingId?: string;
+    now?: Date;
+    settings?: CalendarSettings;
+    /** 146 — Re-validar contra la agenda de ESTE recurso, no la de todos. */
+    recurso?: Recurso | null;
+  }
 ): Promise<AvailableSlot | null> {
   const target = Date.parse(whenISO);
   if (Number.isNaN(target)) return null;
@@ -139,13 +165,24 @@ export async function findSlot(
     excludeBookingId: opts?.excludeBookingId,
     now: opts?.now,
     settings,
+    recurso: opts?.recurso,
   });
   return slots.find((s) => Date.parse(s.startUtc) === target) ?? null;
 }
 
 async function getBusyIntervals(
   organizationId: string,
-  input: { fromUtc: Date; toUtc: Date; excludeBookingId?: string }
+  input: {
+    fromUtc: Date;
+    toUtc: Date;
+    excludeBookingId?: string;
+    /**
+     * 146 — Con recurso, solo ocupan SUS citas y los bloqueos sin recurso.
+     * Null —la agenda única— mantiene el comportamiento de siempre: ocupa
+     * todo lo de la organización.
+     */
+    resourceId?: string | null;
+  }
 ): Promise<SlotUtc[]> {
   const db = getDb();
   const rows = await db
@@ -165,7 +202,15 @@ async function getBusyIntervals(
           // Sandbox: una cita de prueba no consume la agenda real.
           eq(schema.booking.isTest, false),
           gte(schema.booking.scheduledAt, input.fromUtc),
-          lte(schema.booking.scheduledAt, input.toUtc)
+          lte(schema.booking.scheduledAt, input.toUtc),
+          // 146 — Un bloqueo SIN recurso ocupa a todos: las vacaciones son del
+          // negocio, no de una persona. Una cita de otro recurso no ocupa.
+          input.resourceId
+            ? or(
+                eq(schema.booking.resourceId, input.resourceId),
+                isNull(schema.booking.resourceId)
+              )
+            : undefined
         )
       )
     );

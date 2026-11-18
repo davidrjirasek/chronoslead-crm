@@ -304,6 +304,36 @@ previo y ventana.
 > cambiarla a `America/Asuncion`. **Si no la cambiás, el agente ofrece horarios
 > corridos** y el cliente se entera cuando alguien no aparece a la reunión.
 
+### Si el cliente atiende con VARIAS personas en paralelo
+
+Por defecto la agenda es **una sola**: si alguien ocupa el martes a las 10:00,
+queda ocupado para todo el negocio. Sirve para casi todos. No sirve cuando dos
+personas atienden a la vez y cada una lleva su propio turno — dos directores de
+admisiones, dos profesionales, dos salas.
+
+Para esos, **el superadmin enciende «Agenda por recurso»** en la ficha del
+cliente del panel de plataforma. No es algo que el cliente pueda prender solo, y
+es a propósito: apagada, su panel no cambia en nada.
+
+Encendida, aparece **Ajustes → Agenda → Quién atiende**, y ahí se carga cada
+persona con:
+
+| Campo | Para qué |
+|---|---|
+| Nombre | Lo que se ve en el calendario y lo que el agente nombra |
+| Color | Para distinguirlas de un vistazo en Citas |
+| **Cuándo corresponde** | **Lo lee el agente** para decidir a quién ofrecerle. Escribilo como se lo explicarías a alguien que recién entra: «cuando el alumno va de 4.º grado en adelante» |
+| Horario | El suyo, si difiere del horario del negocio. Vacío = hereda el del negocio |
+| A quién avisar | Se SUMAN al destinatario del negocio: quien coordina recibe todas, y cada persona la suya |
+
+Dos advertencias que ya costaron una vuelta:
+
+- **Sin «cuándo corresponde», el agente pregunta en vez de elegir.** Es lo
+  correcto —no adivina entre dos personas— pero gasta un mensaje de más en cada
+  conversación. Llenalo.
+- **Dar de baja a alguien no borra sus citas**: lo saca de lo que se ofrece y
+  deja en pie lo agendado. Es lo que querés el día que alguien se va.
+
 ### El medio de pago en Meta, sin el cual los avisos no salen ⚠️
 
 **Un cliente con agenda necesita su tarjeta cargada en su cuenta de WhatsApp

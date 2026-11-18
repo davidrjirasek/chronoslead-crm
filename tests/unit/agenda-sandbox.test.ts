@@ -80,8 +80,14 @@ function chain(rows: unknown[]) {
   return c;
 }
 
-vi.mock("@/lib/db", () => ({
-  getDb: () => ({
+/**
+ * 146 — El INSERT pasó a correr dentro de una transacción con un candado por
+ * recurso: el doble presta el mismo objeto al callback y traga el
+ * `pg_advisory_xact_lock`. Sin esto el guardarraíl del Laboratorio ni se
+ * llegaría a ejercitar.
+ */
+function dbDoble(): Record<string, unknown> {
+  const db: Record<string, unknown> = {
     select: () => chain(selectRows.shift() ?? []),
     insert: () => ({
       values: (v: Record<string, unknown>) => ({
@@ -100,7 +106,14 @@ vi.mock("@/lib/db", () => ({
         }),
       }),
     }),
-  }),
+    execute: async () => [],
+    transaction: async (cb: (tx: unknown) => Promise<unknown>) => cb(db),
+  };
+  return db;
+}
+
+vi.mock("@/lib/db", () => ({
+  getDb: () => dbDoble(),
   schema: {
     booking: {},
     conversation: { organizationId: "organizationId", id: "id" },

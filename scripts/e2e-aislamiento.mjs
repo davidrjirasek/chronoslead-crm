@@ -1133,6 +1133,60 @@ async function main() {
     );
   }
 
+  // ───────────────────────────────────────────────────────────────────────
+  // 146 — La agenda por recurso no existe para quien no la tiene
+  //
+  // Nueve clientes comparten la instancia y UNO pidió esta función. La prueba
+  // que importa no es que los recursos funcionen: es que una organización sin
+  // el interruptor termine el despliegue exactamente como estaba. A y B se
+  // siembran sin él —`agenda_resources` nace en false— así que todo lo de
+  // recursos tiene que responder 404 para las dos.
+  seccion("146 · la agenda de recursos está apagada para quien no la pidió");
+  {
+    const ajustes = await pedir(A, "/api/calendar/settings");
+    if (ajustes.status === 404) {
+      // Sin la bandera AGENDA no hay nada que medir, y decirlo vale más que
+      // un verde vacío: un 404 por el motivo equivocado pasaría igual.
+      ok(
+        "la agenda no está encendida en esta instancia; no se puede medir",
+        true,
+        "corré el gate con AGENDA=on para ejercitar esta sección"
+      );
+    } else {
+      ok("la agenda SÍ está encendida en la instancia", ajustes.status === 200);
+
+      for (const org of [A, B]) {
+        const lista = await pedir(org, "/api/calendar/resources");
+        ok(
+          `${org.nombre}: los recursos no existen sin el interruptor`,
+          lista.status === 404,
+          `recibido ${lista.status}`
+        );
+
+        const alta = await pedir(org, "/api/calendar/resources", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ name: "No debería entrar" }),
+        });
+        ok(
+          `${org.nombre}: tampoco se puede crear uno`,
+          alta.status === 404,
+          `recibido ${alta.status}`
+        );
+      }
+
+      // Y el calendario sigue siendo el de siempre: sin recursos que pintar.
+      const hoy = new Date().toISOString().slice(0, 10);
+      const citas = await pedir(A, `/api/bookings?from=${hoy}&to=${hoy}`);
+      const cuerpo = citas.status === 200 ? await citas.json() : null;
+      ok(
+        "el calendario de A no trae recursos",
+        citas.status === 200 && (cuerpo?.recursos ?? []).length === 0,
+        `recibido ${citas.status}`
+      );
+    }
+  }
+
   console.log(`\n${comprobaciones - fallos}/${comprobaciones} comprobaciones correctas.`);
   if (fallos > 0) {
     console.log(`\n❌ ${fallos} fallo(s). NADA está Hecho hasta que esto esté verde.\n`);

@@ -91,6 +91,11 @@ describe("sandbox del Laboratorio en el pipeline del agente", () => {
     vi.stubEnv("OPENROUTER_API_TOKEN", "token-test");
   });
 
+  /**
+   * 146 — Mismo motivo que en `send-sandbox.test.ts`: lo que tarda es el
+   * `await import()` del pipeline real, que va después de los `vi.mock`. El
+   * guardarraíl no cambió; lo que cambió es que ahora tiene tiempo de correr.
+   */
   it("turno sobre conversación is_test → persiste la respuesta y NO llama a Graph", async () => {
     const testConversation = {
       id: "cv_lab",
@@ -135,5 +140,5 @@ describe("sandbox del Laboratorio en el pipeline del agente", () => {
     expect((messageInsert!.values as { text: string }).text).toBe(
       "respuesta simulada"
     );
-  });
+  }, 20_000);
 });

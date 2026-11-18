@@ -40,19 +40,40 @@ export function buildAgentSystemPrompt(input: {
    * token en hablar de horarios: la agenda no existe aquí.
    */
   agenda?: boolean;
+  /**
+   * 146 — Los recursos de ESTA organización, ya formateados
+   * (`lineasDeRecursos()`). Vacío —lo normal— y el prompt no dice una palabra
+   * de recursos: una organización con una sola agenda no gasta tokens en
+   * explicar una elección que no existe.
+   */
+  recursos?: string[];
 }): string {
   const { profile } = input;
+  const recursos = input.agenda ? (input.recursos ?? []) : [];
+  const hayRecursos = recursos.length > 0;
   const stageNames = input.stages.map((s) => s.name).join(" | ");
   const agendaLines = input.agenda
     ? [
-        '- {"action":"offer_slots","reply":"..."} — ofrecer horarios para agendar (reply es solo la frase de entrada; los horarios los pone el sistema).',
+        hayRecursos
+          ? '- {"action":"offer_slots","reply":"...","resource":"<el nombre EXACTO de uno de los de la lista>"} — ofrecer horarios de esa persona (reply es solo la frase de entrada; los horarios los pone el sistema).'
+          : '- {"action":"offer_slots","reply":"..."} — ofrecer horarios para agendar (reply es solo la frase de entrada; los horarios los pone el sistema).',
         '- {"action":"book_slot","startUtc":"<uno de los horarios que el sistema ofreció, en ISO UTC>","reply":"...","allowSecond":false} — agendar el horario que el cliente eligió. `allowSecond` solo va en true si el cliente YA confirmó que quiere una cita ADEMÁS de otra que ya tiene.',
         '- {"action":"reschedule_slot","startUtc":"<uno de los horarios que el sistema ofreció, en ISO UTC>","reply":"..."} — mover la cita que ya tiene el cliente al horario que eligió.',
         '- {"action":"cancel_slot","reply":"..."} — cancelar la cita que ya tiene el cliente.',
       ]
     : [];
+  const reglasDeRecurso = hayRecursos
+    ? [
+        `Con quién se agenda — hay más de una agenda y cada una tiene sus horarios:\n${recursos.join("\n")}`,
+        "- ANTES de ofrecer horarios, averiguá cuál de esos corresponde: preguntá lo que haga falta para saberlo. Ofrecer los horarios de la persona equivocada hace perder la cita dos veces.",
+        "- En offer_slots, `resource` va con el nombre EXACTO de la lista de arriba.",
+        "- Si no te alcanza para decidir, preguntá. NUNCA elijas al azar ni ofrezcas los dos a la vez.",
+        "- Al cliente no le expliques que hay agendas separadas: simplemente ofrecé los horarios que correspondan.",
+      ]
+    : [];
   const agendaRules = input.agenda
     ? [
+        ...reglasDeRecurso,
         "- NUNCA escribas tú los horarios ni los inventes: usa offer_slots y el sistema pega los reales.",
         "- book_slot solo acepta un horario que el sistema ofreció antes en ESTA conversación. Si el cliente pide otro, vuelve a ofrecer con offer_slots.",
         // 142 — Antes esto decía «si quiere cancelar → handoff». Lo cambió el

@@ -393,6 +393,41 @@ export async function reactivarCliente(
 }
 
 /**
+ * 146 — Prende o apaga la agenda por recurso de UN cliente.
+ *
+ * Vive acá y no en el panel del cliente porque es una decisión de alta, no de
+ * configuración diaria: el dueño pidió explícitamente que los demás clientes
+ * no vean nada y que activarlo sea algo que él pide. Apagarlo no borra los
+ * recursos cargados — devuelve la agenda única y los deja esperando.
+ */
+export async function agendaDeRecursos(
+  _prev: ResultadoAccion,
+  formData: FormData
+): Promise<ResultadoAccion> {
+  const guardia = await exigirSuperadmin();
+  if (!guardia.ok) return guardia.resultado;
+
+  const datos = idSchema.safeParse({
+    organizationId: formData.get("organizationId"),
+  });
+  if (!datos.success) return { error: "Cliente no indicado.", aviso: null };
+
+  const encender = String(formData.get("encender") ?? "") === "1";
+  await getDb()
+    .update(schema.organization)
+    .set({ agendaResources: encender })
+    .where(eq(schema.organization.id, datos.data.organizationId));
+
+  registrar(
+    guardia.autor,
+    encender ? "agenda de recursos encendida" : "agenda de recursos apagada",
+    datos.data.organizationId
+  );
+  revalidatePath("/admin");
+  return VACIO;
+}
+
+/**
  * Genera un enlace de acceso para UN miembro concreto de una organización (106).
  *
  * 136 — A quién, elegido por nombre.

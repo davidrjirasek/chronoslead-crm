@@ -104,6 +104,19 @@ export const organization = pgTable("organization", {
    */
   alertPhone: text("alert_phone"),
   alertName: text("alert_name"),
+  /**
+   * 146: si ESTA organización usa agenda por recurso. Apagado —el default— se
+   * comporta exactamente como antes de la 146: una agenda, un destinatario de
+   * aviso, ni una pantalla nueva.
+   *
+   * Es una columna y no una bandera de despliegue a propósito. `AGENDA` es una
+   * variable de entorno, y una sola instancia sirve a todos los clientes: lo
+   * que prende por entorno prende para todos. El opt-in real aquí es por
+   * cliente, lo da el operador desde el panel, y por eso vive en la base.
+   * Tampoco se agrega una segunda bandera de entorno encima: ADR-002 ya
+   * descartó esa ceremonia cuando la configuración sola alcanza.
+   */
+  agendaResources: boolean("agenda_resources").notNull().default(false),
 });
 
 export const member = pgTable("member", {
@@ -880,6 +893,56 @@ export const calendarSettings = pgTable(
   (t) => [uniqueIndex("calendar_settings_org_uq").on(t.organizationId)]
 );
 
+/* ============================================================
+ * 146 — Agenda por recurso: quién atiende, cada uno con su propia agenda.
+ *
+ * Sin filas aquí la agenda es la de siempre: UN recurso implícito por
+ * organización. El diseño viene de la vertical `barberia` del paquete de
+ * Kevin (MIT, uso autorizado el 30-10-2026); lo que cambia es que allá la
+ * instancia entera era de un giro, y aquí cada organización decide sola.
+ *
+ * NO se trae `agenda_service` (catálogo con duración y precio). Cerritos
+ * agenda dos entrevistas de 30 minutos que no se cobran, y una pantalla de
+ * precios que nadie llena es trabajo que todavía no hace falta. Entra con su
+ * propia migración aditiva el día que un cliente la pida.
+ * ============================================================ */
+
+/** Quién atiende: una directora, un barbero, una cabina. Con su agenda. */
+export const agendaResource = pgTable(
+  "agenda_resource",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Mismo formato que `calendar_settings.weekly_hours`; NULL = el del negocio. */
+    weeklyHours: jsonb("weekly_hours"),
+    /** Clave de la paleta (`src/lib/resource-colors.ts`); NULL = automático. */
+    color: text("color"),
+    /**
+     * 146 — Cuándo corresponde ESTE recurso, en palabras. Viaja al prompt y es
+     * lo que deja que el agente elija sin que el motor sepa de colegios:
+     * «cuando el alumno va de 4.º grado en adelante».
+     */
+    criterio: text("criterio"),
+    /**
+     * 146 — A quién avisar de las citas de este recurso, ADEMÁS del
+     * destinatario de la organización. `[{"phone":"595...","name":"Mariel"}]`.
+     *
+     * Van aquí y no en una tabla aparte porque son del recurso —si se borra,
+     * se van con él— y son dos o tres, no una colección que se consulte.
+     */
+    avisos: jsonb("avisos"),
+    /** Inactivo = no se ofrece; sus citas siguen en la agenda. */
+    active: boolean("active").notNull().default(true),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("agenda_resource_org_pos_idx").on(t.organizationId, t.position)]
+);
+
 /**
  * La cita. Una sola tabla para sesiones y bloqueos manuales: un bloqueo es
  * una cita sin contacto que ocupa agenda igual.
@@ -935,6 +998,16 @@ export const booking = pgTable(
     isTest: boolean("is_test").notNull().default(false),
     notes: text("notes"),
     /**
+     * 146 — Con quién es la cita. NULL = la agenda única de siempre, y es lo
+     * que tienen todas las citas anteriores a esta spec.
+     *
+     * Un BLOQUEO sin recurso ocupa a TODOS los recursos: las vacaciones son
+     * del negocio, no de una persona.
+     */
+    resourceId: text("resource_id").references(() => agendaResource.id, {
+      onDelete: "set null",
+    }),
+    /**
      * 142 — Cuándo salió cada recordatorio. Son la IDEMPOTENCIA del barrido:
      * el worker corre cada pocos minutos y, sin esta marca, mandaría el mismo
      * recordatorio en cada vuelta. Van en la cita y no en una tabla aparte
@@ -951,6 +1024,11 @@ export const booking = pgTable(
   (t) => [
     index("booking_org_when_idx").on(t.organizationId, t.scheduledAt),
     index("booking_org_status_idx").on(t.organizationId, t.status),
+    index("booking_org_resource_when_idx").on(
+      t.organizationId,
+      t.resourceId,
+      t.scheduledAt
+    ),
     /**
      * Anti doble-booking ATÓMICO. La re-validación al confirmar deja una
      * ventana entre leer y escribir; esto la cierra en la BASE: dos
@@ -958,9 +1036,17 @@ export const booking = pgTable(
      * la perdedora recibe un 23505 que el servicio traduce a `slot_taken` con
      * alternativas frescas. Las citas de prueba quedan fuera: no consumen la
      * agenda real.
+     *
+     * 146 — Ahora es POR RECURSO: dos directores sí pueden atender a la misma
+     * hora. Sin recurso, `coalesce` devuelve '' y el índice es EXACTAMENTE el
+     * de antes — por eso una organización sin recursos no nota nada.
+     *
+     * Los solapes que un índice no puede ver (una cita de 60 min que pisa la
+     * de las 17:30) los cierra la re-validación con `pg_advisory_xact_lock`
+     * por recurso, en `agenda/service.ts`.
      */
-    uniqueIndex("booking_org_active_slot_uq")
-      .on(t.organizationId, t.scheduledAt)
+    uniqueIndex("booking_org_resource_active_slot_uq")
+      .on(t.organizationId, sql`coalesce(${t.resourceId}, '')`, t.scheduledAt)
       .where(
         sql`${t.status} in ('agendada','realizada') and ${t.isTest} = false`
       ),
@@ -989,6 +1075,17 @@ export const offeredSlot = pgTable(
     startUtc: timestamp("start_utc").notNull(),
     /** La etiqueta EXACTA que se le mostró al cliente. */
     label: text("label").notNull(),
+    /**
+     * 146 — De QUÉ recurso era este hueco. NULL = la agenda única.
+     *
+     * Sin esto, la garantía del 015 se quedaría a mitad de camino: el hueco
+     * ofrecido para Mariel podría reservarse en la agenda de Rodrigo, que
+     * quizás esté ocupado a esa hora. El instante ofrecido y el recurso son
+     * una sola promesa, no dos.
+     */
+    resourceId: text("resource_id").references(() => agendaResource.id, {
+      onDelete: "cascade",
+    }),
     offeredAt: timestamp("offered_at").notNull().defaultNow(),
   },
   (t) => [index("offered_slot_conv_idx").on(t.conversationId, t.startUtc)]

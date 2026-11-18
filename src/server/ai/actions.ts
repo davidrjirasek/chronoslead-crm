@@ -39,6 +39,16 @@ const agendaActions = [
   z.object({
     action: z.literal("offer_slots"),
     reply: z.string().optional(),
+    /**
+     * 146 — De quién son los horarios que se ofrecen, por NOMBRE. Solo existe
+     * donde la organización tiene agenda por recurso; en las demás el modelo
+     * ni siquiera sabe que el campo está.
+     *
+     * Un nombre que no resuelve degrada — nunca se adivina entre dos
+     * recursos: con dos directores, elegir mal manda a la familia con la
+     * persona equivocada.
+     */
+    resource: z.string().optional(),
   }),
   z.object({
     action: z.literal("book_slot"),
@@ -56,6 +66,12 @@ const agendaActions = [
      * esta puerta, el agente quedaría trabado ante el caso legítimo.
      */
     allowSecond: z.boolean().optional(),
+    /**
+     * 146 — Se acepta por compatibilidad con lo que el modelo escriba, pero
+     * NO decide nada: el recurso de la reserva sale de la oferta registrada,
+     * que es donde el instante y la persona se prometieron juntos.
+     */
+    resource: z.string().optional(),
   }),
   /**
    * 142 — Mover y cancelar. Hasta la 142 el agente solo sabía CREAR citas: si

@@ -29,6 +29,10 @@ import {
 } from "@/server/ai/orden-turno";
 import { agendaEnabled } from "@/server/agenda/flag";
 import {
+  lineasDeRecursos,
+  recursosActivos,
+} from "@/server/agenda/recursos";
+import {
   bookSlot,
   cancelSlot,
   offerSlots,
@@ -294,10 +298,22 @@ export async function runAgentTurn(
   const ofertas = agenda ? await getOffers(organizationId, conversationId) : [];
   const mapaDeHuecos = mapaDeHuecosParaModelo(ofertas);
 
+  // 146 — Los recursos de esta organización, si los usa. Lista vacía —el caso
+  // normal— y el prompt no menciona recursos en absoluto.
+  const recursos = agenda
+    ? lineasDeRecursos(await recursosActivos(organizationId))
+    : [];
+
   const messages: ChatMessage[] = [
     {
       role: "system",
-      content: buildAgentSystemPrompt({ profile, kb, stages, agenda }),
+      content: buildAgentSystemPrompt({
+        profile,
+        kb,
+        stages,
+        agenda,
+        recursos,
+      }),
     },
     ...history
       .map((m) => ({
@@ -374,6 +390,7 @@ export async function runAgentTurn(
                 organizationId,
                 conversationId,
                 intro: action.reply,
+                resource: action.resource,
               })
             : action.action === "book_slot"
               ? await bookSlot({

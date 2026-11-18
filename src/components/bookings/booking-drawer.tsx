@@ -227,6 +227,7 @@ export function BookingDrawer({
             <Reschedule
               today={today}
               busy={busy}
+              resourceId={b.resourceId}
               onCancel={() => setRescheduling(false)}
               onPick={async (startUtc) => {
                 if (await run({ action: "reschedule", startUtc })) {
@@ -304,11 +305,18 @@ function Reschedule({
   busy,
   onCancel,
   onPick,
+  resourceId,
 }: {
   today: string;
   busy: boolean;
   onCancel: () => void;
   onPick: (startUtc: string) => void;
+  /**
+   * 146 — Mover una cita no la cambia de agenda: los huecos que se ofrecen
+   * son los de SU recurso. Sin esto se mostraban de menos, porque las citas
+   * de la otra persona tapaban horas que estaban libres.
+   */
+  resourceId: string | null;
 }) {
   const [slots, setSlots] = useState<DaySlot[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -319,9 +327,14 @@ function Reschedule({
     const abort = new AbortController();
     let alive = true;
     void (async () => {
-      const res = await fetch("/api/calendar/availability", { signal: abort.signal }).catch(
-        () => null
-      );
+      // 146 — Un solo sitio donde se pide disponibilidad, y el recurso va
+      // como parámetro. Sin recurso la URL es la de siempre.
+      const query = resourceId
+        ? `?recurso=${encodeURIComponent(resourceId)}`
+        : "";
+      const res = await fetch(`/api/calendar/availability${query}`, {
+        signal: abort.signal,
+      }).catch(() => null);
       if (!alive) return;
       if (!res?.ok) {
         setFailed(true);
@@ -335,7 +348,7 @@ function Reschedule({
       alive = false;
       abort.abort();
     };
-  }, []);
+  }, [resourceId]);
 
   const days = useMemo(() => groupSlotsByDay(slots ?? []), [slots]);
   const selected = day ?? days[0]?.[0] ?? null;

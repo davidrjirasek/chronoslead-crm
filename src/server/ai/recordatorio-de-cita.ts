@@ -24,10 +24,12 @@ import { getOrCreateContactByIdentity } from "@/server/inbox/identity";
 import { getOrCreateConversation } from "@/server/inbox/ingest";
 import { sendTemplate } from "@/server/whatsapp/templates";
 import {
+  destinatariosDelAviso,
   hayQueAvisarDeCita,
   nombreDelContacto,
   telefonoDelAviso,
 } from "@/server/ai/aviso-de-cita";
+import { recursoPorId } from "@/server/agenda/recursos";
 
 export const PLANTILLA_RECORDATORIO_EQUIPO = "cita_recordatorio_equipo";
 export const PLANTILLA_RECORDATORIO_CLIENTE = "cita_recordatorio_cliente";
@@ -123,6 +125,8 @@ export async function recordarAlEquipo(opts: {
   etiqueta?: string;
   /** 145 — El enlace de la reunión, si la cita lo tiene. */
   enlace?: string | null;
+  /** 146 — De qué recurso es la cita: suma a sus destinatarios. */
+  resourceId?: string | null;
 }): Promise<void> {
   try {
     const db = getDb();
@@ -141,9 +145,26 @@ export async function recordarAlEquipo(opts: {
       opts.conversationId
     );
     if (!conv) return;
+
+    // 146 — Los mismos destinatarios que el aviso de la cita: el de la
+    // organización más los del recurso. Un recordatorio que llega a menos
+    // gente que el aviso es peor que no tenerlo: quien esperaba el suyo
+    // aprende a no confiar en ninguno.
+    const recurso = opts.resourceId
+      ? await recursoPorId(opts.organizationId, opts.resourceId)
+      : null;
+    const destinatarios = destinatariosDelAviso({
+      org: {
+        alertPhone: org?.alertPhone ?? null,
+        alertName: org?.alertName ?? null,
+      },
+      delRecurso: recurso?.avisos ?? [],
+      normalizar: (t) => normalizeMx(t.replace(/\D/g, "")),
+    });
+
     if (
       !hayQueAvisarDeCita({
-        telefonoDestino: org?.alertPhone,
+        telefonoDestino: destinatarios[0]?.phone,
         esDePrueba: conv.isTest,
       })
     ) {
@@ -167,38 +188,53 @@ export async function recordarAlEquipo(opts: {
     if (!plantillaId) return;
     const equipoConEnlace = plantillaId.conEnlace;
 
-    const telefono = normalizeMx(org!.alertPhone!.replace(/\D/g, ""));
-    const destino = await getOrCreateContactByIdentity(opts.organizationId, {
-      identity: telefono,
-      phone: telefono,
-      waUserId: null,
-      profileName: org!.alertName?.trim() || null,
-      channel: "whatsapp",
-    });
-    const conversacionDelAviso = await getOrCreateConversation(
-      opts.organizationId,
-      destino.contact.id
-    );
+    // Cada uno en su propio try: que falle el de una persona no puede dejar
+    // sin recordatorio a las demás.
+    for (const d of destinatarios) {
+      try {
+        const telefono = normalizeMx(d.phone.replace(/\D/g, ""));
+        const destino = await getOrCreateContactByIdentity(
+          opts.organizationId,
+          {
+            identity: telefono,
+            phone: telefono,
+            waUserId: null,
+            profileName: d.name,
+            channel: "whatsapp",
+          }
+        );
+        const conversacionDelAviso = await getOrCreateConversation(
+          opts.organizationId,
+          destino.contact.id
+        );
 
-    await sendTemplate({
-      organizationId: opts.organizationId,
-      conversationId: conversacionDelAviso.id,
-      templateId: plantillaId.id,
-      variables: equipoConEnlace
-        ? [
-            org!.alertName?.trim() || "equipo",
-            nombreDelContacto(conv.contactName),
-            opts.hora,
-            enlace!,
-            telefonoDelAviso(conv.contactPhone),
-          ]
-        : [
-            org!.alertName?.trim() || "equipo",
-            nombreDelContacto(conv.contactName),
-            opts.hora,
-            telefonoDelAviso(conv.contactPhone),
-          ],
-    });
+        await sendTemplate({
+          organizationId: opts.organizationId,
+          conversationId: conversacionDelAviso.id,
+          templateId: plantillaId.id,
+          variables: equipoConEnlace
+            ? [
+                d.name?.trim() || "equipo",
+                nombreDelContacto(conv.contactName),
+                opts.hora,
+                enlace!,
+                telefonoDelAviso(conv.contactPhone),
+              ]
+            : [
+                d.name?.trim() || "equipo",
+                nombreDelContacto(conv.contactName),
+                opts.hora,
+                telefonoDelAviso(conv.contactPhone),
+              ],
+        });
+      } catch (err) {
+        console.error(
+          `[recordatorio] ${opts.organizationId}: falló el de un destinatario: ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        );
+      }
+    }
   } catch (err) {
     console.error(
       `[recordatorio] el equipo no recibió el de ${opts.conversationId}: ${

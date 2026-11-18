@@ -3,6 +3,7 @@ import { dayIsoInTz, timeInTz, dayLabelInTz } from "@/lib/time/slots";
 import { agendaDisabledResponse, agendaEnabled } from "@/server/agenda/flag";
 import { computeAvailability } from "@/server/agenda/availability";
 import { getSettings } from "@/server/agenda/settings";
+import { recursoPorId } from "@/server/agenda/recursos";
 
 export const dynamic = "force-dynamic";
 
@@ -26,11 +27,26 @@ export const GET = withAuth(async (session, req: Request) => {
 
   const settings = await getSettings(session.organizationId);
   const now = new Date();
+
+  /**
+   * 146 — `?recurso=` para ver la agenda de UNA persona. Sin el parámetro se
+   * responde lo de siempre, y eso importa más que la función nueva: es lo que
+   * reciben las ocho organizaciones que no usan recursos.
+   *
+   * Reprogramar sin esto mostraba de menos: con una agenda compartida, las
+   * citas de la otra directora tapaban huecos que en realidad estaban libres.
+   */
+  const pedido = url.searchParams.get("recurso");
+  const recurso = pedido
+    ? await recursoPorId(session.organizationId, pedido)
+    : null;
+
   const slots = await computeAvailability(session.organizationId, {
     fromISO: from && ISO_DATE.test(from) ? from : undefined,
     toISO: to && ISO_DATE.test(to) ? to : undefined,
     settings,
     now,
+    recurso,
   });
 
   return Response.json({

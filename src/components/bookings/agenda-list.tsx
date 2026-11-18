@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { AlertTriangle, CalendarDays, Sparkles, Video } from "lucide-react";
 import { bookingSegments, hhmm, longDayLabel, spanLabel, type DateRange } from "@/lib/time/calendar";
 import { cn } from "@/lib/utils";
+import { resourceColorClass } from "@/lib/resource-colors";
 import { EmptyState } from "@/components/ui/empty-state";
 import { STATUS_LABEL, bookingTitle, bookingTone, hasDeliveryIssue, type Booking } from "./booking-look";
 
@@ -19,6 +20,7 @@ export function AgendaList({
   today,
   selectedId,
   onSelect,
+  recursos = [],
 }: {
   range: DateRange;
   bookings: Booking[];
@@ -26,6 +28,8 @@ export function AgendaList({
   today: string;
   selectedId: string | null;
   onSelect: (b: Booking) => void;
+  /** 146 — Para pintar de qué agenda es cada cita. Vacío = una sola agenda. */
+  recursos?: { id: string; name: string; color: string | null }[];
 }) {
   const groups = useMemo(() => {
     const map = new Map<string, { booking: Booking; startMin: number; endMin: number }[]>();
@@ -42,6 +46,12 @@ export function AgendaList({
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([day, items]) => ({ day, items: items.sort((a, b) => a.startMin - b.startMin) }));
   }, [bookings, timezone, range.from, range.to]);
+
+  // 146 — Índice por id para pintar el color sin recorrer la lista por cita.
+  const porRecurso = useMemo(
+    () => new Map(recursos.map((r, i) => [r.id, { ...r, indice: i }])),
+    [recursos]
+  );
 
   if (groups.length === 0) {
     return (
@@ -89,6 +99,26 @@ export function AgendaList({
                       )}
                     >
                       <span className="truncate">{bookingTitle(b)}</span>
+                      {/* 146 — De qué agenda es. Solo aparece donde hay más
+                          de una: en las demás no sobra ni un píxel. */}
+                      {(() => {
+                        const r = b.resourceId
+                          ? porRecurso.get(b.resourceId)
+                          : null;
+                        if (!r) return null;
+                        return (
+                          <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-text-3">
+                            <span
+                              aria-hidden
+                              className={cn(
+                                "h-2 w-2 rounded-full",
+                                resourceColorClass(r.color, r.indice)
+                              )}
+                            />
+                            {r.name}
+                          </span>
+                        );
+                      })()}
                       {b.source === "ai" && b.kind === "session" && (
                         <Sparkles aria-label="Agendó la IA" className="h-3.5 w-3.5 shrink-0 text-brand-text" />
                       )}

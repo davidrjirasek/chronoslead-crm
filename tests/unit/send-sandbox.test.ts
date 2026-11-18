@@ -41,6 +41,14 @@ describe("sandbox del Laboratorio en el sender", () => {
     selectRows.length = 0;
   });
 
+  /**
+   * 146 — El límite va explícito, y no es un parche para ganar tiempo. Lo que
+   * tarda es el `await import()` del módulo real, que tiene que ir DESPUÉS de
+   * los `vi.mock` y por eso no se puede izar; el grafo de módulos creció con el
+   * producto y empezó a chocar con los 5 s por defecto. Lo que se comprueba no
+   * cambió ni un ápice. Un guardarraíl que da rojo sin que nadie lo haya roto
+   * enseña a ignorar los rojos, que es lo contrario de para lo que está.
+   */
   it("conversación is_test → lanza sandbox_violation y NO llama a Graph", async () => {
     selectRows.push([
       {
@@ -87,5 +95,5 @@ describe("sandbox del Laboratorio en el sender", () => {
       expect(err).toBeInstanceOf(SendError);
     }
     expect(graphRequest).not.toHaveBeenCalled();
-  });
+  }, 20_000);
 });

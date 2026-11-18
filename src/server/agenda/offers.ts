@@ -11,7 +11,19 @@ import { scoped } from "@/lib/db/tenant";
  * en cada ronda (la vigente es siempre la última) y se limpia al reservar.
  */
 
-export type OfferedSlot = { startUtc: string; label: string };
+export type OfferedSlot = {
+  startUtc: string;
+  label: string;
+  /**
+   * 146 — De qué recurso era este hueco. NULL = la agenda única.
+   *
+   * Viaja con la oferta y no se vuelve a decidir al reservar: el instante y
+   * el recurso son UNA promesa, no dos. Sin esto, un hueco ofrecido para
+   * Mariel podría terminar reservado en la agenda de Rodrigo, que quizá esté
+   * ocupado a esa hora — y la garantía del 015 se quedaría a mitad.
+   */
+  resourceId?: string | null;
+};
 
 /** Reemplaza TODA la oferta de la conversación, en una transacción. */
 export async function replaceOffers(
@@ -38,6 +50,7 @@ export async function replaceOffers(
         conversationId,
         startUtc: new Date(s.startUtc),
         label: s.label,
+        resourceId: s.resourceId ?? null,
       }))
     );
   });
@@ -52,6 +65,7 @@ export async function getOffers(
     .select({
       startUtc: schema.offeredSlot.startUtc,
       label: schema.offeredSlot.label,
+      resourceId: schema.offeredSlot.resourceId,
     })
     .from(schema.offeredSlot)
     .where(
@@ -66,6 +80,7 @@ export async function getOffers(
   return rows.map((r) => ({
     startUtc: r.startUtc.toISOString(),
     label: r.label,
+    resourceId: r.resourceId,
   }));
 }
 

@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
@@ -10,6 +10,7 @@ import {
   type AvailableSlot,
 } from "@/server/agenda/availability";
 import { getSettings, type CalendarSettings } from "@/server/agenda/settings";
+import { recursoPorId, type Recurso } from "@/server/agenda/recursos";
 import {
   clearOffers,
   findOffered,
@@ -40,6 +41,18 @@ import { publish } from "@/server/events/bus";
  * caído, la cita se crea igual con el enlace pendiente — un tercero no puede
  * costarnos la conversión, ni hacernos prometer un enlace que no existe.
  */
+
+/**
+ * 146 — La llave del candado de reserva: estable por organización y recurso.
+ * Sin recurso usa una llave propia, así la agenda única sigue serializándose
+ * consigo misma y no con la de nadie más.
+ */
+export function candadoDeAgenda(
+  organizationId: string,
+  resourceId: string | null
+): string {
+  return `chronoslead:agenda:${organizationId}:${resourceId ?? ""}`;
+}
 
 export type BookingErrorCode =
   | "slot_taken"
@@ -96,6 +109,11 @@ export async function createSessionBooking(input: {
    */
   requireOffer: boolean;
   now?: Date;
+  /**
+   * 146 — En qué agenda va. Solo manda en el camino MANUAL: cuando se exige
+   * oferta previa, el recurso sale de la oferta, no de quien llama.
+   */
+  resourceId?: string | null;
 }): Promise<BookingResult> {
   const db = getDb();
   const settings = await getSettings(input.organizationId);
@@ -134,6 +152,8 @@ export async function createSessionBooking(input: {
   }
   contactName = await getContactName(input.organizationId, contactId);
 
+  let resourceId = input.resourceId ?? null;
+
   // REGLA 1: solo se reserva lo que se ofreció.
   if (input.requireOffer) {
     if (!input.conversationId) {
@@ -143,19 +163,33 @@ export async function createSessionBooking(input: {
       );
     }
     const offers = await getOffers(input.organizationId, input.conversationId);
-    if (!findOffered(offers, input.startUtc)) {
+    const elegida = findOffered(offers, input.startUtc);
+    if (!elegida) {
       throw new BookingError(
         "slot_not_offered",
         "Ese horario no se ofreció en esta conversación",
         offers
       );
     }
+    // 146 — El recurso sale de la OFERTA, no del parámetro. El instante y el
+    // recurso se prometieron juntos; dejar que quien llama los separe sería
+    // reservar en la agenda de otra persona un hueco que nunca fue suyo.
+    resourceId = elegida.resourceId ?? null;
+  }
+
+  const recurso: Recurso | null = resourceId
+    ? await recursoPorId(input.organizationId, resourceId)
+    : null;
+  // El recurso dejó de existir entre ofrecer y reservar: no se inventa otro.
+  if (resourceId && !recurso) {
+    throw new BookingError("not_found", "Ese recurso ya no existe");
   }
 
   // REGLA 2 (primera mitad): el hueco debe seguir libre AHORA.
   const slot = await findSlot(input.organizationId, input.startUtc, {
     now: input.now,
     settings,
+    recurso,
   });
   if (!slot) {
     throw new BookingError(
@@ -163,6 +197,7 @@ export async function createSessionBooking(input: {
       "Ese horario ya no está disponible",
       await refreshOffer(input.organizationId, input.conversationId, {
         now: input.now,
+        recurso,
       })
     );
   }
@@ -181,27 +216,63 @@ export async function createSessionBooking(input: {
 
   let booking: BookingRow;
   try {
-    const inserted = await db
-      .insert(schema.booking)
-      .values({
-        id: newId("booking"),
-        organizationId: input.organizationId,
-        kind: "session",
-        source: input.source === "ai" ? "ai" : "manual",
-        contactId,
-        conversationId: input.conversationId ?? null,
-        leadId: leadRows[0]?.id ?? null,
-        scheduledAt: new Date(slot.startUtc),
-        durationMinutes: settings.slotMinutes,
-        // Copia histórica: si el negocio cambia de conector, esta cita conserva
-        // el que le tocó y sigue hablando con él al moverse o cancelarse.
-        connector: settings.connector,
-        isTest,
-        notes: input.notes ?? null,
-      })
-      .returning();
+    // 146 — El INSERT va dentro de una transacción con un candado por
+    // (organización, recurso). El índice único solo ve instantes IDÉNTICOS;
+    // con duraciones distintas —un bloqueo manual de 90 minutos contra una
+    // sesión de 30— el choque es un solape, y eso un índice no lo expresa.
+    // Con el candado, dos reservas del mismo recurso se forman en fila y la
+    // segunda relee lo ocupado con la primera ya escrita. Recursos distintos
+    // no se esperan entre sí, que es justo lo que esta spec vino a arreglar.
+    const inserted = await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${candadoDeAgenda(
+          input.organizationId,
+          resourceId
+        )}, 0))`
+      );
+      // Releer con el candado puesto: si otra reserva del mismo recurso acaba
+      // de entrar, ahora se ve.
+      const sigueLibre = await findSlot(input.organizationId, input.startUtc, {
+        now: input.now,
+        settings,
+        recurso,
+      });
+      if (!sigueLibre) return null;
+
+      return tx
+        .insert(schema.booking)
+        .values({
+          id: newId("booking"),
+          organizationId: input.organizationId,
+          kind: "session",
+          source: input.source === "ai" ? "ai" : "manual",
+          contactId,
+          conversationId: input.conversationId ?? null,
+          leadId: leadRows[0]?.id ?? null,
+          scheduledAt: new Date(slot.startUtc),
+          durationMinutes: settings.slotMinutes,
+          // Copia histórica: si el negocio cambia de conector, esta cita conserva
+          // el que le tocó y sigue hablando con él al moverse o cancelarse.
+          connector: settings.connector,
+          resourceId,
+          isTest,
+          notes: input.notes ?? null,
+        })
+        .returning();
+    });
+    if (!inserted) {
+      throw new BookingError(
+        "slot_taken",
+        "Ese horario acaba de ocuparse",
+        await refreshOffer(input.organizationId, input.conversationId, {
+          now: input.now,
+          recurso,
+        })
+      );
+    }
     booking = inserted[0]!;
   } catch (err) {
+    if (err instanceof BookingError) throw err;
     // REGLA 2 (segunda mitad): la llave única cierra la carrera exacta. Dos
     // confirmaciones simultáneas del mismo instante — la perdedora sale por
     // aquí, sin cita creada.
@@ -211,6 +282,7 @@ export async function createSessionBooking(input: {
         "Ese horario acaba de ocuparse",
         await refreshOffer(input.organizationId, input.conversationId, {
           now: input.now,
+          recurso,
         })
       );
     }
@@ -299,11 +371,18 @@ export async function rescheduleBooking(input: {
   }
 
   const settings = await getSettings(input.organizationId);
+  // 146 — Mover una cita NO la cambia de agenda: sigue siendo la entrevista
+  // con el mismo director, en otra hora. Por eso la disponibilidad se busca
+  // contra SU recurso, el que ya tenía.
+  const recurso: Recurso | null = booking.resourceId
+    ? await recursoPorId(input.organizationId, booking.resourceId)
+    : null;
   // excludeBookingId: la propia cita no debe bloquearse a sí misma.
   const slot = await findSlot(input.organizationId, input.startUtc, {
     excludeBookingId: booking.id,
     now: input.now,
     settings,
+    recurso,
   });
   if (!slot) {
     throw new BookingError("slot_taken", "Ese horario ya no está disponible");
@@ -753,14 +832,19 @@ async function withConnector(
 async function refreshOffer(
   organizationId: string,
   conversationId: string | null | undefined,
-  opts: { now?: Date }
+  opts: { now?: Date; recurso?: Recurso | null }
 ): Promise<OfferedSlot[]> {
   let fresh: AvailableSlot[] = [];
   try {
-    fresh = (await computeAvailability(organizationId, { now: opts.now })).slice(
-      0,
-      FRESH_ALTERNATIVES
-    );
+    // 146 — Las alternativas son de la MISMA agenda que se acaba de ocupar.
+    // Re-ofrecer huecos del otro director después de que se llenó el de este
+    // sería mandar a la familia con la persona equivocada sin avisar.
+    fresh = (
+      await computeAvailability(organizationId, {
+        now: opts.now,
+        recurso: opts.recurso,
+      })
+    ).slice(0, FRESH_ALTERNATIVES);
   } catch (err) {
     console.warn(`[agenda] no pude calcular alternativas: ${err}`);
     return [];
@@ -768,6 +852,7 @@ async function refreshOffer(
   const offers: OfferedSlot[] = fresh.map((s) => ({
     startUtc: s.startUtc,
     label: s.label,
+    resourceId: opts.recurso?.id ?? null,
   }));
   if (conversationId && offers.length > 0) {
     await replaceOffers(organizationId, conversationId, offers).catch((err) => {

@@ -9,6 +9,11 @@ import {
   proximaCitaDeLaConversacion,
   rescheduleForConversation,
 } from "@/server/agenda/service";
+import {
+  recursosActivos,
+  resolverRecurso,
+  type Recurso,
+} from "@/server/agenda/recursos";
 
 /**
  * 015 — Lo que el agente incluido puede hacer con la agenda.
@@ -38,12 +43,34 @@ export async function offerSlots(input: {
   organizationId: string;
   conversationId: string;
   intro?: string;
+  /** 146 — El nombre que escribió el modelo; se resuelve contra los reales. */
+  resource?: string;
 }): Promise<AgendaTurn> {
   const settings = await getSettings(input.organizationId);
   const now = new Date();
+
+  // 146 — Lista vacía si la organización no usa recursos, y entonces todo lo
+  // de abajo se comporta exactamente como antes de esta spec.
+  const recursos = await recursosActivos(input.organizationId);
+  let recurso: Recurso | null = null;
+  if (recursos.length > 0) {
+    recurso = resolverRecurso(input.resource, recursos);
+    if (!recurso) {
+      // No se adivina. Preguntar cuesta un mensaje; acertar mal cuesta la cita
+      // y la confianza de quien esperaba a la otra persona.
+      return {
+        ok: false,
+        text: `Para darte los horarios correctos necesito saber con quién sería: ${recursos
+          .map((r) => r.name)
+          .join(" o ")}.`,
+      };
+    }
+  }
+
   const all = await computeAvailability(input.organizationId, {
     settings,
     now,
+    recurso,
   });
   const spread = spreadByDay(all, {
     timezone: settings.timezone,
@@ -67,7 +94,13 @@ export async function offerSlots(input: {
   await replaceOffers(
     input.organizationId,
     input.conversationId,
-    spread.map((s) => ({ startUtc: s.startUtc, label: s.label }))
+    spread.map((s) => ({
+      startUtc: s.startUtc,
+      label: s.label,
+      // 146 — El recurso viaja con la oferta: al reservar, el instante ya
+      // sabe de quién era.
+      resourceId: recurso?.id ?? null,
+    }))
   );
 
   const shown = spread.slice(0, SHOWN);
@@ -83,7 +116,12 @@ export async function bookSlot(input: {
   confirmation?: string;
   /** El cliente confirmó que quiere una cita ADEMÁS de la que ya tiene. */
   allowSecond?: boolean;
-}): Promise<AgendaTurn & { label?: string; enlace?: string | null }> {
+}): Promise<AgendaTurn & {
+  label?: string;
+  enlace?: string | null;
+  /** 146 — De quién quedó la cita: el aviso lo necesita para saber a quién avisar. */
+  resourceId?: string | null;
+}> {
   // 142 — Antes de crear, mirar si esta persona ya tiene una cita abierta.
   //
   // El 10-nov-2026 una clienta con turno para el jueves pidió agendar otra
@@ -121,6 +159,7 @@ export async function bookSlot(input: {
       return {
         ok: true,
         label: result.label,
+        resourceId: result.booking.resourceId,
         // 145: el enlace sube con el turno porque el aviso al equipo lo
         // necesita. Quien atiende tiene que poder entrar a la misma reunión.
         enlace: result.meetingLink,
@@ -132,10 +171,16 @@ export async function bookSlot(input: {
       return {
         ok: true,
         label: result.label,
+        resourceId: result.booking.resourceId,
         text: `${base}\nEn un momento te comparto el enlace por aquí.`,
       };
     }
-    return { ok: true, label: result.label, text: base };
+    return {
+      ok: true,
+      label: result.label,
+      resourceId: result.booking.resourceId,
+      text: base,
+    };
   } catch (err) {
     if (!(err instanceof BookingError)) throw err;
 
@@ -171,7 +216,11 @@ export async function rescheduleSlot(input: {
   conversationId: string;
   startUtc: string;
   confirmation?: string;
-}): Promise<AgendaTurn & { label?: string; anterior?: string }> {
+}): Promise<AgendaTurn & {
+  label?: string;
+  anterior?: string;
+  resourceId?: string | null;
+}> {
   try {
     const result = await rescheduleForConversation({
       organizationId: input.organizationId,
@@ -184,10 +233,16 @@ export async function rescheduleSlot(input: {
       return {
         ok: true,
         label: result.label,
+        resourceId: result.booking.resourceId,
         text: `${base}\nEnlace: ${result.meetingLink}`,
       };
     }
-    return { ok: true, label: result.label, text: base };
+    return {
+      ok: true,
+      label: result.label,
+      resourceId: result.booking.resourceId,
+      text: base,
+    };
   } catch (err) {
     if (!(err instanceof BookingError)) throw err;
 
@@ -232,7 +287,7 @@ export async function cancelSlot(input: {
   organizationId: string;
   conversationId: string;
   confirmation?: string;
-}): Promise<AgendaTurn & { label?: string }> {
+}): Promise<AgendaTurn & { label?: string; resourceId?: string | null }> {
   try {
     const result = await cancelForConversation({
       organizationId: input.organizationId,
@@ -241,7 +296,12 @@ export async function cancelSlot(input: {
     const base =
       input.confirmation?.trim() ||
       `Listo, cancelé tu cita de ${result.label}. Cuando quieras retomarla, avisame y la agendamos.`;
-    return { ok: true, label: result.label, text: base };
+    return {
+      ok: true,
+      label: result.label,
+      resourceId: result.booking.resourceId,
+      text: base,
+    };
   } catch (err) {
     if (!(err instanceof BookingError)) throw err;
     if (err.code === "not_found") {

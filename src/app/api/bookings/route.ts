@@ -6,6 +6,7 @@ import { listBookings, listBookingsInRange } from "@/server/agenda/queries";
 import { getSettings } from "@/server/agenda/settings";
 import { createBlock, createSessionBooking } from "@/server/agenda/service";
 import { bookingErrorResponse, bookingPayload } from "@/server/agenda/http";
+import { recursosActivos } from "@/server/agenda/recursos";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,14 @@ export const GET = withAuth(async (session, req: Request) => {
     weeklyHours: settings.weeklyHours,
     range: query.range,
     truncated,
+    // 146 — Quién atiende, para pintar cada cita de su color y poder filtrar.
+    // Lista vacía en las organizaciones que no usan recursos, y entonces la
+    // pantalla es exactamente la de antes.
+    recursos: (await recursosActivos(session.organizationId)).map((r) => ({
+      id: r.id,
+      name: r.name,
+      color: r.color,
+    })),
   });
 });
 
@@ -52,6 +61,12 @@ const postSchema = z.discriminatedUnion("kind", [
     conversationId: z.string().min(1).nullish(),
     startUtc: z.string().min(1),
     notes: z.string().nullish(),
+    /**
+     * 146 — En qué agenda va. El operador SÍ lo elige: no viene de una oferta
+     * previa, viene de la pantalla, donde está mirando la agenda de alguien.
+     * Nulo o ausente = la agenda única de siempre.
+     */
+    resourceId: z.string().min(1).nullish(),
   }),
   z.object({
     kind: z.literal("block"),
@@ -95,6 +110,7 @@ export const POST = withAuth(async (session, req: Request) => {
       notes: body.data.notes ?? null,
       source: "manual",
       requireOffer: false,
+      resourceId: body.data.resourceId ?? null,
     });
     return Response.json(
       { booking: { id: result.booking.id }, ...bookingPayload(result) },

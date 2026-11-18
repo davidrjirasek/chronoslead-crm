@@ -88,8 +88,14 @@ function chain(rows: unknown[]) {
   return c;
 }
 
-vi.mock("@/lib/db", () => ({
-  getDb: () => ({
+/**
+ * 146 — El INSERT pasó a correr dentro de una transacción con un candado por
+ * recurso. El doble tiene que modelar eso o el código real nunca llega al
+ * catch del 23505, que es justo lo que esta prueba vigila: `transaction` le
+ * presta el mismo doble al callback, y `execute` traga el `pg_advisory_xact_lock`.
+ */
+function dbDoble(): Record<string, unknown> {
+  const db: Record<string, unknown> = {
     select: () => chain(selectRows.shift() ?? []),
     insert: () => ({
       values: (v: unknown) => ({
@@ -129,7 +135,14 @@ vi.mock("@/lib/db", () => ({
         }),
       }),
     }),
-  }),
+    execute: async () => [],
+    transaction: async (cb: (tx: unknown) => Promise<unknown>) => cb(db),
+  };
+  return db;
+}
+
+vi.mock("@/lib/db", () => ({
+  getDb: () => dbDoble(),
   schema: {
     booking: {},
     conversation: { organizationId: "organizationId", id: "id" },

@@ -27,6 +27,7 @@ import {
 import { addDaysISO, dayIsoInTz } from "@/lib/time/slots";
 import type { WeeklyHours } from "@/server/agenda/settings";
 import { cn } from "@/lib/utils";
+import { resourceColorClass } from "@/lib/resource-colors";
 import { AgendaList } from "./agenda-list";
 import { BlockDialog } from "./block-dialog";
 import { BookingDrawer, type ActResult } from "./booking-drawer";
@@ -54,6 +55,9 @@ const TESTS_KEY = "vocero:citas:pruebas";
 const SSE_COALESCE_MS = 250;
 
 type Loaded = { key: string; bookings: Booking[]; truncated: boolean };
+
+/** 146 — Quién atiende. Lista vacía = esta organización tiene una sola agenda. */
+type RecursoDeCalendario = { id: string; name: string; color: string | null };
 
 function readPref(key: string): string | null {
   try {
@@ -103,6 +107,9 @@ export function BookingsClient({
   const [blockDraft, setBlockDraft] = useState<{ day: string; time: string } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [now, setNow] = useState<number | null>(null);
+  const [recursos, setRecursos] = useState<RecursoDeCalendario[]>([]);
+  /** null = «Todos». Solo se usa donde hay recursos. */
+  const [recursoFiltro, setRecursoFiltro] = useState<string | null>(null);
   const seq = useRef(0);
 
   useEffect(() => {
@@ -143,6 +150,7 @@ export function BookingsClient({
           timezone: string;
           weeklyHours: WeeklyHours;
           truncated?: boolean;
+          recursos?: RecursoDeCalendario[];
         } | null)
       : null;
     // Varias navegaciones seguidas: solo se pinta la respuesta del último rango.
@@ -155,6 +163,7 @@ export function BookingsClient({
     setLoadError(false);
     setTimezone(data.timezone);
     setWeeklyHours(data.weeklyHours);
+    setRecursos(data.recursos ?? []);
     setLoaded({ key, bookings: data.bookings, truncated: Boolean(data.truncated) });
   }, []);
 
@@ -191,10 +200,13 @@ export function BookingsClient({
   const nowMinutes = now === null ? 0 : wallClock(new Date(now), timezone).minutes;
 
   const all = useMemo(() => loaded?.bookings ?? [], [loaded]);
-  const visible = useMemo(
-    () => calendarVisible(all, { showCancelled, showTests }),
-    [all, showCancelled, showTests]
-  );
+  const visible = useMemo(() => {
+    const base = calendarVisible(all, { showCancelled, showTests });
+    // 146 — Filtrar por recurso es lo que convierte UN calendario en «el de
+    // Mariel» o «el de Rodrigo» sin dibujar dos.
+    if (!recursoFiltro) return base;
+    return base.filter((b) => b.resourceId === recursoFiltro);
+  }, [all, showCancelled, showTests, recursoFiltro]);
   const counts = useMemo(() => {
     const inRange = all.filter((b) => {
       const day = dayIsoInTz(new Date(b.scheduledAtUtc), timezone);
@@ -353,6 +365,49 @@ export function BookingsClient({
             }}
           />
 
+          {/* 146 — Una sola barra, y solo donde hay más de una agenda. El
+              calendario es el mismo; lo que cambia es de quién se mira. */}
+          {recursos.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 px-4 pb-2 sm:px-6">
+              <button
+                type="button"
+                onClick={() => setRecursoFiltro(null)}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                  recursoFiltro === null
+                    ? "bg-brand text-brand-fg"
+                    : "bg-subtle text-text-2 hover:bg-accent"
+                )}
+              >
+                Todos
+              </button>
+              {recursos.map((r, i) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() =>
+                    setRecursoFiltro(recursoFiltro === r.id ? null : r.id)
+                  }
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                    recursoFiltro === r.id
+                      ? "bg-brand text-brand-fg"
+                      : "bg-subtle text-text-2 hover:bg-accent"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "h-2 w-2 rounded-full",
+                      resourceColorClass(r.color, i)
+                    )}
+                    aria-hidden
+                  />
+                  {r.name}
+                </button>
+              ))}
+            </div>
+          )}
+
           {(loadError || loaded?.truncated || notice) && (
             <div className="space-y-1 px-4 pb-2 sm:px-6">
               {loadError && (
@@ -392,6 +447,7 @@ export function BookingsClient({
                 onSelect={select}
                 onEmptySlot={(day, time) => openBlock(day, time)}
                 onOpenDay={openDay}
+                recursos={recursos}
               />
             ) : view === "mes" ? (
               <MonthGrid
@@ -412,6 +468,7 @@ export function BookingsClient({
                 today={today}
                 selectedId={selectedId}
                 onSelect={select}
+                recursos={recursos}
               />
             )}
           </div>

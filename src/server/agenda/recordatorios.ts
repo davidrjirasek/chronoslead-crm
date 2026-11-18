@@ -95,6 +95,8 @@ export async function citasPorRecordar(
       // antes es justo cuando hace falta, y sin esto había que ir a buscar
       // el mensaje de cuando se agendó.
       meetingLink: schema.booking.meetingLink,
+      // 146: de qué agenda es, para recordarle a quien la va a atender.
+      resourceId: schema.booking.resourceId,
       reminderTeamAt: schema.booking.reminderTeamAt,
       reminderClientAt: schema.booking.reminderClientAt,
     })
@@ -154,6 +156,7 @@ export async function tandaDeRecordatorios(
           hora,
           etiqueta,
           enlace: cita.meetingLink,
+          resourceId: cita.resourceId,
         });
         mandados += 1;
       }

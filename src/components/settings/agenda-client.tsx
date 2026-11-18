@@ -18,6 +18,7 @@ import {
   type ConnectorId,
 } from "@/lib/agenda-connectors";
 import { ConnectorCredentials } from "@/components/settings/connector-credentials";
+import { RecursosCard } from "@/components/settings/recursos-card";
 
 /**
  * 015 — Ajustes → Agenda: cuándo atiende el negocio y cómo se entrega la
@@ -164,6 +165,10 @@ export function AgendaClient() {
 
   return (
     <div className="max-w-2xl space-y-4">
+      {/* 146 — Se dibuja sola solo si esta organización usa agenda por
+          recurso; si no, no devuelve nada. */}
+      <RecursosCard />
+
       <Card>
         <CardHeader>
           <CardTitle>Horario de atención</CardTitle>

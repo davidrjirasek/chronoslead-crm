@@ -1894,6 +1894,93 @@ Samantha— así que avisar a dos o tres personas, ruteado por grado, todavía n
 puede. Va junto con la agenda de recursos, que es la otra mitad del mismo
 problema: dos directores, dos agendas, dos listas de avisos.
 
+### Dos agendas en una instancia que servía a nueve (2026-11-18, spec 146)
+
+Colegio Cerritos tiene **dos directores** que dan entrevistas de admisión, y el
+grado del alumno decide cuál. ChronosLead tenía **una agenda por
+organización**: que Mariel ocupara el martes a las 10:00 dejaba ocupado también
+a Rodrigo, que estaba libre. La mitad del cupo de la semana desaparecía.
+
+No era una hipótesis: son los dos calendarios que el colegio opera hoy en Go
+High Level, con el mismo horario y el mismo cupo cada uno. Migrarlos tal como
+estaba la agenda habría sido entregarles la mitad de lo que ya tenían.
+
+**La pregunta que decidió el diseño la hizo el dueño:** «esto solamente vamos a
+aplicarlo en el colegio Cerritos (…) no va a estar activo para los demás, sino
+que eso cada uno, o sea, yo tengo que pedir activar para los demás».
+
+**Y ahí apareció la trampa.** La bandera `AGENDA` que existía es una **variable
+de entorno**, y una sola instancia sirve a los nueve clientes: lo que se prende
+por entorno se prende para todos. Por eso hoy los nueve tienen pantalla de
+Citas. Usar ese mismo mecanismo para la agenda de recursos habría hecho
+exactamente lo que el dueño pidió evitar.
+
+El interruptor nuevo es por ORGANIZACIÓN —`organization.agenda_resources`— y lo
+prende el operador desde el panel de superadmin. **No se agregó una segunda
+bandera de despliegue encima**: ADR-002 ya había descartado esa ceremonia
+(«una bandera extra cuando la configuración ya da el opt-in es ceremonia sin
+garantía nueva»), y el opt-in real acá es el interruptor por cliente.
+
+**Lo que se trajo y lo que no.** La cantera es la vertical `barberia` del
+paquete de Kevin (MIT, autorizado el 30-10-2026): de ahí salen el diseño del
+esquema, el `pg_advisory_xact_lock` por recurso y la paleta de colores. Se
+trajo `agenda_resource`; **no** se trajo `agenda_service` —el catálogo con
+duración y precio— porque Cerritos agenda dos entrevistas de 30 minutos que no
+se cobran, y una pantalla de precios que nadie llena es trabajo que todavía no
+hace falta.
+
+**La decisión más fina: el grado elige, pero el motor no sabe de colegios.**
+Cada recurso lleva un `criterio` en texto —«cuando el alumno va de 4.º grado en
+adelante»— que viaja al prompt. El modelo nombra el recurso, el servidor
+resuelve nombre → id con la misma tolerancia que `resolveStage()`, y **si no
+resuelve, pregunta**: nunca adivina entre dos, porque elegir mal manda a la
+familia con la persona equivocada.
+
+**La garantía que más costó pensar:** el instante y la persona se prometen
+JUNTOS. `offered_slot` ganó `resource_id`, y al reservar el recurso sale de la
+oferta, no del parámetro. Sin eso, un hueco ofrecido para Mariel podía terminar
+en la agenda de Rodrigo —que quizás estaba ocupado— y nadie se enteraba hasta
+el día de la entrevista.
+
+**El índice único pasó a ser por recurso**, con `coalesce(resource_id,'')`
+adentro: con todo en NULL es exactamente el índice de antes, y por eso una
+organización sin recursos no nota nada. Lo que un índice no ve —solapes con
+duraciones distintas— lo cierra un candado por `(organización, recurso)`.
+
+**Los avisos dejaron de ser uno.** El destinatario de la organización va
+siempre y primero; cada recurso suma los suyos, deduplicados por teléfono
+normalizado. En Cerritos: Samantha siempre, más la directora y la psicóloga
+hasta 3.º grado, más el director desde 4.º. Cada uno en su propio `try`: que
+falle el aviso de una persona no puede dejar sin el suyo a las demás.
+
+#### Lo que se probó, y cómo
+
+| Qué | Cómo | Resultado |
+|---|---|---|
+| Dos citas a la misma hora, distinto recurso | `pnpm test:e2e:recursos` contra la app viva | **14/14** |
+| La oferta recuerda el recurso, y reservar la respeta | `pnpm test:ensayo:recursos`, módulos reales contra la base real | **12/12** |
+| Las dos pantallas, encendida y apagada | `pnpm test:e2e:recursos:ui`, Chromium de verdad | **15/15** |
+| El bucle de avisos: tres y dos, sin duplicados, tolerante a fallos | `tests/unit/aviso-a-varios.test.ts` | 7 |
+| Lo puro: resolver por nombre, horario heredado, prompt sin recursos | `tests/unit/agenda-de-recursos.test.ts` | 17 |
+
+**El E2E encontró un agujero real mientras se escribía:** la API manual no
+dejaba elegir recurso, así que el operador no podía agendar con un director
+concreto desde la pantalla. Se arregló (`resourceId` en `POST /api/bookings`) y
+recién entonces pasó la prueba. Es la razón de escribir la prueba antes de
+cantar victoria.
+
+**Lo que quedó pendiente de verificación humana:** el ruteo decidido por el
+modelo real y los tres avisos saliendo a los teléfonos reales, sobre Cerritos.
+Depende de que su WhatsApp esté conectado, y va último de la cola porque tiene
+campaña corriendo.
+
+**Dos cosas del entorno que vale anotar.** `scripts/e2e-calendario.mjs` falla en
+el login con 401 y **no es regresión**: viene del Vocero de un solo negocio y se
+da de alta solo, cosa que `EDITION=cloud` no permite. Y los guiones de
+Playwright no pueden esperar `networkidle`: la app mantiene abierto el stream
+de eventos, así que nunca llega — hay que esperar por el texto que tiene que
+aparecer.
+
 ### Pendiente de esta spec
 
 - **La tabla `member` NO tiene índice único sobre (organización, usuario).** Se
@@ -2832,12 +2919,15 @@ dio el OK y ahí sí se integró. La regla sigue igual: `main` lleva su permiso.
   para un cliente específico, no para Creativo ni para todas las versiones de
   ChronosLead». Queda como función a pedido de un cliente, no de plataforma.
   El análisis (A/B/C y los costos) se conserva arriba para cuando se pida.
-- **`send-sandbox.test.ts` se cae si algo más usa la máquina.** Tarda ~4 s él
-  solo y el 7-nov dio rojo por correrlo junto a un `build`; aislado pasa. El
-  guardián que vigila (una conversación `is_test` jamás toca la API real) está
-  intacto, pero un test que depende de la carga de la máquina enseña a
-  desconfiar de los rojos, que es justo lo contrario de lo que tiene que hacer.
-  **No correr `build` y `test` en paralelo** mientras siga así
+- ~~**`send-sandbox.test.ts` se cae si algo más usa la máquina**~~ — **ARREGLADO**
+  el 18-nov. Para entonces ya no era intermitente: fallaba **siempre**, y
+  también `lab-sandbox.test.ts`. Lo que tardaba era el `await import()` del
+  módulo real, que tiene que ir después de los `vi.mock` y por eso no se puede
+  izar; el grafo de módulos creció con el producto hasta pasarse de los 5 s por
+  defecto. Los dos llevan ahora un límite explícito de 20 s. Lo que comprueban
+  no cambió: una conversación `is_test` sigue sin poder tocar la API real.
+  Se arregló al cerrar la 146, con el árbol limpio comprobado — el rojo era
+  anterior
 - **«Vocero» en pantallas que ve el CLIENTE**, en un producto de marca blanca.
   Visto el 7-nov conectando WhatsApp por Zernio: Ajustes → WhatsApp dice «Con
   esa llave **Vocero** encuentra tu número de WhatsApp en Zernio». El
@@ -2866,12 +2956,13 @@ dio el OK y ahí sí se integró. La regla sigue igual: `main` lleva su permiso.
   organización tiene un solo `alertPhone`/`alertName`. Hacen falta: una lista de
   destinatarios por organización, y un criterio de ruteo —en Cerritos, el grado—
   que elija a quién se avisa. Los cuatro números están en el brief del
-  cliente, no acá. Va junto con la agenda de recursos
-- **Traer la agenda de recursos del paquete de Kevin** — medida y decidida el
-  30-oct (ver la entrada de ese día). Va **después de las altas**, por decisión
-  del dueño. Carril completo: toca el esquema. Se despliega con la bandera
-  apagada y se prende solo en Cerritos. 17 archivos nuevos, 8 compartidos a
-  fusionar (`service.ts` es el único serio), 1 migración aditiva
+  cliente, no acá. — **HECHO** el 18-nov con la spec 146: los destinatarios
+  van en el recurso y se suman al de la organización
+- ~~**Traer la agenda de recursos del paquete de Kevin**~~ — **HECHA** el
+  18-nov (spec 146). Salió más chica de lo medido: no se trajo el catálogo de
+  servicios, y `service.ts` se fusionó con un parche acotado en vez de los
+  531 renglones previstos. **Falta probarla en vivo sobre Cerritos**, que
+  depende de su WhatsApp
 - **Lo escrito antes de la hidratación se pierde** en los campos controlados
   (login y elegir contraseña): quien teclea su contraseña en el primer segundo
   la ve desaparecer. Detectado el 16-nov probando el ojito. Es anterior y no

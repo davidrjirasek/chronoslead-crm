@@ -14,6 +14,7 @@ import {
 import type { WeeklyHours } from "@/server/agenda/settings";
 import { cn } from "@/lib/utils";
 import { bookingTitle, bookingTone, hasDeliveryIssue, type Booking } from "./booking-look";
+import { resourceColorClass } from "@/lib/resource-colors";
 
 /**
  * 215 — La rejilla de horas de las vistas Día y Semana, como Google Calendar:
@@ -46,6 +47,7 @@ export function TimeGrid({
   onSelect,
   onEmptySlot,
   onOpenDay,
+  recursos = [],
 }: {
   days: string[];
   bookings: Booking[];
@@ -61,6 +63,11 @@ export function TimeGrid({
   onSelect: (b: Booking) => void;
   onEmptySlot: (day: string, time: string) => void;
   onOpenDay: (day: string) => void;
+  /**
+   * 146 — Quién atiende, para marcar cada cita con el color de su agenda.
+   * Vacío = una sola agenda, y entonces la rejilla es la de siempre.
+   */
+  recursos?: { id: string; color: string | null }[];
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrolledFor = useRef<string | null>(null);
@@ -160,6 +167,7 @@ export function TimeGrid({
             selectedId={selectedId}
             onSelect={onSelect}
             onEmptySlot={onEmptySlot}
+            recursos={recursos}
           />
         ))}
       </div>
@@ -176,6 +184,7 @@ function DayColumn({
   selectedId,
   onSelect,
   onEmptySlot,
+  recursos = [],
 }: {
   day: string;
   placed: Placed[];
@@ -186,6 +195,7 @@ function DayColumn({
   selectedId: string | null;
   onSelect: (b: Booking) => void;
   onEmptySlot: (day: string, time: string) => void;
+  recursos?: { id: string; color: string | null }[];
 }) {
   return (
     <div
@@ -216,6 +226,7 @@ function DayColumn({
           narrow={narrow}
           selected={p.booking.id === selectedId}
           onSelect={onSelect}
+          recursos={recursos}
         />
       ))}
 
@@ -237,11 +248,13 @@ function EventBlock({
   narrow,
   selected,
   onSelect,
+  recursos = [],
 }: {
   placed: Placed;
   narrow: boolean;
   selected: boolean;
   onSelect: (b: Booking) => void;
+  recursos?: { id: string; color: string | null }[];
 }) {
   const { booking: b, startMin, endMin, col, cols } = placed;
   const top = (startMin / 60) * HOUR_PX;
@@ -281,6 +294,22 @@ function EventBlock({
         paddingTop: compact ? Math.max(1, (height - 14) / 2) : undefined,
       }}
     >
+      {/* 146 — La franja de la izquierda dice de quién es la agenda. El
+          relleno sigue diciendo el ESTADO, que es lo que ya se leía: se suma
+          una dimensión, no se reemplaza la que había. */}
+      {(() => {
+        const i = recursos.findIndex((r) => r.id === b.resourceId);
+        if (i < 0) return null;
+        return (
+          <span
+            aria-hidden
+            className={cn(
+              "absolute inset-y-0 left-0 w-[3px]",
+              resourceColorClass(recursos[i]!.color, i)
+            )}
+          />
+        );
+      })()}
       <span className="flex min-w-0 max-w-full items-center gap-1 font-semibold">
         {b.source === "ai" && b.kind === "session" && (
           <Sparkles aria-label="Agendó la IA" className="h-3 w-3 shrink-0" strokeWidth={2} />
