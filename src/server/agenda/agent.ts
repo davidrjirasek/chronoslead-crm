@@ -83,7 +83,7 @@ export async function bookSlot(input: {
   confirmation?: string;
   /** El cliente confirmó que quiere una cita ADEMÁS de la que ya tiene. */
   allowSecond?: boolean;
-}): Promise<AgendaTurn & { label?: string }> {
+}): Promise<AgendaTurn & { label?: string; enlace?: string | null }> {
   // 142 — Antes de crear, mirar si esta persona ya tiene una cita abierta.
   //
   // El 10-nov-2026 una clienta con turno para el jueves pidió agendar otra
@@ -121,6 +121,9 @@ export async function bookSlot(input: {
       return {
         ok: true,
         label: result.label,
+        // 145: el enlace sube con el turno porque el aviso al equipo lo
+        // necesita. Quien atiende tiene que poder entrar a la misma reunión.
+        enlace: result.meetingLink,
         text: `${base}\nEnlace: ${result.meetingLink}`,
       };
     }

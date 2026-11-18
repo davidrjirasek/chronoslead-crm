@@ -22,6 +22,25 @@ export const PLANTILLAS_DE_CITA = {
   cancelada: "cita_cancelada_equipo",
 } as const;
 
+/**
+ * 145 — La misma plantilla, con el enlace de la reunión adentro.
+ *
+ * El 17-nov-2026 el dueño preguntó si quien atiende recibía el enlace además
+ * del día y la hora. No lo recibía: cuando se escribieron las plantillas
+ * ninguna instancia tenía conector, así que no había enlace que poner. Con
+ * Zoom conectado, Nathalia sabía CUÁNDO era la reunión pero no DÓNDE.
+ *
+ * Son plantillas aparte y no una edición de las otras por dos razones. Editar
+ * una aprobada la manda de vuelta a revisión de Meta —con límite de una vez
+ * cada 24 h— y durante ese rato el aviso queda en el aire. Y sobre todo:
+ * **una instancia sin conector no tiene enlace que poner**, y Meta rechaza
+ * una plantilla con una variable vacía. Con las dos versiones, cada
+ * organización usa la que puede.
+ */
+export const PLANTILLAS_CON_ENLACE = {
+  agendada: "cita_agendada_equipo_con_enlace",
+} as const;
+
 export type EventoDeCita = keyof typeof PLANTILLAS_DE_CITA;
 
 /**
@@ -66,10 +85,19 @@ export function variablesDeCita(opts: {
   cuando: string;
   /** Solo en `reprogramada`: dónde estaba antes. */
   cuandoAntes?: string;
+  /** 145 — El enlace de la reunión, cuando la plantilla lo lleva. */
+  enlace?: string | null;
 }): string[] {
   const destino = opts.nombreDestino?.trim() || "equipo";
   const quien = nombreDelContacto(opts.nombreDelContacto);
   const tel = telefonoDelAviso(opts.telefonoDelContacto);
+
+  // 145 — «… para el {{3}}. Enlace de la reunión: {{4}}. Su teléfono es
+  //  {{5}} …». El enlace va ANTES del teléfono: es lo que la persona
+  //  necesita primero para entrar a la reunión.
+  if (opts.evento === "agendada" && opts.enlace?.trim()) {
+    return [destino, quien, opts.cuando, opts.enlace.trim(), tel];
+  }
 
   if (opts.evento === "reprogramada") {
     // «Hola {{1}}: se reprogramó la cita con {{2}}. Era el {{3}} y pasó al
@@ -94,6 +122,32 @@ import { getOrCreateContactByIdentity } from "@/server/inbox/identity";
 import { getOrCreateConversation } from "@/server/inbox/ingest";
 import { sendTemplate } from "@/server/whatsapp/templates";
 
+/**
+ * 145 — Busca una plantilla aprobada por nombre. Null si no está, para que
+ * quien llama pueda probar la siguiente en vez de quedarse sin aviso.
+ */
+async function plantillaAprobada(
+  organizationId: string,
+  nombre: string
+): Promise<{ id: string; name: string } | null> {
+  const db = getDb();
+  const filas = await db
+    .select({ id: schema.template.id, name: schema.template.name })
+    .from(schema.template)
+    .where(
+      scoped(
+        schema.template.organizationId,
+        organizationId,
+        and(
+          eq(schema.template.name, nombre),
+          eq(schema.template.status, "approved")
+        )!
+      )
+    )
+    .limit(1);
+  return filas[0] ?? null;
+}
+
 export async function avisarDeCita(opts: {
   organizationId: string;
   /** La conversación del CLIENTE: de ella salen nombre, teléfono y si es de prueba. */
@@ -101,6 +155,8 @@ export async function avisarDeCita(opts: {
   evento: EventoDeCita;
   cuando: string;
   cuandoAntes?: string;
+  /** 145 — El enlace de la reunión, si la cita lo tiene. */
+  enlace?: string | null;
 }): Promise<void> {
   try {
     const db = getDb();
@@ -146,28 +202,33 @@ export async function avisarDeCita(opts: {
       return;
     }
 
-    const nombrePlantilla = PLANTILLAS_DE_CITA[opts.evento];
-    const plantillas = await db
-      .select({ id: schema.template.id })
-      .from(schema.template)
-      .where(
-        scoped(
-          schema.template.organizationId,
+    // 145 — Con enlace si lo hay Y la plantilla está aprobada; si no, la de
+    // siempre. Así el despliegue no tiene que esperar a que Meta revise: el
+    // día que apruebe, el aviso empieza a llevar el enlace solo.
+    const conEnlace =
+      opts.enlace?.trim() &&
+      opts.evento in PLANTILLAS_CON_ENLACE
+        ? PLANTILLAS_CON_ENLACE[opts.evento as keyof typeof PLANTILLAS_CON_ENLACE]
+        : null;
+
+    const plantilla = conEnlace
+      ? (await plantillaAprobada(opts.organizationId, conEnlace)) ??
+        (await plantillaAprobada(
           opts.organizationId,
-          and(
-            eq(schema.template.name, nombrePlantilla),
-            eq(schema.template.status, "approved")
-          )!
-        )
-      )
-      .limit(1);
-    const plantilla = plantillas[0];
+          PLANTILLAS_DE_CITA[opts.evento]
+        ))
+      : await plantillaAprobada(
+          opts.organizationId,
+          PLANTILLAS_DE_CITA[opts.evento]
+        );
+
     if (!plantilla) {
       console.warn(
-        `[aviso-cita] ${opts.organizationId}: sin plantilla "${nombrePlantilla}" aprobada; no se avisa`
+        `[aviso-cita] ${opts.organizationId}: sin plantilla aprobada para "${opts.evento}"; no se avisa`
       );
       return;
     }
+    const llevaEnlace = plantilla.name === conEnlace;
 
     // El destinatario es un contacto más del CRM: así el aviso queda en la
     // bandeja y se ve a quién se le avisó y cuándo.
@@ -195,6 +256,7 @@ export async function avisarDeCita(opts: {
         telefonoDelContacto: conv.contactPhone,
         cuando: opts.cuando,
         cuandoAntes: opts.cuandoAntes,
+        enlace: llevaEnlace ? opts.enlace : null,
       }),
     });
   } catch (err) {
@@ -219,7 +281,7 @@ export async function avisoDelTurnoDeAgenda(opts: {
   organizationId: string;
   conversationId: string;
   accion: "offer_slots" | "book_slot" | "reschedule_slot" | "cancel_slot";
-  turn: { ok: boolean; label?: string };
+  turn: { ok: boolean; label?: string; enlace?: string | null };
   /** El horario que tenía la cita antes de moverla. */
   anterior: string | null;
 }): Promise<void> {
@@ -249,5 +311,6 @@ export async function avisoDelTurnoDeAgenda(opts: {
     evento,
     cuando,
     cuandoAntes: opts.anterior ?? undefined,
+    enlace: opts.turn.enlace ?? null,
   });
 }

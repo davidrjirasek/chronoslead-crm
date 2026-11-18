@@ -32,11 +32,27 @@ import {
 export const PLANTILLA_RECORDATORIO_EQUIPO = "cita_recordatorio_equipo";
 export const PLANTILLA_RECORDATORIO_CLIENTE = "cita_recordatorio_cliente";
 
+/**
+ * 145 — Las mismas, con el enlace de la reunión adentro.
+ *
+ * El recordatorio sale una hora antes: es JUSTO el momento en que hace falta
+ * el enlace. Sin él, la persona tiene que ir a buscar el mensaje de cuando
+ * agendó, que puede ser de hace días. Vale para los dos lados — quien atiende
+ * y quien viene.
+ *
+ * Se eligen solo si la cita tiene enlace y la plantilla está aprobada; si no,
+ * sale la de siempre. Ver `PLANTILLAS_CON_ENLACE` en `aviso-de-cita.ts`.
+ */
+export const PLANTILLA_RECORDATORIO_EQUIPO_CON_ENLACE =
+  "cita_recordatorio_equipo_con_enlace";
+export const PLANTILLA_RECORDATORIO_CLIENTE_CON_ENLACE =
+  "cita_recordatorio_cliente_con_enlace";
+
 /** Busca una plantilla aprobada; null si no está (y lo deja dicho en el log). */
 async function plantillaAprobada(
   organizationId: string,
   nombre: string
-): Promise<string | null> {
+): Promise<{ id: string; conEnlace: boolean } | null> {
   const db = getDb();
   const filas = await db
     .select({ id: schema.template.id })
@@ -54,12 +70,16 @@ async function plantillaAprobada(
     .limit(1);
   const fila = filas[0];
   if (!fila) {
-    console.warn(
-      `[recordatorio] ${organizationId}: sin plantilla "${nombre}" aprobada; no se recuerda`
-    );
+    // Sin aviso en el log cuando es la variante con enlace: que no esté
+    // aprobada todavía es normal, y quien llama ya prueba la de siempre.
+    if (!nombre.endsWith("_con_enlace")) {
+      console.warn(
+        `[recordatorio] ${organizationId}: sin plantilla "${nombre}" aprobada; no se recuerda`
+      );
+    }
     return null;
   }
-  return fila.id;
+  return { id: fila.id, conEnlace: nombre.endsWith("_con_enlace") };
 }
 
 /** Contexto del cliente: nombre, teléfono y si la conversación es de prueba. */
@@ -101,6 +121,8 @@ export async function recordarAlEquipo(opts: {
   hora: string;
   /** La etiqueta completa, solo para el log cuando algo sale mal. */
   etiqueta?: string;
+  /** 145 — El enlace de la reunión, si la cita lo tiene. */
+  enlace?: string | null;
 }): Promise<void> {
   try {
     const db = getDb();
@@ -128,11 +150,22 @@ export async function recordarAlEquipo(opts: {
       return;
     }
 
-    const plantillaId = await plantillaAprobada(
-      opts.organizationId,
-      PLANTILLA_RECORDATORIO_EQUIPO
-    );
+    const enlace = opts.enlace?.trim() || null;
+    const plantillaId = enlace
+      ? (await plantillaAprobada(
+          opts.organizationId,
+          PLANTILLA_RECORDATORIO_EQUIPO_CON_ENLACE
+        )) ??
+        (await plantillaAprobada(
+          opts.organizationId,
+          PLANTILLA_RECORDATORIO_EQUIPO
+        ))
+      : await plantillaAprobada(
+          opts.organizationId,
+          PLANTILLA_RECORDATORIO_EQUIPO
+        );
     if (!plantillaId) return;
+    const equipoConEnlace = plantillaId.conEnlace;
 
     const telefono = normalizeMx(org!.alertPhone!.replace(/\D/g, ""));
     const destino = await getOrCreateContactByIdentity(opts.organizationId, {
@@ -150,13 +183,21 @@ export async function recordarAlEquipo(opts: {
     await sendTemplate({
       organizationId: opts.organizationId,
       conversationId: conversacionDelAviso.id,
-      templateId: plantillaId,
-      variables: [
-        org!.alertName?.trim() || "equipo",
-        nombreDelContacto(conv.contactName),
-        opts.hora,
-        telefonoDelAviso(conv.contactPhone),
-      ],
+      templateId: plantillaId.id,
+      variables: equipoConEnlace
+        ? [
+            org!.alertName?.trim() || "equipo",
+            nombreDelContacto(conv.contactName),
+            opts.hora,
+            enlace!,
+            telefonoDelAviso(conv.contactPhone),
+          ]
+        : [
+            org!.alertName?.trim() || "equipo",
+            nombreDelContacto(conv.contactName),
+            opts.hora,
+            telefonoDelAviso(conv.contactPhone),
+          ],
     });
   } catch (err) {
     console.error(
@@ -178,6 +219,8 @@ export async function recordarAlCliente(opts: {
   organizationId: string;
   conversationId: string;
   hora: string;
+  /** 145 — El enlace de la reunión, si la cita lo tiene. */
+  enlace?: string | null;
 }): Promise<void> {
   try {
     const db = getDb();
@@ -203,17 +246,30 @@ export async function recordarAlCliente(opts: {
       return;
     }
 
-    const plantillaId = await plantillaAprobada(
-      opts.organizationId,
-      PLANTILLA_RECORDATORIO_CLIENTE
-    );
+    const enlace = opts.enlace?.trim() || null;
+    const plantillaId = enlace
+      ? (await plantillaAprobada(
+          opts.organizationId,
+          PLANTILLA_RECORDATORIO_CLIENTE_CON_ENLACE
+        )) ??
+        (await plantillaAprobada(
+          opts.organizationId,
+          PLANTILLA_RECORDATORIO_CLIENTE
+        ))
+      : await plantillaAprobada(
+          opts.organizationId,
+          PLANTILLA_RECORDATORIO_CLIENTE
+        );
     if (!plantillaId) return;
 
+    const negocio = orgs[0]?.name?.trim() || "nosotros";
     await sendTemplate({
       organizationId: opts.organizationId,
       conversationId: opts.conversationId,
-      templateId: plantillaId,
-      variables: [nombre, opts.hora, orgs[0]?.name?.trim() || "nosotros"],
+      templateId: plantillaId.id,
+      variables: plantillaId.conEnlace
+        ? [nombre, opts.hora, negocio, enlace!]
+        : [nombre, opts.hora, negocio],
     });
   } catch (err) {
     console.error(

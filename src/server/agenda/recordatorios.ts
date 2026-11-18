@@ -91,6 +91,10 @@ export async function citasPorRecordar(
       conversationId: schema.booking.conversationId,
       contactId: schema.booking.contactId,
       scheduledAt: schema.booking.scheduledAt,
+      // 145: el enlace viaja con la cita hasta el recordatorio. Una hora
+      // antes es justo cuando hace falta, y sin esto había que ir a buscar
+      // el mensaje de cuando se agendó.
+      meetingLink: schema.booking.meetingLink,
       reminderTeamAt: schema.booking.reminderTeamAt,
       reminderClientAt: schema.booking.reminderClientAt,
     })
@@ -149,6 +153,7 @@ export async function tandaDeRecordatorios(
           conversationId: cita.conversationId,
           hora,
           etiqueta,
+          enlace: cita.meetingLink,
         });
         mandados += 1;
       }
@@ -162,6 +167,7 @@ export async function tandaDeRecordatorios(
           organizationId: cita.organizationId,
           conversationId: cita.conversationId,
           hora,
+          enlace: cita.meetingLink,
         });
         mandados += 1;
       }

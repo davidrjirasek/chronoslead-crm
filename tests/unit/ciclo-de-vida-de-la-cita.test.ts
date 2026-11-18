@@ -146,6 +146,61 @@ describe("las variables del aviso al equipo", () => {
   });
 });
 
+describe("el enlace de la reunión en el aviso al equipo", () => {
+  /**
+   * 145 — Quien atiende tiene que poder ENTRAR a la reunión, no solo saber
+   * cuándo es. Hasta el 17-nov-2026 recibía día y hora y nada más.
+   */
+  const base = {
+    nombreDestino: "Nathalia",
+    nombreDelContacto: "Lucía Franco",
+    telefonoDelContacto: "+595 000 000002",
+    cuando: "jue 19 nov, 10:00",
+  };
+  const ENLACE = "https://us06web.zoom.us/j/81234567890";
+
+  it("con enlace son cinco variables, y va antes del teléfono", () => {
+    // El orden importa: lo primero que necesita es entrar a la reunión.
+    expect(
+      variablesDeCita({ ...base, evento: "agendada", enlace: ENLACE })
+    ).toEqual([
+      "Nathalia",
+      "Lucía Franco",
+      "jue 19 nov, 10:00",
+      ENLACE,
+      "+595 000 000002",
+    ]);
+  });
+
+  it("sin enlace vuelve a las cuatro de siempre", () => {
+    // Una instancia sin conector no tiene qué poner, y Meta rechaza una
+    // variable vacía: la plantilla de siempre es la que corresponde.
+    expect(variablesDeCita({ ...base, evento: "agendada" })).toHaveLength(4);
+    expect(
+      variablesDeCita({ ...base, evento: "agendada", enlace: null })
+    ).toHaveLength(4);
+    expect(
+      variablesDeCita({ ...base, evento: "agendada", enlace: "   " })
+    ).toHaveLength(4);
+  });
+
+  it("reprogramada y cancelada no llevan enlace aunque se pase", () => {
+    // No se crearon variantes con enlace para esas dos: meterlo cruzaría las
+    // variables y el aviso saldría con la URL donde va una fecha.
+    expect(
+      variablesDeCita({
+        ...base,
+        evento: "reprogramada",
+        cuandoAntes: "mié 18 nov, 10:00",
+        enlace: ENLACE,
+      })
+    ).not.toContain(ENLACE);
+    expect(
+      variablesDeCita({ ...base, evento: "cancelada", enlace: ENLACE })
+    ).not.toContain(ENLACE);
+  });
+});
+
 describe("los rellenos", () => {
   it("un contacto sin nombre se nombra, no se deja en blanco", () => {
     expect(nombreDelContacto(null)).toBe("un contacto");
