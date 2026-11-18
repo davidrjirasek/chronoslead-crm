@@ -2877,6 +2877,42 @@ producción la página carga rápido y nadie lo nota; queda en pendientes.
 del dueño. Se movió a su rama y `main` volvió a donde estaba; después el dueño
 dio el OK y ahí sí se integró. La regla sigue igual: `main` lleva su permiso.
 
+### Lo que apareció cargando los datos reales (2026-11-18, cierre de la 146)
+
+Desplegada la 146, se encendió el interruptor de **Colegio Cerritos** desde el
+panel de superadmin y se cargaron los dos directores con su criterio y sus
+destinatarios de aviso. Nada se envió: Cerritos todavía no tiene WhatsApp
+conectado, y cargar recursos no manda mensajes.
+
+**Y cargándolos apareció un fallo que ninguna prueba había tocado.** El círculo
+de color guardaba **en el acto**, y guardar recarga la lista desde el servidor:
+un clic en el color se llevó puesto el criterio y los teléfonos recién
+escritos. Parecía comodidad y era una trampa — el orden natural de quien carga
+es escribir primero y elegir el color al final.
+
+Arreglado: el color es estado local como el resto del formulario y se persiste
+con «Guardar». El guion de pantallas lo fija (escribir, elegir color,
+comprobar que lo escrito sigue ahí).
+
+> **Lo que enseña:** las tres baterías estaban en verde y el fallo seguía ahí.
+> Lo encontró **usar la pantalla para lo que existe**, cargando datos de
+> verdad. Ninguna prueba sustituye eso; lo que hacen las pruebas es que no
+> vuelva.
+
+**Lo que quedó en producción**, en `colegio-cerritos.chronoslead.com`:
+
+| Recurso | Criterio | A quién avisa, además del destinatario del negocio |
+|---|---|---|
+| La directora de Inicial y Primer Ciclo | hasta 3.º grado | ella y la psicóloga |
+| El director de Segundo/Tercer Ciclo y Media | desde 4.º grado | él |
+
+Los teléfonos están en el brief del cliente, no acá.
+
+**Dos despliegues**, de unos 8 minutos cada uno: `34cb0cb` (la spec) y
+`4aabea1` (el arreglo del color). Durante el relevo del contenedor hay unos
+segundos en que la app no responde — se ve alternando las dos versiones en
+`/api/health` hasta que se estabiliza.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
