@@ -193,8 +193,13 @@ describe("un commit que no salió del build se presenta como NO verificado", () 
         if (v === undefined) delete process.env[k];
         else process.env[k] = v;
       }
+      // 147 — `schema` se agregó al doble cuando el health pasó a informar si
+      // la transcripción de notas de voz está disponible: esa rama arrastra el
+      // módulo de adjuntos, que lee el esquema al importarse. El doble tiene
+      // que parecerse al módulo real, no solo a lo que la prueba usa.
       vi.doMock("@/lib/db", () => ({
         getDb: () => ({ execute: async () => [] }),
+        schema: {},
       }));
       const { GET } = await import("@/app/api/health/route");
       return (await GET()).json();

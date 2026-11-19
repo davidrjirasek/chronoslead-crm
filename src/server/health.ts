@@ -5,6 +5,10 @@ import { APP_VERSION, resolveCommit } from "@/lib/version";
 import { parseAgendaFlag } from "@/server/agenda/flag";
 import { parseAtribucionFlag } from "@/server/attribution/flag";
 import { parseChannels } from "@/server/channels/enabled";
+import {
+  configDeTranscripcion,
+  transcripcionDisponible,
+} from "@/server/ai/transcripcion";
 import { mediaDirStatus } from "@/server/media-dir";
 
 /**
@@ -43,6 +47,16 @@ export type HealthFeatures = {
   channels: Channel[];
   /** Atribución de anuncios y CAPI (016): bandera `ATRIBUCION`. */
   atribucion: boolean;
+  /**
+   * 147 — ¿Se transcriben las notas de voz? (112)
+   *
+   * Es `true` solo si la bandera está encendida **y** hay llave: con la
+   * bandera sola no se transcribe nada, y desde fuera las dos situaciones se
+   * veían iguales. Preguntarle al panel de despliegue no alcanza —muestra que
+   * la variable existe, no su valor— y es justo la pregunta que aparece
+   * cuando un cliente dice «el agente no entendió mi audio».
+   */
+  transcripcion: boolean;
 };
 
 export type HealthOk = {
@@ -86,6 +100,7 @@ export function healthFeatures(env: FlagEnv = process.env): HealthFeatures {
     agenda: parseAgendaFlag(env.AGENDA),
     channels: CHANNEL_ORDER.filter((c) => channels.has(c)),
     atribucion: parseAtribucionFlag(env.ATRIBUCION),
+    transcripcion: transcripcionDisponible(configDeTranscripcion(env)),
   };
 }
 

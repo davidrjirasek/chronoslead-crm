@@ -33,6 +33,15 @@ export type MensajeDelHistorial = {
   type: string | null;
   text: string | null;
   direction: string;
+  /**
+   * 147 — Lo que el cliente ESCRIBIÓ al lado de la foto.
+   *
+   * WhatsApp no lo manda en `text.body` sino en `image.caption`, así que
+   * `message.text` queda en null y el pie quedaba guardado en `media_asset`
+   * sin que nadie lo leyera. El agente recibía «no podés verla» y perdía la
+   * única parte del mensaje que SÍ podía entender.
+   */
+  caption?: string | null;
 };
 
 /**
@@ -48,5 +57,14 @@ export function contenidoParaElModelo(m: MensajeDelHistorial): string | null {
   if (m.direction !== "in") return null;
 
   const que = COMO_SE_LLAMA[(m.type ?? "").toLowerCase()] ?? "un archivo";
+  const pie = m.caption?.trim();
+
+  // 147 — Con pie de foto, el mensaje deja de ser un hueco: el agente puede
+  // contestar lo que le preguntaron aunque no vea la imagen. Las dos partes
+  // van juntas y separadas a propósito —lo que no puede ver, y lo que sí—
+  // para que no confunda el texto del cliente con una descripción de la foto.
+  if (pie) {
+    return `[El cliente envió ${que}, que NO podés ver, y escribió:] ${pie}`;
+  }
   return `[El cliente envió ${que}. No podés verlo ni escucharlo.]`;
 }

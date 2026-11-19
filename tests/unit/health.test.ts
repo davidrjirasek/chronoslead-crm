@@ -50,6 +50,7 @@ describe("features: las banderas de despliegue", () => {
       agenda: false,
       channels: ["whatsapp"],
       atribucion: false,
+      transcripcion: false,
     });
   });
 
@@ -65,6 +66,7 @@ describe("features: las banderas de despliegue", () => {
       agenda: true,
       channels: ["whatsapp", "instagram", "messenger"],
       atribucion: true,
+      transcripcion: false,
     });
   });
 
@@ -73,7 +75,37 @@ describe("features: las banderas de despliegue", () => {
     // `true` y la agenda respondiera 404, el health mentiría.
     expect(
       healthFeatures({ AGENDA: "onn", CHANNELS: "telegram", ATRIBUCION: "off" })
-    ).toEqual({ agenda: false, channels: ["whatsapp"], atribucion: false });
+    ).toEqual({
+      agenda: false,
+      channels: ["whatsapp"],
+      atribucion: false,
+      transcripcion: false,
+    });
+  });
+
+  /**
+   * 147 — La transcripción de notas de voz (112) no se veía desde fuera. El
+   * panel de despliegue muestra que la variable EXISTE, no su valor, y la
+   * pregunta aparece justo cuando un cliente dice «el agente no entendió mi
+   * audio». Son dos condiciones: la bandera y la llave.
+   */
+  it("la transcripción pide bandera Y llave: con la bandera sola no transcribe", () => {
+    expect(healthFeatures({ TRANSCRIPCION: "on" }).transcripcion).toBe(false);
+  });
+
+  it("con llave pero sin bandera tampoco", () => {
+    expect(
+      healthFeatures({ TRANSCRIPCION_API_KEY: "sk-lo-que-sea" }).transcripcion
+    ).toBe(false);
+  });
+
+  it("con las dos, sí", () => {
+    expect(
+      healthFeatures({
+        TRANSCRIPCION: "on",
+        TRANSCRIPCION_API_KEY: "sk-lo-que-sea",
+      }).transcripcion
+    ).toBe(true);
   });
 });
 

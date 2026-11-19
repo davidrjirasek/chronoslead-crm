@@ -219,6 +219,42 @@ export async function runAgentTurn(
     : [];
   const vigentes = debidosVigentes(recientes, debidos);
   const history = ordenarParaElTurno(recientes, vigentes);
+
+  /**
+   * 147 — Los pies de foto del historial.
+   *
+   * WhatsApp manda el texto que el cliente escribe junto a una imagen en
+   * `image.caption`, no en `text.body`: la ingesta lo guarda bien en
+   * `media_asset`, pero el historial del turno es un select sobre `message`
+   * sin join, así que nunca llegaba al modelo. El dato estaba en la base, sin
+   * usar, y el agente contestaba «no puedo verla» a alguien que le había
+   * escrito una pregunta.
+   *
+   * Se resuelve con UNA consulta más, y solo cuando hay adjuntos: lo normal
+   * —una conversación de puro texto— no paga nada.
+   */
+  const conAdjunto = history
+    .map((m) => m.mediaAssetId)
+    .filter((id): id is string => Boolean(id));
+  const pies = new Map<string, string>();
+  if (conAdjunto.length > 0) {
+    const filas = await db
+      .select({
+        id: schema.mediaAsset.id,
+        caption: schema.mediaAsset.caption,
+      })
+      .from(schema.mediaAsset)
+      .where(
+        scoped(
+          schema.mediaAsset.organizationId,
+          organizationId,
+          inArray(schema.mediaAsset.id, conAdjunto)
+        )
+      );
+    for (const f of filas) {
+      if (f.caption?.trim()) pies.set(f.id, f.caption);
+    }
+  }
   const lastInbound = [...history].reverse().find((m) => m.direction === "in");
   if (!lastInbound) return;
   const leido: TurnoLeido = {
@@ -318,7 +354,10 @@ export async function runAgentTurn(
     ...history
       .map((m) => ({
         role: m.direction === "in" ? ("user" as const) : ("assistant" as const),
-        content: contenidoParaElModelo(m),
+        content: contenidoParaElModelo({
+          ...m,
+          caption: m.mediaAssetId ? (pies.get(m.mediaAssetId) ?? null) : null,
+        }),
       }))
       .filter((m): m is { role: "user" | "assistant"; content: string } =>
         m.content !== null

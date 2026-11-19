@@ -45,6 +45,58 @@ describe("qué lee el modelo de cada mensaje", () => {
     );
   });
 
+  /**
+   * 147 — El pie de foto. WhatsApp lo manda en `image.caption`, no en
+   * `text.body`, y por eso `message.text` queda en null: el dato se guardaba
+   * en `media_asset` y el modelo recibía «no podés verla», perdiendo la única
+   * parte del mensaje que SÍ podía entender.
+   */
+  it("el pie de foto llega al modelo, junto con que hay una imagen", () => {
+    const leido = contenidoParaElModelo({
+      type: "image",
+      text: null,
+      direction: "in",
+      caption: "¿Tienen este modelo en roble?",
+    });
+    expect(leido).toContain("¿Tienen este modelo en roble?");
+    expect(leido).toContain("imagen");
+    // Que no puede verla sigue dicho: el pie no es una descripción de la foto.
+    expect(leido).toContain("NO podés ver");
+  });
+
+  it("un pie en blanco no cambia nada", () => {
+    expect(
+      contenidoParaElModelo({
+        type: "image",
+        text: null,
+        direction: "in",
+        caption: "   ",
+      })
+    ).toContain("No podés verlo");
+  });
+
+  it("el pie de un documento también llega", () => {
+    expect(
+      contenidoParaElModelo({
+        type: "document",
+        text: null,
+        direction: "in",
+        caption: "Adjunto el comprobante de la transferencia",
+      })
+    ).toContain("comprobante de la transferencia");
+  });
+
+  it("el texto del mensaje manda sobre el pie: ahí ya hay contenido", () => {
+    expect(
+      contenidoParaElModelo({
+        type: "audio",
+        text: "transcripción de la nota",
+        direction: "in",
+        caption: "no debería usarse",
+      })
+    ).toBe("transcripción de la nota");
+  });
+
   it("un texto en blanco cuenta como sin texto", () => {
     expect(contenidoParaElModelo(entrante("audio", "   "))).toContain("nota de voz");
   });
