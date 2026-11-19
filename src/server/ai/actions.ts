@@ -94,16 +94,51 @@ const agendaActions = [
   }),
 ] as const;
 
+/**
+ * 151 — Preguntarle al sistema del negocio.
+ *
+ * Solo se registra donde la organización configuró una consulta. El modelo
+ * manda el dato que capturó —una cédula, un número de pedido— y nada más: el
+ * valor viene del servicio. La regla la hereda del diseño que ya funcionaba
+ * en Go High Level y es la que importa: **el modelo captura, nunca calcula**.
+ * Un saldo inventado es peor que no contestar.
+ */
+const consultaActions = [
+  z.object({
+    action: z.literal("consultar"),
+    dato: z.string().min(1),
+    reply: z.string().optional(),
+  }),
+] as const;
+
 export const AgentAction = z.discriminatedUnion("action", [
   ...baseActions,
   ...agendaActions,
+  ...consultaActions,
 ]);
 
-/** El esquema que se le exige al modelo en ESTE turno. */
-export function agentActionSchema(agenda: boolean) {
-  return agenda
-    ? AgentAction
-    : z.discriminatedUnion("action", [...baseActions]);
+/**
+ * El esquema que se le exige al modelo en ESTE turno.
+ *
+ * Las cuatro combinaciones se escriben enteras a propósito: armarlas con
+ * `spread` condicional le quita a TypeScript el discriminante y el turno
+ * pierde el tipado justo donde más importa —qué acción vino y con qué campos.
+ */
+export function agentActionSchema(agenda: boolean, consulta = false) {
+  if (agenda && consulta) {
+    return z.discriminatedUnion("action", [
+      ...baseActions,
+      ...agendaActions,
+      ...consultaActions,
+    ]);
+  }
+  if (agenda) {
+    return z.discriminatedUnion("action", [...baseActions, ...agendaActions]);
+  }
+  if (consulta) {
+    return z.discriminatedUnion("action", [...baseActions, ...consultaActions]);
+  }
+  return z.discriminatedUnion("action", [...baseActions]);
 }
 
 export type AgentActionType = z.infer<typeof AgentAction>;
@@ -129,7 +164,8 @@ export function degradeAction(action: AgentActionType): AgentActionType {
     action.action === "offer_slots" ||
     action.action === "book_slot" ||
     action.action === "reschedule_slot" ||
-    action.action === "cancel_slot"
+    action.action === "cancel_slot" ||
+    action.action === "consultar"
   ) {
     return action.reply
       ? { action: "reply", text: action.reply }

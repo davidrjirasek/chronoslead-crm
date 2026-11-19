@@ -32,6 +32,7 @@ import {
   lineasDeRecursos,
   recursosActivos,
 } from "@/server/agenda/recursos";
+import { consultaDisponible, preguntarAlSistema } from "@/server/consulta";
 import {
   bookSlot,
   cancelSlot,
@@ -340,6 +341,10 @@ export async function runAgentTurn(
     ? lineasDeRecursos(await recursosActivos(organizationId))
     : [];
 
+  // 151 — Lo que esta organización le puede preguntar a su propio sistema.
+  // Null —el caso normal— y el modelo ni se entera de que la acción existe.
+  const consulta = await consultaDisponible(organizationId);
+
   const messages: ChatMessage[] = [
     {
       role: "system",
@@ -349,6 +354,13 @@ export async function runAgentTurn(
         stages,
         agenda,
         recursos,
+        consulta: consulta
+          ? {
+              nombre: consulta.name,
+              criterio: consulta.criterio,
+              dato: consulta.datoPedido,
+            }
+          : null,
       }),
     },
     ...history
@@ -373,9 +385,11 @@ export async function runAgentTurn(
     { role: "system", content: TURN_FORMAT_REMINDER },
   ];
 
-  const result = await chatJson(agentActionSchema(agenda), messages, {
-    organizationId,
-  });
+  const result = await chatJson(
+    agentActionSchema(agenda, Boolean(consulta)),
+    messages,
+    { organizationId }
+  );
   if (!result.ok) {
     if (result.error === "not_configured") return leido;
 
@@ -403,6 +417,42 @@ export async function runAgentTurn(
   }
 
   let action: AgentActionType = result.data;
+
+  /**
+   * 151 — Preguntarle al sistema del negocio.
+   *
+   * El modelo mandó el dato que capturó; el valor lo trae el servicio y se le
+   * entrega al cliente TAL CUAL. El modelo no lo ve antes ni lo redacta: esa
+   * es toda la garantía de que no puede inventar un saldo.
+   *
+   * Si el servicio no contesta se dice con naturalidad. Un tercero caído no
+   * puede volverse un número falso.
+   */
+  if (action.action === "consultar") {
+    if (!consulta) {
+      action = degradeAction(action);
+    } else {
+      const r = await preguntarAlSistema(organizationId, action.dato, {
+        config: consulta,
+      });
+      if (r.ok) {
+        const intro = action.reply?.trim();
+        await deliverReply(
+          conversation,
+          intro ? `${intro}\n${r.valor}` : r.valor
+        );
+      } else {
+        console.warn(
+          `[consulta] ${organizationId}: ${r.motivo} — ${r.detalle}`
+        );
+        await deliverReply(
+          conversation,
+          "No pude consultarlo en este momento. Lo reviso con el equipo y te confirmo."
+        );
+      }
+      return leido;
+    }
+  }
 
   // 015 — Agenda. Un fallo del motor degrada el turno (el agente responde sin
   // agendar), nunca lo tumba: quedarse callado es peor que no agendar.

@@ -28,6 +28,8 @@ const prefixes = {
   offeredSlot: "ofs",
   // 146 — agenda por recurso
   agendaResource: "res",
+  // 151 — la consulta al sistema del negocio
+  consultaExterna: "cext",
   zoomCredentials: "zcred",
   googleCredentials: "gcred",
   // 016 — atribución de anuncios

@@ -905,6 +905,54 @@ export const calendarSettings = pgTable(
 );
 
 /* ============================================================
+ * 151 — Lo que el agente le puede preguntar al sistema DEL NEGOCIO.
+ *
+ * Hasta acá ninguna acción del agente llamaba a un servicio externo. Lo pidió
+ * The Student Store: los padres preguntan todos los días cuánto saldo le queda
+ * a su hijo, y eso vive en la base del cliente, detrás de un webhook de n8n.
+ *
+ * Se guarda como CAPACIDAD GENERAL y no como «conector de saldo»: cualquier
+ * negocio puede enseñarle al agente a preguntarle algo a su propio sistema —un
+ * saldo, el estado de un pedido, si una factura está paga—. Sin fila acá, la
+ * acción no existe y el prompt no la nombra.
+ * ============================================================ */
+
+export const consultaExterna = pgTable(
+  "consulta_externa",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    /** Cómo la llama el negocio: «el saldo del alumno». */
+    name: text("name").notNull(),
+    /**
+     * Cuándo usarla, en palabras. Viaja al prompt: es lo que deja que el
+     * modelo decida sin que el motor sepa de cantinas ni de cédulas.
+     */
+    criterio: text("criterio"),
+    /** Qué dato hay que capturarle al cliente: «el número de cédula». */
+    datoPedido: text("dato_pedido").notNull(),
+    url: text("url").notNull(),
+    method: text("method", { enum: ["GET", "POST"] })
+      .notNull()
+      .default("POST"),
+    /** Nombre del campo que se manda: `student_ci` en el de Store. */
+    requestField: text("request_field").notNull(),
+    /** Dónde viene la respuesta: `answer` en el de Store. */
+    responseField: text("response_field").notNull(),
+    /** Cabecera de autenticación: su nombre va plano, su valor NO. */
+    authHeader: text("auth_header"),
+    /** Cifrado en reposo (AES-256-GCM), como toda credencial. */
+    authValueEnc: text("auth_value_enc"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("consulta_externa_org_uq").on(t.organizationId)]
+);
+
+/* ============================================================
  * 146 — Agenda por recurso: quién atiende, cada uno con su propia agenda.
  *
  * Sin filas aquí la agenda es la de siempre: UN recurso implícito por

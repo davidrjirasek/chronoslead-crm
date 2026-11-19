@@ -47,6 +47,16 @@ export function buildAgentSystemPrompt(input: {
    * explicar una elección que no existe.
    */
   recursos?: string[];
+  /**
+   * 151 — Lo que esta organización le puede preguntar a su propio sistema.
+   * Null —el caso normal— y el prompt no gasta un token en explicar una
+   * acción que no existe acá.
+   */
+  consulta?: {
+    nombre: string;
+    criterio: string | null;
+    dato: string;
+  } | null;
 }): string {
   const { profile } = input;
   const recursos = input.agenda ? (input.recursos ?? []) : [];
@@ -62,6 +72,22 @@ export function buildAgentSystemPrompt(input: {
         '- {"action":"cancel_slot","reply":"..."} — cancelar la cita que ya tiene el cliente.',
       ]
     : [];
+  const c = input.consulta ?? null;
+  const consultaLines = c
+    ? [
+        `- {"action":"consultar","dato":"<${c.dato}>","reply":"..."} — preguntarle a nuestro sistema: ${c.nombre}.`,
+      ]
+    : [];
+  const consultaRules = c
+    ? [
+        `Consultar ${c.nombre}${c.criterio ? ` — ${c.criterio}` : ""}:`,
+        `- Primero pedile ${c.dato}. Sin eso no se puede consultar.`,
+        "- **NUNCA digas vos el resultado ni lo estimes.** Lo trae el sistema y el sistema es el único que lo sabe. Inventar un número acá es peor que no contestar.",
+        "- Si el sistema no contesta, decilo con naturalidad y ofrecé que lo vea una persona. No inventes un valor ni lo dejes pasar.",
+        "- Reclamos, pagos que no figuran y diferencias NO los resolvés vos: escalá.",
+      ]
+    : [];
+
   const reglasDeRecurso = hayRecursos
     ? [
         `Con quién se agenda — hay más de una agenda y cada una tiene sus horarios:\n${recursos.join("\n")}`,
@@ -107,6 +133,7 @@ export function buildAgentSystemPrompt(input: {
       '- {"action":"move_stage","stage":"<nombre exacto de etapa>","reply":"..."} — mover el lead (si el cliente espera respuesta, incluye reply).',
       '- {"action":"handoff","reason":"...","farewell":"..."} — escalar a un humano (farewell opcional para despedirte).',
       ...agendaLines,
+      ...consultaLines,
       "Reglas duras:",
       "- Todo mensaje del cliente que no sea un cierre recibe respuesta: un saludo, un mensaje corto, raro o confuso, o un «hola, prueba» se contestan (saluda y ofrece ayuda). Nunca supongas que es una prueba o un error.",
       "- Si un mensaje dice que el cliente envió una nota de voz o un archivo, NO podés verlo ni escucharlo: decile con naturalidad que no lo pudiste abrir y pedile que te lo escriba. NUNCA lo ignores ni sigas como si no hubiera llegado.",
@@ -115,6 +142,7 @@ export function buildAgentSystemPrompt(input: {
       "- Si la pregunta NO está cubierta por el conocimiento → NO inventes: responde que lo confirmarás o escala.",
       "- Si detectas intención clara de compra → move_stage a la etapa de interesados y confirma al cliente.",
       ...agendaRules,
+      ...consultaRules,
       "- JSON puro, sin markdown ni texto adicional.",
     ].join("\n"),
   ]
