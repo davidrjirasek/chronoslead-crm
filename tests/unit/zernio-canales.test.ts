@@ -66,6 +66,53 @@ describe("zernio · qué cuenta se está conectando (D1)", () => {
     expect(tt.ok && tt.account._id).toBe(TT);
   });
 
+  /**
+   * 19-nov-2026, en vivo. El dueño tenía la página de ZA Climatizaciones
+   * conectada en Zernio y en ChronosLead no le aparecía para elegir: la llave
+   * tenía NUEVE cuentas de Facebook y el tope de botones era ocho. El mensaje
+   * decía «esa llave tiene 9 cuentas» encima de ocho botones, sin avisar de
+   * que había cortado — desde afuera se ve igual que si la cuenta no
+   * estuviera en Zernio, y manda a buscar el problema al lado equivocado.
+   */
+  it("nueve cuentas del canal se enseñan las nueve", () => {
+    const muchas: ZernioAccount[] = Array.from({ length: 9 }, (_, i) => ({
+      _id: `fb-${i}`,
+      platform: "facebook",
+      displayName: `Cliente ${i}`,
+    }));
+    const r = pickZernioAccount(muchas, "", "messenger");
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.candidates).toHaveLength(9);
+    expect(r.candidates.map((c) => c.id)).toContain("fb-8");
+  });
+
+  it("cuando la lista SÍ se corta, el mensaje lo dice y manda a pegar el id", () => {
+    const demasiadas: ZernioAccount[] = Array.from({ length: 30 }, (_, i) => ({
+      _id: `fb-${i}`,
+      platform: "facebook",
+      displayName: `Cliente ${i}`,
+    }));
+    const r = pickZernioAccount(demasiadas, "", "messenger");
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.candidates.length).toBeLessThan(30);
+    expect(r.message).toContain("30");
+    expect(r.message).toContain("accountId");
+  });
+
+  it("sin corte, el mensaje no habla de pegar nada: no asusta sin motivo", () => {
+    const tres: ZernioAccount[] = Array.from({ length: 3 }, (_, i) => ({
+      _id: `fb-${i}`,
+      platform: "facebook",
+      displayName: `Cliente ${i}`,
+    }));
+    const r = pickZernioAccount(tres, "", "messenger");
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.message).not.toContain("accountId");
+  });
+
   it("sin id y con varias, pide elegir y dice cuáles hay", () => {
     const otra: ZernioAccount = { _id: "otra-ig", platform: "instagram", username: "cliente" };
     const r = pickZernioAccount([...cuentas, otra], "", "instagram");
@@ -114,13 +161,16 @@ describe("zernio · qué cuenta se está conectando (D1)", () => {
   });
 
   it("con muchas cuentas la lista se corta y el mensaje lo dice", () => {
-    const muchas: ZernioAccount[] = Array.from({ length: 12 }, (_, i) => ({
+    // El tope subió de 8 a 24 el 19-nov-2026 (ver el caso de las nueve). Lo
+    // que se fija acá no es el número sino la conducta: que cuando corte, lo
+    // diga, en vez de dejar una cuenta invisible.
+    const muchas: ZernioAccount[] = Array.from({ length: 28 }, (_, i) => ({
       _id: `ig-${i}`,
       platform: "instagram",
       username: `cuenta${i}`,
     }));
     const r = pickZernioAccount(muchas, "", "instagram");
-    expect(!r.ok && r.candidates.length).toBe(8);
+    expect(!r.ok && r.candidates.length).toBe(24);
     const fuera = pickZernioAccount(muchas, "nada", "instagram");
     expect(!fuera.ok && fuera.message).toContain("y 4 más");
   });

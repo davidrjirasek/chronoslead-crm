@@ -88,9 +88,20 @@ export function zernioAccountName(a: ZernioAccount): string {
   return a.displayName?.trim() || usuario || a._id;
 }
 
-// Una agencia puede tener decenas de cuentas en una llave: la lista que se le
-// enseña a quien conecta se corta, y el mensaje lo dice.
-const MAX_CANDIDATES = 8;
+/**
+ * Cuántas cuentas se enseñan como botón.
+ *
+ * El tope existe porque una agencia puede tener decenas en una sola llave y la
+ * pantalla se vuelve un muro. Estaba en 8, y el 19-nov-2026 mordió: la llave
+ * tenía NUEVE cuentas de Facebook, el botón de la novena no salía, y el
+ * mensaje decía «esa llave tiene 9 cuentas» arriba de ocho botones. Desde
+ * afuera se ve exactamente igual que si la cuenta no estuviera en Zernio, y
+ * eso manda a buscar el problema al lado equivocado.
+ *
+ * 24 cubre con holgura una cartera como la de ChronosLead sin volver a
+ * esconder nada. Y cuando igual se corte, ahora el mensaje lo dice.
+ */
+const MAX_CANDIDATES = 24;
 
 /** Puro: decide la cuenta que corresponde a lo capturado (tabla D1 de la spec). */
 export function pickZernioAccount(
@@ -122,10 +133,16 @@ export function pickZernioAccount(
   const id = ref?.trim() ?? "";
   if (!id) {
     if (delCanal.length === 1) return { ok: true, account: delCanal[0]! };
+    // Si la lista se corta, se DICE, y se dice qué hacer: el enlace de pegar
+    // el id a mano ya existe y es el camino para la que no salió.
+    const cortadas = delCanal.length - candidates.length;
     return {
       ok: false,
       code: "choose_account",
-      message: `Esa llave tiene ${delCanal.length} cuentas de este canal. Elige cuál conectar.`,
+      message:
+        cortadas > 0
+          ? `Esa llave tiene ${delCanal.length} cuentas de este canal y abajo se muestran las primeras ${candidates.length}. Si la que buscás no está entre ellas, pegá su accountId a mano.`
+          : `Esa llave tiene ${delCanal.length} cuentas de este canal. Elige cuál conectar.`,
       candidates,
     };
   }
