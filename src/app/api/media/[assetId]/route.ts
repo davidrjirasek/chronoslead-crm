@@ -49,10 +49,14 @@ export const GET = withAuth(async (session, _req: Request, ctx: Params) => {
     asset = (await ensureAssetAvailable(session.organizationId, assetId)) ?? asset;
   }
   if (asset.fetchStatus !== "available" || !asset.storagePath) {
+    // 152 — Se dice QUÉ pasó. «No disponible» a secas manda a adivinar, y el
+    // motivo ya estaba guardado: solo no salía por ninguna ruta.
     return apiError(
       410,
       "gone",
-      "El contenido ya no está disponible (expiró en WhatsApp antes de poder copiarse)"
+      asset.fetchError
+        ? `No se pudo traer el archivo: ${asset.fetchError}`
+        : "El contenido ya no está disponible (expiró antes de poder copiarse)"
     );
   }
 

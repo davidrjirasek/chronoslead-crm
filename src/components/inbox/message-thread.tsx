@@ -108,12 +108,22 @@ function MediaBlock({ media }: { media: MessageMediaDto }) {
 
   if (media.fetchStatus !== "available") {
     return (
-      <span className="inline-flex items-center gap-1.5 text-text-3">
-        <Paperclip className="h-3.5 w-3.5" strokeWidth={1.7} />
-        {mediaLabel(media.kind)}
-        {media.fetchStatus === "failed"
-          ? " — contenido no disponible"
-          : " — descargando…"}
+      <span className="inline-flex items-start gap-1.5 text-text-3">
+        <Paperclip className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.7} />
+        <span>
+          {mediaLabel(media.kind)}
+          {media.fetchStatus === "failed"
+            ? " — no se pudo traer"
+            : " — descargando…"}
+          {/* 152 — El motivo, cuando se sabe. Un «no disponible» a secas
+              obliga a quien atiende a adivinar, y el dato ya estaba
+              guardado: solo no se enseñaba. */}
+          {media.fetchStatus === "failed" && media.fetchError && (
+            <span className="block text-[11px] opacity-80">
+              {media.fetchError}
+            </span>
+          )}
+        </span>
       </span>
     );
   }

@@ -74,6 +74,8 @@ export type MessageMediaDto = {
   fileSize: number | null;
   caption: string | null;
   fetchStatus: "available" | "pending" | "failed";
+  /** 152 — Por qué no se pudo traer. Null mientras no haya fallado. */
+  fetchError: string | null;
   /** location {latitude, longitude, name?, address?} / contacts (subset). */
   payload: unknown;
 };

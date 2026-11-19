@@ -637,6 +637,17 @@ export function serializeMessage(
           fileSize: media.fileSize,
           caption: media.caption,
           fetchStatus: media.fetchStatus,
+          /**
+           * 152 — POR QUÉ no se pudo bajar.
+           *
+           * El 19-nov el dueño mandó una foto de prueba a The Student Store y
+           * la bandeja dijo «contenido no disponible», sin más. El motivo
+           * estaba guardado en la base y no salía por ninguna ruta: para
+           * saberlo había que leer los logs del contenedor, que no todos
+           * pueden. Un fallo mudo obliga a adivinar, y adivinar fue
+           * exactamente lo que costó la tarde.
+           */
+          fetchError: media.fetchError,
           payload: media.payload,
         }
       : null,
