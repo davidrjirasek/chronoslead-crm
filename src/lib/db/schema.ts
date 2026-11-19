@@ -544,6 +544,17 @@ export const mediaAsset = pgTable(
     caption: text("caption"),
     /** location {latitude, longitude, name?, address?} o contacts (subset). */
     payload: jsonb("payload"),
+    /**
+     * 149 — De dónde bajarlo cuando NO viene de Graph.
+     *
+     * Zernio entrega el adjunto como una URL temporal en vez de un media id,
+     * así que `wa_media_id` queda en null y `ensureAssetAvailable()` no tenía
+     * de dónde agarrarse: en los clientes por Zernio el archivo no se guardaba
+     * nunca. Se conserva la URL —aunque caduque— porque permite reintentar
+     * mientras siga viva y, cuando falla, deja ver QUÉ se intentó bajar en vez
+     * de un `failed` mudo.
+     */
+    sourceUrl: text("source_url"),
     /** Ruta relativa dentro de MEDIA_DIR; NULL si aún no descargado o no aplica. */
     storagePath: text("storage_path"),
     fetchStatus: text("fetch_status", {

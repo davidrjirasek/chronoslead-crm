@@ -200,11 +200,74 @@ export async function downloadGraphMedia(
 }
 
 /**
+ * 149 — Bajar un adjunto de una URL directa, sin Graph.
+ *
+ * Zernio entrega el archivo como una URL temporal en vez de un media id. Es
+ * el mismo trabajo que `downloadGraphMedia` menos la parte de Meta: sin token,
+ * sin consulta previa de metadata. Los límites son los MISMOS a propósito —dos
+ * caminos con techos distintos es la forma de que dentro de medio año uno
+ * acepte lo que el otro rechaza sin que nadie se entere.
+ */
+export async function downloadUrlMedia(
+  url: string,
+  maxBytes: number = MEDIA_LIMITS.document.maxBytes
+): Promise<{ data: Buffer; mimeType: string | null; fileSize: number }> {
+  let res: Response;
+  try {
+    res = await fetch(url);
+  } catch {
+    throw new MediaFetchError("No se pudo descargar el adjunto");
+  }
+  if (!res.ok) {
+    // Una URL temporal que ya caducó no se reintenta: no va a volver.
+    throw new MediaFetchError(
+      `La descarga devolvió ${res.status}`,
+      res.status === 403 || res.status === 404 || res.status === 410
+    );
+  }
+
+  // El `content-length` evita bajar entero algo que se va a descartar; igual
+  // se vuelve a medir después, porque puede faltar o mentir.
+  const declarado = Number(res.headers.get("content-length") ?? "");
+  if (Number.isFinite(declarado) && declarado > maxBytes) {
+    throw new MediaFetchError("El adjunto excede el límite de tamaño", true);
+  }
+
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.byteLength > maxBytes) {
+    throw new MediaFetchError("El adjunto excede el límite de tamaño", true);
+  }
+  return {
+    data: buf,
+    mimeType: res.headers.get("content-type"),
+    fileSize: buf.byteLength,
+  };
+}
+
+/**
  * Garantiza que el asset esté en disco (`fetchStatus=available`).
  * Se usa en la descarga in-process post-ingesta Y on-demand desde la ruta de
  * media. Nunca lanza hacia el webhook: el que llama decide qué hacer con el
  * resultado. Devuelve el asset actualizado o null si no se pudo.
  */
+/**
+ * 149 — La rama de Graph, extraída para que `ensureAssetAvailable` se lea de
+ * un vistazo: de dónde sale el archivo es UNA decisión, y se ve en una línea.
+ *
+ * Las credenciales son del transporte nativo. Por Zernio `getCredentialsByOrg`
+ * devuelve null por diseño (139) — y por eso ahí se usa la otra rama.
+ */
+async function descargarPorGraph(
+  organizationId: string,
+  waMediaId: string
+): Promise<{ data: Buffer; mimeType: string | null; fileSize: number }> {
+  const creds = await getCredentialsByOrg(organizationId);
+  if (!creds) {
+    throw new MediaFetchError("Esta organización no tiene credenciales de Graph");
+  }
+  return downloadGraphMedia(creds.token, waMediaId);
+}
+
 export async function ensureAssetAvailable(
   organizationId: string,
   assetId: string
@@ -218,16 +281,14 @@ export async function ensureAssetAvailable(
   const asset = rows[0];
   if (!asset || asset.organizationId !== organizationId) return null;
   if (asset.fetchStatus === "available") return asset;
-  if (!asset.waMediaId) return null; // location/contacts no tienen binario
-
-  const creds = await getCredentialsByOrg(organizationId);
-  if (!creds) return null;
+  // location/contacts no tienen binario, y sin ninguna de las dos fuentes
+  // tampoco hay nada que bajar.
+  if (!asset.waMediaId && !asset.sourceUrl) return null;
 
   try {
-    const { data, mimeType, fileSize } = await downloadGraphMedia(
-      creds.token,
-      asset.waMediaId
-    );
+    const { data, mimeType, fileSize } = asset.waMediaId
+      ? await descargarPorGraph(organizationId, asset.waMediaId)
+      : await downloadUrlMedia(asset.sourceUrl!);
     const storagePath = await saveMediaFile(organizationId, assetId, data);
     const updated = await db
       .update(schema.mediaAsset)

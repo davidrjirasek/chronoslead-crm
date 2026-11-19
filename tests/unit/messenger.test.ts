@@ -103,6 +103,8 @@ describe("017 · normalizeMetaPagePayload (qué entra y qué se descarta)", () =
       timestamp: "1770000123",
       profileName: null,
       threadRef: null,
+      // 149 — Un texto no trae archivo: null, no «todavía no implementado».
+      adjunto: null,
     });
   });
 
@@ -135,6 +137,51 @@ describe("017 · normalizeMetaPagePayload (qué entra y qué se descarta)", () =
       ])
     );
     expect(sticker?.type).toBe("sticker");
+  });
+
+  /**
+   * 149 — La URL del adjunto. Se descartaba, y el mensaje quedaba con su tipo
+   * y sin archivo: la bandeja decía «imagen» y al hacer clic no había nada.
+   * Meta la pone en `payload.url`; Zernio, en `url`.
+   */
+  it("el adjunto se lleva su URL para poder bajarlo", () => {
+    const [img] = normalizeMetaPagePayload(
+      metaWebhook([
+        {
+          sender: { id: PSID },
+          message: {
+            mid: "m_img2",
+            attachments: [{ type: "image", payload: { url: "https://cdn/x.jpg" } }],
+          },
+        },
+      ])
+    );
+    expect(img?.adjunto).toEqual({ kind: "image", url: "https://cdn/x.jpg" });
+  });
+
+  it("un adjunto SIN url entra igual, pero sin archivo que bajar", () => {
+    const [doc] = normalizeMetaPagePayload(
+      metaWebhook([
+        { sender: { id: PSID }, message: { mid: "m_doc2", attachments: [{ type: "file" }] } },
+      ])
+    );
+    expect(doc?.type).toBe("document");
+    expect(doc?.adjunto).toBeNull();
+  });
+
+  it("un sticker no se trata como imagen descargable", () => {
+    const [stk] = normalizeMetaPagePayload(
+      metaWebhook([
+        {
+          sender: { id: PSID },
+          message: {
+            mid: "m_stk2",
+            attachments: [{ type: "image", payload: { sticker_id: 1, url: "https://cdn/s.png" } }],
+          },
+        },
+      ])
+    );
+    expect(stk?.type).toBe("sticker");
   });
 
   it("los echos (lo que mandó la página), los acuses y los postbacks NO son mensajes", () => {

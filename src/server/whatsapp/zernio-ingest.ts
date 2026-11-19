@@ -39,9 +39,20 @@ export type ZernioWhatsappInbound = {
   threadRef: string | null;
   /** 139 — El anuncio del que llegó, si llegó de uno. */
   anuncio: AnuncioDeOrigen | null;
+  /** 149 — El archivo, para bajarlo antes de que la URL caduque. */
+  adjunto: AdjuntoDeZernio | null;
 };
 
 /** Un saliente que NO salió del CRM: lo escribió el dueño en su teléfono. */
+/**
+ * 149 — El adjunto, tal como lo entrega Zernio: un tipo y una URL temporal.
+ * Sin nombre de archivo ni mime — el mime sale del `content-type` al bajarlo.
+ */
+export type AdjuntoDeZernio = {
+  kind: "image" | "video" | "audio" | "document" | "sticker";
+  url: string;
+};
+
 export type ZernioWhatsappEcho = {
   accountRef: string;
   /** Teléfono del cliente, leído de la conversación y nunca del `sender`. */
@@ -50,6 +61,7 @@ export type ZernioWhatsappEcho = {
   text: string | null;
   type: string;
   timestamp: string;
+  adjunto: AdjuntoDeZernio | null;
 };
 
 /**
@@ -140,19 +152,52 @@ function esDeWhatsapp(evt: ZernioEvent | null): evt is ZernioEvent {
   return Boolean(evt) && typeof evt === "object" && plataforma(evt) === "whatsapp";
 }
 
-function conTexto(evt: ZernioEvent): { text: string | null; type: string } | null {
+function conTexto(evt: ZernioEvent): {
+  text: string | null;
+  type: string;
+  adjunto: AdjuntoDeZernio | null;
+} | null {
   const text =
     typeof evt.message?.text === "string" && evt.message.text.length > 0
       ? evt.message.text
       : null;
   const adjunto = evt.message?.attachments?.[0];
-  const type = text
-    ? "text"
-    : adjunto
-      ? (ATTACHMENT_TYPE[adjunto.type ?? ""] ?? "unsupported")
-      : null;
+  const kind = adjunto ? ATTACHMENT_TYPE[adjunto.type ?? ""] : null;
+  const type = text ? "text" : adjunto ? (kind ?? "unsupported") : null;
   // Ni texto ni adjunto: no hay nada que ingerir.
-  return type ? { text, type } : null;
+  if (!type) return null;
+
+  // 149 — La URL viaja. Antes se descartaba acá mismo y el archivo no se
+  // guardaba nunca: la bandeja decía «imagen» y no había imagen, los PDF no
+  // quedaban, y las notas de voz no se transcribían porque el transcriptor
+  // necesita el archivo.
+  const url = typeof adjunto?.url === "string" ? adjunto.url.trim() : "";
+  return {
+    text,
+    type,
+    adjunto: kind && url ? { kind: kind as AdjuntoDeZernio["kind"], url } : null,
+  };
+}
+
+/**
+ * 149 — Adjunto de Zernio → la forma que entiende la ingesta.
+ *
+ * Nace `pending`: el archivo todavía no está en disco. Quien ingiere dispara
+ * la descarga en el acto —la URL es temporal— y si falla, el mensaje queda
+ * igual con el adjunto en `failed`.
+ */
+export function mediaDeZernio(adjunto: AdjuntoDeZernio | null) {
+  if (!adjunto) return null;
+  return {
+    kind: adjunto.kind,
+    waMediaId: null,
+    sourceUrl: adjunto.url,
+    mimeType: null,
+    fileName: null,
+    caption: null,
+    payload: null,
+    fetchStatus: "pending" as const,
+  };
 }
 
 /**
@@ -333,6 +378,7 @@ export async function processZernioWhatsappEvent(
       waMessageId: `${ID_PREFIX}${evt.messageId}`,
       type: evt.type,
       text: evt.text,
+      media: mediaDeZernio(evt.adjunto),
       timestamp: evt.timestamp,
       threadRef: evt.threadRef,
       anuncio: evt.anuncio,
@@ -362,6 +408,7 @@ export async function processZernioWhatsappEvent(
       type: eco.type,
       text: eco.text,
       timestamp: eco.timestamp,
+      media: mediaDeZernio(eco.adjunto),
     });
   }
 }

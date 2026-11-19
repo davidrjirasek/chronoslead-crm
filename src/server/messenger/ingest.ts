@@ -8,6 +8,10 @@ import {
 } from "@/server/messenger/credentials";
 import { fetchMessengerProfileName } from "@/server/messenger/send";
 import { zernioSentAtSeconds, type ZernioEvent } from "@/server/zernio";
+import {
+  mediaDeZernio,
+  type AdjuntoDeZernio,
+} from "@/server/whatsapp/zernio-ingest";
 
 /**
  * 017 — Adaptadores de entrada del canal de Messenger.
@@ -39,6 +43,8 @@ export type MessengerInbound = {
   timestamp: string;
   /** Nombre del perfil si la fuente lo entrega (Zernio sí, Meta no). */
   profileName: string | null;
+  /** 149 — El archivo, para bajarlo antes de que la URL caduque. */
+  adjunto: AdjuntoDeZernio | null;
   /** Hilo en la plataforma de origen: hace falta para responder por Zernio. */
   threadRef: string | null;
 };
@@ -118,6 +124,7 @@ export function normalizeMetaPagePayload(payload: unknown): MessengerInbound[] {
         messageId: mid,
         text,
         type,
+        adjunto: adjuntoDe(text, msg.attachments?.[0]),
         timestamp: String(
           m.timestamp ? Math.floor(m.timestamp / 1000) : Math.floor(Date.now() / 1000)
         ),
@@ -164,6 +171,7 @@ export function normalizeZernioEvent(payload: unknown): MessengerInbound[] {
       messageId,
       text,
       type,
+      adjunto: adjuntoDe(text, evt.message?.attachments?.[0]),
       timestamp: zernioSentAtSeconds(evt.message?.sentAt),
       profileName:
         sender?.name?.trim() ||
@@ -183,6 +191,26 @@ function resolveType(
   if (!attachment) return null;
   if (attachment.payload?.sticker_id) return "sticker";
   return ATTACHMENT_TYPE[attachment.type ?? ""] ?? "unsupported";
+}
+
+/**
+ * 149 — La URL del archivo. Meta la pone en `payload.url` y Zernio en `url`:
+ * la misma idea con dos nombres, y por eso se mira en los dos lugares.
+ *
+ * Sin esto el mensaje entraba con su tipo y sin archivo: la bandeja decía
+ * «imagen» y al hacer clic no había nada.
+ */
+function adjuntoDe(
+  text: string | null,
+  attachment:
+    | { type?: string; url?: string; payload?: { url?: string; sticker_id?: number } }
+    | undefined
+): AdjuntoDeZernio | null {
+  if (text || !attachment) return null;
+  const kind = ATTACHMENT_TYPE[attachment.type ?? ""];
+  const url = (attachment.payload?.url ?? attachment.url ?? "").trim();
+  if (!kind || !url) return null;
+  return { kind: kind as AdjuntoDeZernio["kind"], url };
 }
 
 async function contactExists(
@@ -268,6 +296,7 @@ async function ingestAll(
       text: evt.text,
       timestamp: evt.timestamp,
       threadRef: evt.threadRef,
+      media: mediaDeZernio(evt.adjunto),
     });
   }
 }

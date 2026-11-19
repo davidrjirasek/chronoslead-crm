@@ -90,6 +90,12 @@ const BINARY_MEDIA_TYPES = new Set([
 type MediaInput = {
   kind: (typeof schema.mediaAsset.$inferSelect)["kind"];
   waMediaId: string | null;
+  /**
+   * 149 — De dónde bajarlo cuando no hay media id de Graph. Es el camino de
+   * Zernio, que entrega una URL temporal: por eso la descarga arranca al
+   * ingerir y no cuando alguien abre la bandeja.
+   */
+  sourceUrl?: string | null;
   mimeType: string | null;
   fileName: string | null;
   caption: string | null;
@@ -167,6 +173,7 @@ async function attachMediaAsset(
         mimeType: media.mimeType,
         fileName: media.fileName,
         caption: media.caption,
+        sourceUrl: media.sourceUrl ?? null,
         payload: media.payload ?? null,
         fetchStatus: media.fetchStatus,
       })
