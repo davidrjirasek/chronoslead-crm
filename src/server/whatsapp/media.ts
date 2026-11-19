@@ -9,6 +9,8 @@ import {
   type Credentials,
 } from "@/server/whatsapp/credentials";
 import { isForbiddenUploadMime } from "@/server/whatsapp/media-headers";
+import { ZERNIO_BASE } from "@/server/zernio";
+import { zernioConnectionsOfOrg } from "@/server/zernio/conexiones";
 
 /**
  * 008 — Única frontera de media con la Graph API (constitución II: todo el
@@ -200,6 +202,22 @@ export async function downloadGraphMedia(
 }
 
 /**
+ * 153 — ¿La URL es del host de Zernio? Decide si se le manda la llave.
+ *
+ * Se compara el HOST completo, no un `includes`: `zernio.com.ejemplo.net`
+ * contiene la cadena y no es Zernio.
+ */
+export function esDeZernio(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    const base = new URL(ZERNIO_BASE).hostname.toLowerCase();
+    return host === base || host.endsWith(`.${base}`);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 149 — Bajar un adjunto de una URL directa, sin Graph.
  *
  * Zernio entrega el archivo como una URL temporal en vez de un media id. Es
@@ -210,11 +228,25 @@ export async function downloadGraphMedia(
  */
 export async function downloadUrlMedia(
   url: string,
-  maxBytes: number = MEDIA_LIMITS.document.maxBytes
+  maxBytes: number = MEDIA_LIMITS.document.maxBytes,
+  /**
+   * 153 — La llave de Zernio, SOLO si la URL es de Zernio.
+   *
+   * Sus enlaces de media piden autenticación: sin ella contestan 401, que es
+   * exactamente lo que devolvieron la primera foto real (19-nov-2026). Se
+   * manda como `Authorization: Bearer`, el mismo esquema que su API.
+   *
+   * El guardia del host no es ceremonia: este mismo camino baja también
+   * adjuntos de Meta, y mandarle la llave de Zernio a un host ajeno sería
+   * regalar la credencial del cliente a quien ponga una URL en un webhook.
+   */
+  token?: string | null
 ): Promise<{ data: Buffer; mimeType: string | null; fileSize: number }> {
   let res: Response;
   try {
-    res = await fetch(url);
+    res = await fetch(url, {
+      headers: token && esDeZernio(url) ? { Authorization: `Bearer ${token}` } : {},
+    });
   } catch {
     throw new MediaFetchError("No se pudo descargar el adjunto");
   }
@@ -268,6 +300,21 @@ async function descargarPorGraph(
   return downloadGraphMedia(creds.token, waMediaId);
 }
 
+/**
+ * 153 — La llave de Zernio de esta organización, solo si hace falta.
+ *
+ * No se consulta cuando la URL no es de Zernio: ni una lectura de más ni un
+ * secreto cargado en memoria sin motivo.
+ */
+async function llaveDeZernio(
+  organizationId: string,
+  url: string
+): Promise<string | null> {
+  if (!esDeZernio(url)) return null;
+  const conexiones = await zernioConnectionsOfOrg(organizationId);
+  return conexiones[0]?.token ?? null;
+}
+
 export async function ensureAssetAvailable(
   organizationId: string,
   assetId: string
@@ -288,7 +335,11 @@ export async function ensureAssetAvailable(
   try {
     const { data, mimeType, fileSize } = asset.waMediaId
       ? await descargarPorGraph(organizationId, asset.waMediaId)
-      : await downloadUrlMedia(asset.sourceUrl!);
+      : await downloadUrlMedia(
+          asset.sourceUrl!,
+          MEDIA_LIMITS.document.maxBytes,
+          await llaveDeZernio(organizationId, asset.sourceUrl!)
+        );
     const storagePath = await saveMediaFile(organizationId, assetId, data);
     const updated = await db
       .update(schema.mediaAsset)

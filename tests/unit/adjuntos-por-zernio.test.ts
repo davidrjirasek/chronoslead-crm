@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { esDeZernio } from "@/server/whatsapp/media";
 import {
   mediaDeZernio,
   normalizeZernioWhatsappEcho,
@@ -126,5 +127,37 @@ describe("la traducción a lo que entiende la ingesta", () => {
 
   it("sin adjunto no se arma nada", () => {
     expect(mediaDeZernio(null)).toBeNull();
+  });
+});
+
+/**
+ * 153 — La llave solo va al host de Zernio.
+ *
+ * Sus enlaces de media piden autenticación: la primera foto real devolvió
+ * **401** (19-nov-2026). Pero este mismo camino baja también adjuntos de Meta,
+ * y mandarle la llave del cliente a un host ajeno sería regalarla a quien
+ * ponga una URL en un webhook.
+ */
+describe("a quién se le manda la llave", () => {
+  it("al host de Zernio, sí", () => {
+    expect(esDeZernio("https://zernio.com/media/abc.jpg")).toBe(true);
+  });
+
+  it("y a sus subdominios", () => {
+    expect(esDeZernio("https://cdn.zernio.com/x.jpg")).toBe(true);
+  });
+
+  it("a un host que solo CONTIENE el nombre, no", () => {
+    // `includes` habría dicho que sí, y ahí se va la credencial del cliente.
+    expect(esDeZernio("https://zernio.com.ejemplo.net/x.jpg")).toBe(false);
+    expect(esDeZernio("https://nozernio.com/x.jpg")).toBe(false);
+  });
+
+  it("a Meta tampoco: sus URLs vienen firmadas", () => {
+    expect(esDeZernio("https://lookaside.fbsbx.com/x.jpg")).toBe(false);
+  });
+
+  it("una URL rota no rompe la decisión", () => {
+    expect(esDeZernio("no soy una url")).toBe(false);
   });
 });
