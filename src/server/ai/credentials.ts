@@ -2,7 +2,12 @@ import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
-import { last4, type AiProviderId, type AiStatus } from "@/lib/ai/presets";
+import {
+  last4,
+  limpiarLlave,
+  type AiProviderId,
+  type AiStatus,
+} from "@/lib/ai/presets";
 
 /**
  * La credencial del proveedor de IA de la organización (puerto de
@@ -72,11 +77,18 @@ export async function getAiCredentialSecret(
   if (!row) return null;
   return {
     ...toPublic(row),
-    token: decryptSecret({
-      cipher: row.tokenCipher,
-      iv: row.tokenIv,
-      tag: row.tokenTag,
-    }),
+    /**
+     * 154 — También se limpia AL LEER, no solo al guardar: las llaves que ya
+     * quedaron sucias en la base siguen ahí, y sin esto cada cliente tendría
+     * que volver a pegarla para que su agente hablara.
+     */
+    token: limpiarLlave(
+      decryptSecret({
+        cipher: row.tokenCipher,
+        iv: row.tokenIv,
+        tag: row.tokenTag,
+      })
+    ),
   };
 }
 

@@ -85,3 +85,43 @@ export function modelsUrl(baseUrl: string): string {
 export function last4(token: string): string {
   return token.slice(-4);
 }
+
+/**
+ * 154 — Saca de la llave todo lo que no puede viajar en una cabecera HTTP.
+ *
+ * **Por qué existe:** el 25-nov-2026 el agente de Creativo 4D Group quedó
+ * mudo con un 401 de OpenRouter que decía `Missing Authentication header`.
+ * Ese mensaje NO es «la llave no sirve» —para eso contesta `User not
+ * found.`— sino «la cabecera llegó malformada». La misma llave, copiada a
+ * mano en una terminal, funcionaba.
+ *
+ * Lo guardado traía un carácter invisible EN EL MEDIO, de los que se cuelan
+ * al copiar desde una página. `trim()` no lo veía porque solo mira las
+ * puntas, se cifraba tal cual, y el fallo recién aparecía al usarla: la
+ * pantalla decía «Activo» y el agente no contestaba.
+ *
+ * Ninguna llave de una API lleva espacios adentro, así que sacarlos todos
+ * no puede romper una buena y sí salva una sucia.
+ */
+const INVISIBLES = new RegExp(
+  // `\s` ya cubre espacio, tabulador, saltos, NBSP y BOM. El resto son
+  // invisibles que para JavaScript NO son espacio y aun así rompen la
+  // cabecera: control, guion suave, ancho cero y marcas de dirección.
+  "[\\s\\u0000-\\u001f\\u007f\\u00ad\\u200b-\\u200f\\u2060]",
+  "g"
+);
+
+export function limpiarLlave(valor: string): string {
+  return valor.replace(INVISIBLES, "");
+}
+
+/**
+ * ¿Tiene pinta de ser una llave de este proveedor? Solo para AVISAR en la
+ * pantalla, NUNCA para rechazar: el formato lo decide el proveedor y cambia
+ * sin avisar, y bloquear una llave buena por no reconocerla sería peor que
+ * el problema que evita.
+ */
+export function pareceLlaveDe(provider: AiProviderId, token: string): boolean {
+  if (provider !== "openrouter") return true;
+  return limpiarLlave(token).startsWith("sk-or-");
+}

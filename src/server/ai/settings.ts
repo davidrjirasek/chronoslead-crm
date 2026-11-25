@@ -3,6 +3,7 @@ import {
   AI_PROVIDERS,
   AI_PROVIDER_PRESETS,
   last4,
+  limpiarLlave,
   type AiProviderId,
 } from "@/lib/ai/presets";
 import {
@@ -35,7 +36,13 @@ const baseUrlSchema = z
  * y cambia sin avisar. Quien manda sobre si sirve es el proveedor al usarla
  * («Probar conexión»).
  */
-const tokenSchema = z.string().trim().min(8).max(4096);
+const tokenSchema = z
+  .string()
+  // 154 — Se limpia ANTES de medir y de guardar: una llave con un carácter
+  // invisible en el medio pasaba el `.trim()`, se cifraba sucia, y el
+  // proveedor la rechazaba después con «cabecera malformada».
+  .transform(limpiarLlave)
+  .pipe(z.string().min(8).max(4096));
 
 const modelSchema = z.string().trim().min(1).max(200);
 

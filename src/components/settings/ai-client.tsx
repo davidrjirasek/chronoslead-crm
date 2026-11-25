@@ -16,6 +16,8 @@ import {
   AI_PROVIDERS,
   AI_PROVIDER_PRESETS,
   AI_STATUS_LABEL,
+  limpiarLlave,
+  pareceLlaveDe,
   presetDeBaseUrl,
   type AiProviderId,
   type AiStatus,
@@ -116,7 +118,9 @@ export function AiClient() {
       provider,
       ...(provider === "openai_compatible" ? { baseUrl: baseUrl.trim() } : {}),
       ...(conModelo ? { model: model.trim() } : {}),
-      ...(token.trim() ? { token: token.trim() } : {}),
+      // 154 — Se manda limpia. El servidor la limpia igual; hacerlo también
+      // aquí evita que «Probar» mida un texto y «Guardar» escriba otro.
+      ...(limpiarLlave(token) ? { token: limpiarLlave(token) } : {}),
     });
   }
 
@@ -377,6 +381,20 @@ export function AiClient() {
               <p className="text-xs text-muted-foreground">
                 Se guarda cifrada en tu servidor. No la compartas por chat.
               </p>
+              {/*
+                154 — Avisa, no bloquea. Una llave que no empieza como las de
+                este proveedor casi siempre es un copiado a medias; pero el
+                formato lo decide el proveedor y cambia sin avisar, así que
+                rechazarla sería dejar fuera una llave buena.
+              */}
+              {limpiarLlave(token).length > 0 &&
+                !pareceLlaveDe(provider, token) && (
+                  <p className="text-xs text-warning-text">
+                    Esto no se parece a una llave de {preset.label}: las suyas
+                    empiezan por <code>sk-or-</code>. Revisá que la hayas
+                    copiado entera antes de guardar.
+                  </p>
+                )}
             </div>
 
             {mensaje && (

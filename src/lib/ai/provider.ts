@@ -1,5 +1,5 @@
 import { isAiConfiguredByEnv } from "@/lib/env";
-import { last4, OPENROUTER_BASE_URL } from "@/lib/ai/presets";
+import { last4, limpiarLlave, OPENROUTER_BASE_URL } from "@/lib/ai/presets";
 import {
   getAiCredentialPublic,
   getAiCredentialSecret,
@@ -61,7 +61,9 @@ export function envAiProvider(): AiProvider | null {
     baseUrl: leer("OPENROUTER_BASE_URL") ?? OPENROUTER_BASE_URL,
     model,
     judgeModel: leer("OPENROUTER_JUDGE_MODEL") ?? model,
-    token: leer("OPENROUTER_API_TOKEN") ?? "",
+    // 154 — La del entorno también: un salto de línea al pegarla en el
+    // panel de despliegue rompe la cabecera igual que uno pegado en la UI.
+    token: limpiarLlave(leer("OPENROUTER_API_TOKEN") ?? ""),
   };
 }
 
