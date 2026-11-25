@@ -11,6 +11,7 @@ importante que viva solo en una conversación: lo que no está acá, no existe.
 | **este archivo** | Las reglas. Qué manda sobre qué, y las trampas que ya costaron tiempo |
 | **[docs/bitacora.md](docs/bitacora.md)** | **Qué se hizo, cómo se probó y qué quedó pendiente.** El registro operativo real: dominios, decisiones del dueño, fallos encontrados en vivo y por qué se arreglaron así. **Al cerrar cada fase se le agrega: qué quedó, cómo se probó, qué sigue** |
 | **[docs/alta-de-cliente.md](docs/alta-de-cliente.md)** | Cómo dar de alta un cliente, doce pasos con lista de control |
+| **[docs/reunion-de-kick-off.md](docs/reunion-de-kick-off.md)** | La reunión de diagnóstico previa al alta: 45 minutos, qué acordar y lista de control |
 
 El estado de diseño durable vive en `specs/`; las decisiones de arquitectura,
 en `docs/adr-*.md`.
