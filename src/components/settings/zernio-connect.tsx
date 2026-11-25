@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CampoLlave } from "@/components/ui/campo-llave";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -89,13 +90,11 @@ export function ZernioConnect({
     <div className="space-y-4">
       <div className="space-y-1.5 sm:max-w-md">
         <Label htmlFor={`${idPrefix}-token`}>API key de Zernio</Label>
-        <Input
+        <CampoLlave
           id={`${idPrefix}-token`}
-          type="password"
           value={token}
           onChange={(e) => setToken(e.target.value)}
           placeholder="sk_…"
-          autoComplete="off"
         />
         <p className="text-xs text-text-2">
           Con esa llave Vocero encuentra {what} en Zernio: no hace falta copiar

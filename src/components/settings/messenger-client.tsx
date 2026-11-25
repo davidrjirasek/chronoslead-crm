@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { CampoLlave } from "@/components/ui/campo-llave";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ZernioConnect } from "@/components/settings/zernio-connect";
@@ -236,13 +237,11 @@ export function MessengerClient() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="fb-token">Token de la página</Label>
-                  <Input
+                  <CampoLlave
                     id="fb-token"
-                    type="password"
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
                     placeholder="EAAG…"
-                    autoComplete="off"
                   />
                 </div>
               </div>

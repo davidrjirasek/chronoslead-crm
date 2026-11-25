@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { CampoLlave } from "@/components/ui/campo-llave";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -368,10 +369,8 @@ export function AiClient() {
               <Label htmlFor="ai-token">
                 {cred ? "Reemplazar la llave" : "Llave del proveedor"}
               </Label>
-              <Input
+              <CampoLlave
                 id="ai-token"
-                type="password"
-                autoComplete="off"
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
                 placeholder={

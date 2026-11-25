@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { CampoLlave } from "@/components/ui/campo-llave";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -246,9 +247,8 @@ export function ConsultaClient() {
                   </span>
                 )}
               </Label>
-              <Input
+              <CampoLlave
                 id="c-cred"
-                type="password"
                 value={credencial}
                 onChange={(e) => setCredencial(e.target.value)}
                 placeholder={

@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { CampoLlave } from "@/components/ui/campo-llave";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ZernioConnect } from "@/components/settings/zernio-connect";
@@ -236,13 +237,11 @@ export function InstagramClient() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="ig-token">Token de acceso</Label>
-                  <Input
+                  <CampoLlave
                     id="ig-token"
-                    type="password"
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
                     placeholder="IGAA…"
-                    autoComplete="off"
                   />
                 </div>
               </div>
