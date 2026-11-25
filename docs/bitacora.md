@@ -1981,6 +1981,77 @@ Playwright no pueden esperar `networkidle`: la app mantiene abierto el stream
 de eventos, así que nunca llega — hay que esperar por el texto que tiene que
 aparecer.
 
+### El gestor de contraseñas escribía en el campo de la llave (2026-11-25, specs 154 y 155)
+
+**El síntoma.** El agente de Creativo 4D Group quedó mudo. Ajustes → IA
+mostraba el aviso de «sin saldo» —real: la cuenta de OpenRouter estaba en
+$0,99 y había dado 402— pero al recargar saldo y pulsar «Probar conexión»
+contestaba `401 Missing Authentication header`. La llave figuraba «Activo»,
+los últimos 4 coincidían, y **la misma llave probada a mano con `curl` desde
+la Mac del dueño funcionaba**.
+
+**Lo que se descartó, en este orden** (sirve para la próxima, porque cada
+descarte costó):
+
+- La llave: sana, 73 caracteres, `sk-or-v1`, OpenRouter le contesta bien
+- La red del servidor: «Traer modelos» trajo 470 modelos desde el servidor
+- Un proxy raro: no hay ninguna variable de proxy en Coolify
+- Estado viejo en pantalla: el error era fresco en cada clic (POST → 422)
+- Cruce de organizaciones: la organización sale del Host (`session.ts`)
+- Fila duplicada: hay índice único por organización, y un `Quitar` + guardar
+  de cero dio igual
+- Los dos caminos del código: `probe.ts` e `index.ts` arman la MISMA llamada,
+  con el mismo `Bearer` y la misma llave descifrada
+- Cifrado: AES-GCM autentica, así que o devuelve el texto exacto o lanza
+
+**La causa.** El campo «Reemplazar la llave» era un `type="password"` pelado,
+y **Chrome lo autocompletaba con una contraseña guardada del sitio**. Los
+puntitos que se veían parecían el marcador de «ya hay una llave guardada».
+Al pulsar Probar se mandaba esa contraseña en vez de la llave. Por eso
+OpenRouter decía «cabecera malformada» y no «llave inválida»: es exactamente
+lo que es una contraseña puesta donde iba un token.
+
+Lo que lo delató fue el aviso de forma de la 154 («esto no se parece a una
+llave de OpenRouter»), que solo se dibuja si el campo TIENE texto — y el
+campo debía estar vacío.
+
+**Lo peligroso no era el error.** El mismo texto se guarda si uno pulsa
+Guardar: una contraseña cifrada en lugar de la llave, el agente mudo, y la
+pantalla diciendo «Activo».
+
+**Qué quedó.**
+
+- **154** — `limpiarLlave()` saca espacios y caracteres invisibles de TODO el
+  texto, no solo de las puntas. Se aplica al guardar, al probar y **al leer**,
+  así que una llave ya sucia en la base se cura sola. También la del entorno.
+  Más el aviso de forma, que avisa y no bloquea
+- **155** — `CampoLlave`: arranca en solo lectura y se desbloquea al foco, que
+  es lo único que Chrome respeta (`autocomplete="off"` lo ignora en campos de
+  contraseña), con `name` distinto en cada montaje y los `data-*` de
+  1Password, LastPass y Bitwarden. Va en los SEIS campos de credencial: IA,
+  Consulta, el asistente de WhatsApp, Zernio, Messenger e Instagram. NO va en
+  `CampoContrasena`, donde autocompletar es lo que se quiere
+
+**Cómo se probó.** Typecheck, lint, 1572 pruebas y build en verde, más 15
+pruebas nuevas que llevan los caracteres invisibles de verdad (U+200B,
+U+00A0, U+FEFF, U+200E, U+00AD) — comprobado leyendo el archivo, porque un
+test que los perdiera al escribirse sería falso verde. En vivo sobre
+producción: con el campo autocompletado, 401; vaciándolo a mano, «Conexión
+correcta (1112 ms)» con la misma llave guardada; y tras desplegar la 155, la
+página carga con el campo vacío y Probar da «Conexión correcta (1050 ms)».
+NO se corrió el gate de aislamiento: no toca nada de tenancy.
+
+**Qué sigue.**
+
+- **Caché de prompt, apagada**: la actividad del mes da 357 llamadas, 2,54 M
+  de tokens, precio mezclado **$3,19 por millón** y **0 % de aciertos de
+  caché**. Que el mezclado casi iguale el precio de entrada dice que casi
+  todo lo que se paga es prompt repetido: ~7.800 tokens y ~$0,0245 por turno.
+  Es el mismo problema que «el conocimiento va entero en cada turno», y ahora
+  tiene número. Afecta a los nueve clientes
+- Revisar si algún otro cliente tiene una llave sucia guardada; la 154 las
+  cura al leer, pero conviene confirmarlo cliente por cliente
+
 ### Pendiente de esta spec
 
 - **La tabla `member` NO tiene índice único sobre (organización, usuario).** Se
