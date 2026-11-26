@@ -2109,16 +2109,35 @@ el botón Sincronizar. Las 9 de EDI y la última de ZA Climatización pasaron a
   Son llamadas pagadas cuyo JSON no cumplió el esquema y se reintentaron
 
 **Cómo quedó.** Siete de nueve con el agente trabajando. Los dos que faltan
-están trabados en lo mismo, Go High Level: **Colegio Cerritos** espera el
-switch que coordinan Samantha y Dan, y **ZA Group** espera otro número porque
-el suyo también quedó enganchado.
+NO están en la misma situación, y confundirlos hace parecer bloqueo lo que es
+agenda:
+
+- **Colegio Cerritos** no está trabado. El dueño verificó en Zernio que el
+  número se puede conectar; lo único pendiente es **coordinar el switch** con
+  Samantha y Dan, que es cuándo, no si se puede.
+- **ZA Group** sí está trabado: su número quedó enganchado en Go High Level
+  (error de Meta #3441091, la WABA se factura por otro socio) y el dueño está
+  resolviéndolo con otro número.
 
 **Qué sigue.**
 
-- Crear `aviso_atencion_humana` en Store Fit, Jerovia y The Student Store. A
-  Jerovia le corresponden las 9 porque sí tiene agenda; a los otros dos solo
-  esa, que no agendan
-- Rehacer `comprobante_a_verificar` resolviendo el `INCORRECT_CATEGORY`
+- ~~Crear `aviso_atencion_humana` en Store Fit, Jerovia y The Student Store~~
+  — **HECHO** el mismo día: a Jerovia las 9 porque sí tiene agenda, a los otros
+  dos solo esa, que no agendan. **Las 13 quedaron pendientes en Meta**, sin
+  rechazos; hasta que aprueben, las escaladas de esos tres clientes siguen sin
+  avisar a nadie
+- Cuando Colegio Cerritos y ZA Group conecten su WhatsApp, **cargarles las 9
+  plantillas**. No es automático: Meta las exige sobre un número ya conectado
+- ~~Rehacer `comprobante_a_verificar`~~ — **HECHO**: se creó
+  `comprobante_para_revisar` (Utilidad, `es`). Hipótesis del rechazo, no
+  certeza —Meta solo devuelve el código—: el texto anterior decía «Código {{2}}
+  … respondé con el código», que se lee como un código de un solo uso, y esos
+  tienen categoría propia. El nuevo dice «referencia» y abre contando la
+  operación. Si lo rechazan otra vez, lo que queda es mandarla como MARKETING,
+  que es peor: cuesta más y el destinatario puede tenerlo silenciado
+- **El motor del camino de vuelta (150) NO está construido**: no existe la
+  tabla `verificacion`, ni la acción del agente, ni el módulo. Solo la spec y
+  la plantilla. Aunque Meta apruebe, los comprobantes no funcionan todavía
 - La caché de prompt apagada (0% de aciertos, $3,19 por millón mezclado)
 
 ### Pendiente de esta spec
