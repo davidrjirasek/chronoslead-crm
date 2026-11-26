@@ -2052,6 +2052,75 @@ NO se corrió el gate de aislamiento: no toca nada de tenancy.
 - Revisar si algún otro cliente tiene una llave sucia guardada; la 154 las
   cura al leer, pero conviene confirmarlo cliente por cliente
 
+### Repaso de los nueve y lo que faltaba (2026-11-26)
+
+El dueño pidió un check de las nueve cuentas. Se midió por la propia API de
+cada cliente —`/api/settings/channels`, `/api/templates`, `/api/calendar/settings`,
+`/api/onboarding/status`, `/api/kb`— en vez de abrir cuarenta pantallas.
+
+**Un aviso para quien repita esto:** la sesión es POR SUBDOMINIO. Seis de los
+nueve devolvieron `401 No autenticado`, y la primera sonda los reportó con
+todo en cero — un vacío que parecía «falta configurar» y era «no pude mirar».
+Toda sonda de este tipo tiene que distinguir las dos cosas o miente.
+
+**Qué se hizo.**
+
+- **EDI Cerritos** (la guardería, WhatsApp 0974 944755 por Zernio): se
+  cargaron las **9 plantillas operativas**, copiadas de Castell, y Meta las
+  aprobó en minutos. Agente **encendido**
+- **The Student Store**: Instagram conectado por el dueño (@thestudentstorepy),
+  horario cargado y agente **encendido**. Con eso la consulta de saldo (151)
+  queda al alcance de los padres: estaba configurada y activa desde el 23-nov
+  pero con el agente apagado no la podía usar nadie
+- **Store Fit**: horario cargado
+
+**El horario de atención NO va en la agenda.** Store Fit y The Student Store
+no agendan nada, y el dueño pidió cargar su horario de atención con personas
+(lunes a viernes, 6:30 a 17:00). La agenda es «cuándo se pueden dar citas»:
+cargarlo ahí habría hecho que el agente **ofrezca turnos** a gente que no
+quiere ninguno. Fue al **Conocimiento** —una entrada de pregunta y respuesta—
+y a las **reglas de escalado**, con la instrucción de no prometer respuesta
+inmediata fuera de hora: al día siguiente desde las 6:30, y el lunes si es
+viernes después de las 17:00 o fin de semana. Las agendas de los dos quedan
+deliberadamente **sin horario**.
+
+**El estado de las plantillas no se actualiza solo.** Meta no manda
+`message_template_status_update` a nuestra dirección en modo agencia —no sigue
+el `override_callback_uri`, limitación suya— así que la pantalla se queda en
+«pendiente» para siempre. Hay que tirar del `POST /api/templates/sync`, que es
+el botón Sincronizar. Las 9 de EDI y la última de ZA Climatización pasaron a
+«aprobada» recién al sincronizar.
+
+**Lo que apareció al medir, y es lo que más importa.**
+
+- **Tres clientes tienen destinatario de avisos y NO tienen
+  `aviso_atencion_humana`**: Store Fit (Cynthia Pessolani), Jerovia Ediciones
+  (Pr. Cristian Jara) y The Student Store (Rodney). Los tres con el agente
+  encendido. Es exactamente el fallo de ZA Climatización del 10-nov: el código
+  registra un `console.warn` y sigue —a propósito, para que un aviso fallido no
+  tumbe la conversación— así que **el silencio es invisible**. Cada escalada
+  que hubo en esos clientes no avisó a nadie
+- **`comprobante_a_verificar` de The Student Store fue RECHAZADA** por Meta,
+  no está pendiente: motivo `INCORRECT_CATEGORY`. Se mandó como UTILITY. Es la
+  plantilla del camino de vuelta (spec 150), así que ese flujo sigue sin poder
+  arrancar
+- **24 conversaciones escaladas sin tomar** entre cinco clientes
+- **Tokens tirados**: 40% en Creativo 4D (434 mil de 1,07 M) y 19% en Castell.
+  Son llamadas pagadas cuyo JSON no cumplió el esquema y se reintentaron
+
+**Cómo quedó.** Siete de nueve con el agente trabajando. Los dos que faltan
+están trabados en lo mismo, Go High Level: **Colegio Cerritos** espera el
+switch que coordinan Samantha y Dan, y **ZA Group** espera otro número porque
+el suyo también quedó enganchado.
+
+**Qué sigue.**
+
+- Crear `aviso_atencion_humana` en Store Fit, Jerovia y The Student Store. A
+  Jerovia le corresponden las 9 porque sí tiene agenda; a los otros dos solo
+  esa, que no agendan
+- Rehacer `comprobante_a_verificar` resolviendo el `INCORRECT_CATEGORY`
+- La caché de prompt apagada (0% de aciertos, $3,19 por millón mezclado)
+
 ### Pendiente de esta spec
 
 - **La tabla `member` NO tiene índice único sobre (organización, usuario).** Se
