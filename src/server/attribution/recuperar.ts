@@ -24,8 +24,15 @@ import { zernioFetch } from "@/server/zernio";
 import { anuncioDeWhatsapp, campanaDeZernio } from "@/server/attribution/referral";
 import { registrarAnuncioDeConversacion } from "@/server/whatsapp/zernio-ingest";
 
-/** Tope de páginas: una cartera grande no puede colgar la petición del panel. */
-const MAX_PAGINAS = 20;
+/**
+ * Tope de páginas: una cartera grande no puede colgar la petición del panel.
+ *
+ * Se pagina sobre TODO el espacio de trabajo —el endpoint no sabe filtrar por
+ * cuenta— y se descarta lo ajeno al leerlo, así que el tope tiene que dar
+ * para la cartera entera, no solo para un cliente. Al 27-nov eran unas 510
+ * conversaciones entre los nueve; 40 páginas son 2.000.
+ */
+const MAX_PAGINAS = 40;
 const POR_PAGINA = 50;
 
 export type ResumenRecuperacion = {
@@ -37,6 +44,8 @@ export type ResumenRecuperacion = {
 };
 
 type ConvZernio = {
+  /** De qué cuenta de Zernio es. Es lo que separa a un cliente de otro. */
+  accountId?: string;
   participantId?: string;
   participantUsername?: string;
   metadata?: Record<string, unknown>;
@@ -59,14 +68,15 @@ export async function recuperarAnunciosDeOrganizacion(
     throw new Error("Este cliente no tiene conexión de Zernio guardada.");
   }
   /**
-   * Sin esto se mira el espacio de trabajo ENTERO.
+   * La cuenta de Zernio es lo ÚNICO que separa a un cliente de otro acá.
    *
-   * La llave de API de Zernio es del equipo, no de un cliente: una consulta
-   * sin `accountId` devuelve las conversaciones de las 25 cuentas conectadas,
-   * o sea de todos los clientes. Corriéndolo así el 27-nov sobre Colegio
-   * Cerritos miró 255 conversaciones ajenas y le colgó un anuncio a las 47
-   * que tenía, orgánicas incluidas, porque bastaba que el teléfono existiera
-   * como contacto suyo. Es la frontera entre clientes, y acá se cruzaba.
+   * La llave de API es del equipo, no de un cliente: `/inbox/conversations`
+   * devuelve las de las 25 cuentas conectadas, o sea las de los nueve
+   * clientes. Corriéndolo así el 27-nov sobre Colegio Cerritos se miraron 255
+   * conversaciones ajenas y se le colgó un anuncio a las 47 que tenía,
+   * orgánicas incluidas: bastaba que el teléfono existiera como contacto suyo.
+   *
+   * Sin cuenta no se puede distinguir, y entonces no se corre.
    */
   if (!cred.accountRef) {
     throw new Error("Este cliente no tiene cuenta de Zernio: no puedo saber cuáles son sus conversaciones.");
@@ -90,6 +100,20 @@ export async function recuperarAnunciosDeOrganizacion(
     })) as { data?: ConvZernio[]; pagination?: { nextCursor?: string | null } };
 
     for (const c of res.data ?? []) {
+      /**
+       * El filtro que de verdad manda, y va acá y no en la consulta.
+       *
+       * `?accountId=` NO filtra en este endpoint: su documentación solo
+       * contempla `profileId`, y todos los clientes de la agencia cuelgan del
+       * MISMO perfil, así que tampoco serviría. Mandarlo y confiar fue el
+       * segundo error del 27-nov: Zernio lo ignoró sin decir nada y la corrida
+       * en seco volvió a informar 510 conversaciones de todos los clientes.
+       *
+       * Cada conversación trae su `accountId`, así que se descarta acá. Lo que
+       * no se puede atribuir a la cuenta de ESTE cliente, no se mira.
+       */
+      if (c.accountId !== cred.accountRef) continue;
+
       r.miradas++;
       const meta = c.metadata;
       if (!meta || typeof meta !== "object") continue;
