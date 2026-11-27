@@ -500,19 +500,52 @@ export async function processZernioWhatsappEvent(
 }
 
 /**
- * 144 — Ata el anuncio a la conversación de WhatsApp de ese contacto.
+ * 144 — Cuánto esperar a que entre el primer mensaje.
+ *
+ * `conversation.started` llega ANTES que el `message.received` que crea la
+ * conversación: Zernio abre el hilo y después entrega el mensaje. Medido en
+ * producción el 27-nov, el primer intento no encontró nada y el anuncio se
+ * perdió en silencio.
+ *
+ * Por eso se reintenta en vez de rendirse al primer no. Diez intentos de a un
+ * segundo y medio: de sobra para una diferencia que es de milisegundos, y
+ * acotado para no dejar trabajo colgando si el mensaje nunca llega (puede
+ * pasar: alguien abre el chat desde el anuncio y no escribe).
+ */
+const INTENTOS = 10;
+const ESPERA_MS = 1500;
+
+/**
+ * Ata el anuncio a la conversación de WhatsApp de ese contacto.
  *
  * Toma la ÚLTIMA conversación del contacto en este canal. `registrarAnuncioDeOrigen`
  * es idempotente —el primer anuncio gana, por el UNIQUE de (organización,
  * conversación)—, así que un reintento de Zernio no duplica ni pisa.
+ *
+ * `reintentar` va en false desde el recuperador: ahí la conversación o existe
+ * o no existe, y esperar no cambia nada.
  */
 export async function registrarAnuncioDeConversacion(
   organizationId: string,
   identity: string,
-  anuncio: AnuncioDeOrigen
+  anuncio: AnuncioDeOrigen,
+  reintentar = true
 ): Promise<void> {
+  const intentos = reintentar ? INTENTOS : 1;
+  for (let i = 0; i < intentos; i++) {
+    if (i > 0) await new Promise((r) => setTimeout(r, ESPERA_MS));
+    if (await atar(organizationId, identity, anuncio)) return;
+  }
+}
+
+/** Un intento. `true` si quedó atado. */
+async function atar(
+  organizationId: string,
+  identity: string,
+  anuncio: AnuncioDeOrigen
+): Promise<boolean> {
   const contacto = await findContactByIdentity(organizationId, identity);
-  if (!contacto) return; // el primer mensaje todavía no entró
+  if (!contacto) return false; // el primer mensaje todavía no entró
 
   const db = getDb();
   const [conv] = await db
@@ -527,7 +560,7 @@ export async function registrarAnuncioDeConversacion(
     )
     .orderBy(desc(schema.conversation.createdAt))
     .limit(1);
-  if (!conv) return;
+  if (!conv) return false;
 
   await registrarAnuncioDeOrigen({
     organizationId,
@@ -535,4 +568,5 @@ export async function registrarAnuncioDeConversacion(
     conversationId: conv.id,
     anuncio,
   });
+  return true;
 }

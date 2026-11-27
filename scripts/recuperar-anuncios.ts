@@ -106,7 +106,7 @@ async function main() {
 
       console.log(`  ${c.participantName ?? identity} → ${anuncio.headline ?? "(sin titular)"}`);
       if (aplicar) {
-        await registrarAnuncioDeConversacion(org.id, identity, anuncio);
+        await registrarAnuncioDeConversacion(org.id, identity, anuncio, false);
         atadas++;
       }
     }
