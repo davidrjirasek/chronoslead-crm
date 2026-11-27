@@ -1,5 +1,9 @@
 import { normalizeMx } from "@/lib/meta/client";
-import { BSUID_PREFIX } from "@/server/inbox/identity";
+import { and, desc, eq } from "drizzle-orm";
+import { BSUID_PREFIX, findContactByIdentity } from "@/server/inbox/identity";
+import { getDb } from "@/lib/db";
+import * as schema from "@/lib/db/schema";
+import { registrarAnuncioDeOrigen } from "@/server/attribution/store";
 import { ingestInboundMessage, ingestManualOutbound } from "@/server/inbox/ingest";
 import { applyStatusUpdate } from "@/server/inbox/status";
 import { getZernioWhatsappByAccountRef } from "@/server/whatsapp/credentials";
@@ -125,7 +129,17 @@ function telefonoDeLaIdentidad(crudo: string | null): string | null {
 function anuncioDelEvento(evt: ZernioEvent): AnuncioDeOrigen | null {
   const meta = evt.message?.metadata;
   if (!meta || typeof meta !== "object") return null;
+  return anuncioDeMetadata(meta);
+}
 
+/**
+ * 144 — La lectura del anuncio, compartida por los dos caminos: el `metadata`
+ * del mensaje (que hoy llega vacío) y el de la conversación (que es el que
+ * trae el dato). Una sola función para no mantener dos al día.
+ */
+function anuncioDeMetadata(
+  meta: Record<string, unknown>
+): AnuncioDeOrigen | null {
   const verbatim = anuncioDeWhatsapp(meta.referral);
   if (verbatim) return verbatim;
 
@@ -139,7 +153,13 @@ function anuncioDelEvento(evt: ZernioEvent): AnuncioDeOrigen | null {
     body: meta.ctwa_body,
     media_type: meta.ctwa_media_type,
     ctwa_clid: meta.ctwa_clid,
-    image_url: meta.ctwa_image_url,
+    /**
+     * 144 — Zernio NO manda `ctwa_image_url`. En los anuncios reales de
+     * Cerritos manda `ctwa_thumbnail_url`, y para los de video además
+     * `ctwa_video_url`. Con el nombre viejo la tarjeta salía siempre con el
+     * megáfono gris en vez del creativo.
+     */
+    image_url: meta.ctwa_image_url ?? meta.ctwa_thumbnail_url,
   });
 }
 
@@ -250,6 +270,46 @@ export function normalizeZernioWhatsappInbound(
       anuncio: anuncioDelEvento(evt),
     },
   ];
+}
+
+/**
+ * 144 — El anuncio que abrió una conversación, desde `conversation.started`.
+ *
+ * Por qué hace falta un camino aparte: el `message.received` de Zernio llega
+ * SIN `metadata`, así que por ahí el anuncio no entra nunca. Se comprobó
+ * leyendo las entregas reales del webhook (27-nov): 290 entregas, ninguna con
+ * el dato, mientras las mismas conversaciones sí lo tenían en Zernio.
+ *
+ * Se ata por la identidad —teléfono o BSUID— y no por el id de conversación
+ * de Zernio, porque ese id no se guarda en nuestra base.
+ */
+export function anuncioDeConversacionZernio(
+  payload: unknown
+): { accountRef: string; identity: string; anuncio: AnuncioDeOrigen } | null {
+  const evt = payload as ZernioEvent | null;
+  if (!esDeWhatsapp(evt)) return null;
+  if (evt.event !== "conversation.started") return null;
+  // El de prueba trae ids inventados: respondemos 200 y no tocamos datos.
+  if (evt.test) return null;
+
+  const accountRef = evt.account?.id ?? evt.account?.accountId;
+  if (!accountRef) return null;
+
+  const conv = evt.conversation;
+  const meta = conv?.metadata;
+  if (!meta || typeof meta !== "object") return null;
+
+  const anuncio = anuncioDeMetadata(meta as Record<string, unknown>);
+  if (!anuncio) return null;
+
+  // `participantId` es el teléfono sin «+»; `participantUsername` lo trae con él.
+  const crudo =
+    conv?.participantUsername?.trim() || conv?.participantId?.trim() || null;
+  const phone = telefonoDeLaIdentidad(crudo);
+  const identity = phone ?? null;
+  if (!identity) return null;
+
+  return { accountRef, identity, anuncio };
 }
 
 /**
@@ -399,6 +459,32 @@ export async function processZernioWhatsappEvent(
     }
   }
 
+  // 144 — El anuncio llega en su propio evento, no pegado al mensaje. Puede
+  // llegar ANTES que el primer mensaje: entonces todavía no hay conversación
+  // a la que atarlo y se deja pasar sin ruido. Lo que se pierda por esa
+  // carrera lo recupera `scripts/recuperar-anuncios.ts`, que lee lo mismo
+  // desde la API de Zernio.
+  const deAnuncio = anuncioDeConversacionZernio(payload);
+  if (deAnuncio) {
+    const organizationId = await organizacionDe(deAnuncio.accountRef);
+    if (organizationId) {
+      try {
+        await registrarAnuncioDeConversacion(
+          organizationId,
+          deAnuncio.identity,
+          deAnuncio.anuncio
+        );
+      } catch (err) {
+        // El anuncio es contexto: que falle no puede tumbar la entrega, o
+        // Zernio reintenta y acaba desactivando el webhook de todos.
+        console.warn(
+          "[whatsapp/zernio] no se registró el anuncio de la conversación:",
+          err instanceof Error ? err.message : err
+        );
+      }
+    }
+  }
+
   for (const eco of normalizeZernioWhatsappEcho(payload)) {
     const organizationId = await organizacionDe(eco.accountRef);
     if (!organizationId) continue;
@@ -411,4 +497,42 @@ export async function processZernioWhatsappEvent(
       media: mediaDeZernio(eco.adjunto),
     });
   }
+}
+
+/**
+ * 144 — Ata el anuncio a la conversación de WhatsApp de ese contacto.
+ *
+ * Toma la ÚLTIMA conversación del contacto en este canal. `registrarAnuncioDeOrigen`
+ * es idempotente —el primer anuncio gana, por el UNIQUE de (organización,
+ * conversación)—, así que un reintento de Zernio no duplica ni pisa.
+ */
+export async function registrarAnuncioDeConversacion(
+  organizationId: string,
+  identity: string,
+  anuncio: AnuncioDeOrigen
+): Promise<void> {
+  const contacto = await findContactByIdentity(organizationId, identity);
+  if (!contacto) return; // el primer mensaje todavía no entró
+
+  const db = getDb();
+  const [conv] = await db
+    .select({ id: schema.conversation.id })
+    .from(schema.conversation)
+    .where(
+      and(
+        eq(schema.conversation.organizationId, organizationId),
+        eq(schema.conversation.contactId, contacto.id),
+        eq(schema.conversation.channel, "whatsapp")
+      )
+    )
+    .orderBy(desc(schema.conversation.createdAt))
+    .limit(1);
+  if (!conv) return;
+
+  await registrarAnuncioDeOrigen({
+    organizationId,
+    contactId: contacto.id,
+    conversationId: conv.id,
+    anuncio,
+  });
 }

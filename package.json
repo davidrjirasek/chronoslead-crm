@@ -32,7 +32,8 @@
     "provision": "esbuild scripts/provision.ts --bundle --platform=node --format=esm --outfile=.tmp-provision.mjs --alias:@=./src --packages=external --log-level=warning && node --env-file=.env .tmp-provision.mjs",
     "test:e2e:aislamiento": "esbuild scripts/provision.ts --bundle --platform=node --format=esm --outfile=.tmp-provision.mjs --alias:@=./src --packages=external --log-level=warning && esbuild scripts/acceso.ts --bundle --platform=node --format=esm --outfile=.tmp-acceso.mjs --alias:@=./src --packages=external --log-level=warning && node --env-file=.env scripts/e2e-aislamiento.mjs",
     "cuestionario": "esbuild scripts/leer-cuestionario.ts --bundle --platform=node --format=esm --outfile=.tmp-cuestionario.mjs --alias:@=./src --packages=external --log-level=warning && node --env-file=.env .tmp-cuestionario.mjs",
-    "acceso": "esbuild scripts/acceso.ts --bundle --platform=node --format=esm --outfile=.tmp-acceso.mjs --alias:@=./src --packages=external --log-level=warning && node --env-file=.env .tmp-acceso.mjs"
+    "acceso": "esbuild scripts/acceso.ts --bundle --platform=node --format=esm --outfile=.tmp-acceso.mjs --alias:@=./src --packages=external --log-level=warning && node --env-file=.env .tmp-acceso.mjs",
+    "recuperar-anuncios": "esbuild scripts/recuperar-anuncios.ts --bundle --platform=node --format=esm --outfile=.tmp-recuperar.mjs --alias:@=./src --packages=external --log-level=warning && node --env-file=.env .tmp-recuperar.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

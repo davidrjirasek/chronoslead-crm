@@ -120,9 +120,35 @@ export type ZernioEvent = {
       businessScopedUserId?: string | null;
     };
   };
+  /** 144 — `conversation.started` llega marcado así. No es tráfico real. */
+  test?: boolean;
   /** 022: el hilo también viene aparte; su `id` es el `conversationId`. */
   conversation?: {
     id?: string;
+    /**
+     * 144 — Dónde vive de verdad el anuncio Click-to-WhatsApp.
+     *
+     * Averiguado leyendo los webhooks reales de Zernio el 27-nov: el payload
+     * de `message.received` NO trae `metadata` ninguno, ni `referral` ni
+     * `ctwa_*`, pese a lo que dice su documentación. La atribución viaja en el
+     * evento `conversation.started`, y ahí cuelga de la CONVERSACIÓN.
+     */
+    metadata?: Record<string, unknown>;
+    /**
+     * 144 — Lo que Zernio ya resolvió contra la API de Marketing. Trae lo que
+     * el `referral` de Meta NUNCA trae: campaña y conjunto por su nombre.
+     * `synced:false` significa que ese anuncio no está sincronizado y `name`
+     * cae al titular.
+     */
+    adAttribution?: {
+      adId?: string;
+      name?: string | null;
+      synced?: boolean;
+      campaignId?: string | null;
+      campaignName?: string | null;
+      adSetId?: string | null;
+      adSetName?: string | null;
+    };
     /**
      * 139 — La OTRA parte, poblada en los dos sentidos. En un saliente el
      * `sender` es el propio negocio, así que el cliente solo se conoce por
