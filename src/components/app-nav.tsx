@@ -40,6 +40,7 @@ export function navItemClass(active: boolean) {
 export function AppNav({
   branding,
   userName,
+  userEmail,
   role,
   theme,
   commit,
@@ -51,6 +52,13 @@ export function AppNav({
 }: {
   branding: Branding;
   userName: string;
+  /**
+   * 156 — Lo que se DIBUJA en el rincón. El nombre del propietario lo pone el
+   * alta con el nombre del NEGOCIO, así que a quien administra varios clientes
+   * le decía «The Student Store» en las siete cuentas. El correo es con lo que
+   * uno entra y no se repite: es lo único que contesta «¿con qué cuenta estoy?».
+   */
+  userEmail: string;
   role: string;
   theme: ThemePreference;
   /** 114 — El aviso de commit sin verificar es de operador, no de cliente. */
@@ -184,7 +192,12 @@ export function AppNav({
           {initials(userName)}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] font-semibold">{userName}</span>
+          <span
+            className="block truncate text-[13px] font-semibold"
+            title={userName}
+          >
+            {userEmail || userName}
+          </span>
           <span className="block truncate text-[11px] text-text-3">
             {role === "owner" ? "Propietario" : "Equipo"} · En línea
           </span>

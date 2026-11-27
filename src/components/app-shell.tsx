@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 export function AppShell({
   branding,
   userName,
+  userEmail,
   role,
   theme,
   commit,
@@ -37,6 +38,7 @@ export function AppShell({
 }: {
   branding: Branding;
   userName: string;
+  userEmail: string;
   role: string;
   theme: ThemePreference;
   /** Commit resuelto en el servidor, con su procedencia (ver `resolveCommit`). */
@@ -101,6 +103,7 @@ export function AppShell({
         commit={commit}
         avisarCommitSinVerificar={avisarCommitSinVerificar}
         userName={userName}
+        userEmail={userEmail}
         role={role}
         theme={theme}
         agenda={agenda}
