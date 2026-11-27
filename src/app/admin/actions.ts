@@ -3,6 +3,7 @@
 import {
   deshacerRecuperacion,
   recuperarAnunciosDeOrganizacion,
+  rehacerAtribucion,
 } from "@/server/attribution/recuperar";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -453,8 +454,32 @@ export async function recuperarAnuncios(
   });
   if (!datos.success) return { error: "Cliente no indicado.", aviso: null };
 
+  /**
+   * 157 — «Ver qué haría» antes de escribir.
+   *
+   * Debió existir desde el primer día. La versión que salió solo tenía la
+   * marcha que escribe, y su primera corrida sobre Colegio Cerritos informó
+   * 255 conversaciones —de los nueve clientes— DESPUÉS de haberlas marcado.
+   * Con esto el número se ve antes, y un número que no cuadra se caza sin
+   * haber tocado un dato.
+   */
+  const soloMirar = String(formData.get("soloMirar") ?? "") === "1";
+
   try {
-    const r = await recuperarAnunciosDeOrganizacion(datos.data.organizationId);
+    const r = await recuperarAnunciosDeOrganizacion(datos.data.organizationId, {
+      aplicar: !soloMirar,
+    });
+
+    if (soloMirar) {
+      return {
+        error: null,
+        aviso:
+          `Sin tocar nada: miré ${r.miradas} conversaciones de este cliente en ` +
+          `Zernio, ${r.conAnuncio} vienen de un anuncio y se marcarían ` +
+          `${r.conAnuncio - r.sinContacto}.`,
+      };
+    }
+
     registrar(
       guardia.autor,
       `anuncios recuperados (${r.atadas} de ${r.conAnuncio})`,
@@ -481,6 +506,58 @@ export async function recuperarAnuncios(
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : "No se pudo recuperar.",
+      aviso: null,
+    };
+  }
+}
+
+/**
+ * 157 — Borra toda la atribución del cliente y la reconstruye desde Zernio.
+ *
+ * Es la salida para lo que ensució la primera recuperación, que escribió sin
+ * dejar marca y por eso `deshacerAnunciosRecuperados` no la encuentra.
+ *
+ * Pide confirmación explícita porque borra antes de escribir. Lo que se borra
+ * se vuelve a traer en el mismo paso —el original vive en Zernio, nuestra
+ * tabla es una copia—, pero el que lo aprieta tiene que saber que eso pasa.
+ */
+export async function rehacerAnuncios(
+  _prev: ResultadoAccion,
+  formData: FormData
+): Promise<ResultadoAccion> {
+  const guardia = await exigirSuperadmin();
+  if (!guardia.ok) return guardia.resultado;
+
+  const datos = idSchema.safeParse({
+    organizationId: formData.get("organizationId"),
+  });
+  if (!datos.success) return { error: "Cliente no indicado.", aviso: null };
+
+  if (String(formData.get("confirmar") ?? "") !== "1") {
+    return {
+      error: "Marcá la casilla para confirmar: esto borra y vuelve a construir.",
+      aviso: null,
+    };
+  }
+
+  try {
+    const { borradas, resumen } = await rehacerAtribucion(datos.data.organizationId);
+    registrar(
+      guardia.autor,
+      `atribución rehecha (${borradas} borradas, ${resumen.atadas} nuevas)`,
+      datos.data.organizationId
+    );
+    revalidatePath("/admin");
+    return {
+      error: null,
+      aviso:
+        `Hecho: borré ${borradas} marcas viejas y volví a construir ${resumen.atadas}, ` +
+        `de ${resumen.conAnuncio} conversaciones con anuncio que este cliente ` +
+        `tiene en Zernio (miré ${resumen.miradas} suyas).`,
+    };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "No se pudo rehacer.",
       aviso: null,
     };
   }

@@ -164,3 +164,43 @@ export async function deshacerRecuperacion(
     .returning({ id: schema.adAttribution.id });
   return borradas.length;
 }
+
+/**
+ * 157 — Rehace la atribución del cliente desde cero.
+ *
+ * Hace falta porque la primera recuperación —la que miraba el espacio de
+ * trabajo entero— escribió SIN dejar marca: `deshacerRecuperacion` no la
+ * encuentra, y no hay forma de separar sus filas de las buenas.
+ *
+ * Que borre todo suena peor de lo que es: nuestra tabla es una COPIA. El dato
+ * original vive en la conversación de Zernio, así que lo que se borra se trae
+ * de nuevo en el mismo paso. Por eso van juntos y no en dos botones: entre
+ * uno y otro el cliente se quedaría sin atribución.
+ *
+ * Lo único que no vuelve es la copia local del creativo (`imageAssetId`), que
+ * se baja aparte cuando el anuncio llega en vivo. La tarjeta sigue enseñando
+ * la imagen, así que no se nota.
+ */
+export async function rehacerAtribucion(
+  organizationId: string
+): Promise<{ borradas: number; resumen: ResumenRecuperacion }> {
+  const db = getDb();
+  // Se comprueba la conexión ANTES de borrar: si Zernio no contesta, es
+  // preferible quedarse con el dato sucio que sin ningún dato.
+  const cred = await getZernioWhatsappByOrg(organizationId);
+  if (!cred?.token || !cred.accountRef) {
+    throw new Error(
+      "Este cliente no tiene conexión de Zernio: no puedo rehacer nada."
+    );
+  }
+
+  const borradas = await db
+    .delete(schema.adAttribution)
+    .where(eq(schema.adAttribution.organizationId, organizationId))
+    .returning({ id: schema.adAttribution.id });
+
+  const resumen = await recuperarAnunciosDeOrganizacion(organizationId, {
+    aplicar: true,
+  });
+  return { borradas: borradas.length, resumen };
+}

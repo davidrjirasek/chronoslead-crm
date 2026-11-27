@@ -24,6 +24,7 @@ import {
   agendaDeRecursos,
   recuperarAnuncios,
   deshacerAnunciosRecuperados,
+  rehacerAnuncios,
   reactivarCliente,
   suspenderCliente,
   type ResultadoAccion,
@@ -352,6 +353,10 @@ function Acciones({
     deshacerAnunciosRecuperados,
     SIN_RESULTADO
   );
+  const [rehacer, accionRehacer, rehacerEnCurso] = useActionState(
+    rehacerAnuncios,
+    SIN_RESULTADO
+  );
   const [recursos, accionRecursos, recursosEnCurso] = useActionState(
     agendaDeRecursos,
     SIN_RESULTADO
@@ -509,14 +514,28 @@ function Acciones({
         >
           <form action={accionAnuncios} className="space-y-2">
             <input type="hidden" name="organizationId" value={cliente.id} />
-            <Button
-              type="submit"
-              size="sm"
-              variant="outline"
-              disabled={anunciosEnCurso}
-            >
-              {anunciosEnCurso ? "Preguntándole a Zernio…" : "Recuperar"}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* «Ver qué haría» primero y en primer lugar: la corrida que
+                  ensució los datos el 27-nov se habría cazado acá. */}
+              <Button
+                type="submit"
+                name="soloMirar"
+                value="1"
+                size="sm"
+                variant="outline"
+                disabled={anunciosEnCurso}
+              >
+                Ver qué haría
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                variant="outline"
+                disabled={anunciosEnCurso}
+              >
+                {anunciosEnCurso ? "Preguntándole a Zernio…" : "Recuperar"}
+              </Button>
+            </div>
             {anuncios.aviso ? (
               <p className="text-xs text-text-2">{anuncios.aviso}</p>
             ) : null}
@@ -534,6 +553,35 @@ function Acciones({
             </button>
             {deshacer.aviso ? (
               <p className="mt-1 text-xs text-text-2">{deshacer.aviso}</p>
+            ) : null}
+          </form>
+          {/* 157 — La salida para lo que escribió la primera recuperación,
+              que no dejaba marca y por eso el «deshacer» no la encuentra.
+              Pide confirmación porque borra antes de volver a construir. */}
+          <form action={accionRehacer} className="space-y-1 border-t border-line pt-2">
+            <input type="hidden" name="organizationId" value={cliente.id} />
+            <label className="flex items-start gap-2 text-xs text-text-3">
+              <input
+                type="checkbox"
+                name="confirmar"
+                value="1"
+                className="mt-0.5"
+              />
+              <span>
+                Borrar TODAS las marcas de anuncio de este cliente y volver a
+                construirlas desde Zernio. Se usa si quedaron marcas de otro
+                cliente.
+              </span>
+            </label>
+            <button
+              type="submit"
+              disabled={rehacerEnCurso}
+              className="text-xs text-danger underline underline-offset-2 hover:opacity-80 disabled:opacity-50"
+            >
+              {rehacerEnCurso ? "Rehaciendo…" : "Borrar y rehacer"}
+            </button>
+            {rehacer.aviso ? (
+              <p className="mt-1 text-xs text-text-2">{rehacer.aviso}</p>
             ) : null}
           </form>
         </Bloque>
