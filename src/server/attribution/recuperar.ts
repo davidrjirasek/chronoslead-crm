@@ -15,7 +15,7 @@
  * (UNIQUE de organización + conversación), así que correrlo dos veces no
  * duplica ni cambia lo que ya estaba.
  */
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { normalizeMx } from "@/lib/meta/client";
@@ -58,6 +58,19 @@ export async function recuperarAnunciosDeOrganizacion(
   if (!cred?.token) {
     throw new Error("Este cliente no tiene conexión de Zernio guardada.");
   }
+  /**
+   * Sin esto se mira el espacio de trabajo ENTERO.
+   *
+   * La llave de API de Zernio es del equipo, no de un cliente: una consulta
+   * sin `accountId` devuelve las conversaciones de las 25 cuentas conectadas,
+   * o sea de todos los clientes. Corriéndolo así el 27-nov sobre Colegio
+   * Cerritos miró 255 conversaciones ajenas y le colgó un anuncio a las 47
+   * que tenía, orgánicas incluidas, porque bastaba que el teléfono existiera
+   * como contacto suyo. Es la frontera entre clientes, y acá se cruzaba.
+   */
+  if (!cred.accountRef) {
+    throw new Error("Este cliente no tiene cuenta de Zernio: no puedo saber cuáles son sus conversaciones.");
+  }
 
   const r: ResumenRecuperacion = {
     miradas: 0, conAnuncio: 0, atadas: 0, sinContacto: 0, truncado: false,
@@ -65,7 +78,11 @@ export async function recuperarAnunciosDeOrganizacion(
 
   let cursor: string | null = null;
   for (let pagina = 0; pagina < MAX_PAGINAS; pagina++) {
-    const q = new URLSearchParams({ platform: "whatsapp", limit: String(POR_PAGINA) });
+    const q = new URLSearchParams({
+      platform: "whatsapp",
+      limit: String(POR_PAGINA),
+      accountId: cred.accountRef,
+    });
     if (cursor) q.set("cursor", cursor);
     const res = (await zernioFetch(`/inbox/conversations?${q}`, {
       token: cred.token,
@@ -92,6 +109,9 @@ export async function recuperarAnunciosDeOrganizacion(
       });
       if (!anuncio) continue;
       anuncio.campana = campanaDeZernio(c.adAttribution);
+      // Marca de origen: sin esto, una recuperación equivocada no se puede
+      // deshacer sin borrar también lo que entró bien por el webhook.
+      anuncio.raw = { ...anuncio.raw, recuperado_en: new Date().toISOString() };
       r.conAnuncio++;
 
       const identity = telefono(c.participantUsername || c.participantId);
@@ -120,4 +140,27 @@ export async function recuperarAnunciosDeOrganizacion(
   }
   r.truncado = true;
   return r;
+}
+
+/**
+ * Borra SOLO lo que escribió una recuperación, por su marca en `raw`.
+ *
+ * Existe porque la primera versión de esto miraba el espacio de trabajo
+ * entero y atribuyó de más. Lo que entró por el webhook no lleva la marca y
+ * no se toca: es el dato bueno, el que Meta mandó en su momento.
+ */
+export async function deshacerRecuperacion(
+  organizationId: string
+): Promise<number> {
+  const db = getDb();
+  const borradas = await db
+    .delete(schema.adAttribution)
+    .where(
+      and(
+        eq(schema.adAttribution.organizationId, organizationId),
+        sql`${schema.adAttribution.raw} ? 'recuperado_en'`
+      )
+    )
+    .returning({ id: schema.adAttribution.id });
+  return borradas.length;
 }

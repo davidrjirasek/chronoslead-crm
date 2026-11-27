@@ -1,6 +1,9 @@
 "use server";
 
-import { recuperarAnunciosDeOrganizacion } from "@/server/attribution/recuperar";
+import {
+  deshacerRecuperacion,
+  recuperarAnunciosDeOrganizacion,
+} from "@/server/attribution/recuperar";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
@@ -478,6 +481,46 @@ export async function recuperarAnuncios(
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : "No se pudo recuperar.",
+      aviso: null,
+    };
+  }
+}
+
+/**
+ * 157 — Deshace una recuperación: borra solo las atribuciones que escribió
+ * ella, nunca las que llegaron por el webhook.
+ *
+ * Hizo falta el mismo día: la primera versión preguntaba a Zernio sin filtrar
+ * por cuenta y, como la llave de API es del equipo entero, miró las
+ * conversaciones de los 25 clientes. A Colegio Cerritos le colgó un anuncio a
+ * las 47 conversaciones que tenía, orgánicas incluidas.
+ */
+export async function deshacerAnunciosRecuperados(
+  _prev: ResultadoAccion,
+  formData: FormData
+): Promise<ResultadoAccion> {
+  const guardia = await exigirSuperadmin();
+  if (!guardia.ok) return guardia.resultado;
+
+  const datos = idSchema.safeParse({
+    organizationId: formData.get("organizationId"),
+  });
+  if (!datos.success) return { error: "Cliente no indicado.", aviso: null };
+
+  try {
+    const borradas = await deshacerRecuperacion(datos.data.organizationId);
+    registrar(guardia.autor, `recuperación deshecha (${borradas})`, datos.data.organizationId);
+    revalidatePath("/admin");
+    return {
+      error: null,
+      aviso:
+        borradas === 0
+          ? "No había nada puesto por una recuperación."
+          : `Borré ${borradas} marcas que había puesto la recuperación. Lo que llegó por el anuncio en vivo quedó intacto.`,
+    };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "No se pudo deshacer.",
       aviso: null,
     };
   }

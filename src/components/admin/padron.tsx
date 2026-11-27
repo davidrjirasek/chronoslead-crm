@@ -23,6 +23,7 @@ import {
   marcarPago,
   agendaDeRecursos,
   recuperarAnuncios,
+  deshacerAnunciosRecuperados,
   reactivarCliente,
   suspenderCliente,
   type ResultadoAccion,
@@ -347,6 +348,10 @@ function Acciones({
     recuperarAnuncios,
     SIN_RESULTADO
   );
+  const [deshacer, accionDeshacer, deshacerEnCurso] = useActionState(
+    deshacerAnunciosRecuperados,
+    SIN_RESULTADO
+  );
   const [recursos, accionRecursos, recursosEnCurso] = useActionState(
     agendaDeRecursos,
     SIN_RESULTADO
@@ -514,6 +519,21 @@ function Acciones({
             </Button>
             {anuncios.aviso ? (
               <p className="text-xs text-text-2">{anuncios.aviso}</p>
+            ) : null}
+          </form>
+          {/* Deshacer va en letra chica y sin botón: es la salida de
+              emergencia, no algo que se aprieta todos los días. */}
+          <form action={accionDeshacer}>
+            <input type="hidden" name="organizationId" value={cliente.id} />
+            <button
+              type="submit"
+              disabled={deshacerEnCurso}
+              className="text-xs text-text-3 underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+            >
+              {deshacerEnCurso ? "Deshaciendo…" : "Deshacer la recuperación"}
+            </button>
+            {deshacer.aviso ? (
+              <p className="mt-1 text-xs text-text-2">{deshacer.aviso}</p>
             ) : null}
           </form>
         </Bloque>
