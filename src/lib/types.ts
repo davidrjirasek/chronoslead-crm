@@ -56,6 +56,13 @@ export type AnuncioDto = {
   /** Si Meta mandó identificador de clic. El valor no sale del servidor. */
   hasCtwaClid: boolean;
   capturedAt: string;
+  /**
+   * 157 — Campaña y conjunto. Nulos por el camino de la Cloud API directa:
+   * el `referral` de Meta no los trae y solo Zernio los resuelve.
+   */
+  adName: string | null;
+  campaignName: string | null;
+  adSetName: string | null;
 };
 
 /** 008 — Adjunto de un mensaje, para previsualización en el hilo. */

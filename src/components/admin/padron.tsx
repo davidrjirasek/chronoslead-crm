@@ -22,6 +22,7 @@ import {
   quitarSoporteDeCliente,
   marcarPago,
   agendaDeRecursos,
+  recuperarAnuncios,
   reactivarCliente,
   suspenderCliente,
   type ResultadoAccion,
@@ -342,6 +343,10 @@ function Acciones({
     enlaceDeAcceso,
     SIN_RESULTADO
   );
+  const [anuncios, accionAnuncios, anunciosEnCurso] = useActionState(
+    recuperarAnuncios,
+    SIN_RESULTADO
+  );
   const [recursos, accionRecursos, recursosEnCurso] = useActionState(
     agendaDeRecursos,
     SIN_RESULTADO
@@ -487,6 +492,30 @@ function Acciones({
             cliente.estado.razon && (
               <p className="text-xs text-text-3">Motivo registrado: {cliente.estado.razon}</p>
             )}
+        </Bloque>
+
+        {/* 157 — Recuperar la atribución de las conversaciones viejas.
+            Vive acá porque la base de producción no se expone a internet:
+            desde fuera el guion equivalente no llega, y exponerla para esto
+            sería cambiar la seguridad del servidor por una comodidad. */}
+        <Bloque
+          titulo="Recuperar anuncios"
+          ayuda="Le pregunta a Zernio de qué anuncio vino cada conversación que ya estaba, y marca las que correspondan. Sirve para las anteriores al 27-nov-2026, cuando el dato todavía no se guardaba. Apretarlo dos veces no rompe nada: no pisa lo ya marcado."
+        >
+          <form action={accionAnuncios} className="space-y-2">
+            <input type="hidden" name="organizationId" value={cliente.id} />
+            <Button
+              type="submit"
+              size="sm"
+              variant="outline"
+              disabled={anunciosEnCurso}
+            >
+              {anunciosEnCurso ? "Preguntándole a Zernio…" : "Recuperar"}
+            </Button>
+            {anuncios.aviso ? (
+              <p className="text-xs text-text-2">{anuncios.aviso}</p>
+            ) : null}
+          </form>
         </Bloque>
 
         {/* 146 — El interruptor de la agenda por recurso. Vive acá y no en el

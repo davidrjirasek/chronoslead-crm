@@ -24,7 +24,49 @@ export type AnuncioDeOrigen = {
   imageUrl: string | null;
   /** El referral recortado, para no perder campos que Meta añada después. */
   raw: Record<string, unknown>;
+  /**
+   * 157 — Campaña y conjunto. NO vienen del `referral` de Meta: los resuelve
+   * Zernio contra la API de Marketing. Por eso son opcionales y viajan aparte
+   * del resto, que sí sale del payload de Meta.
+   */
+  campana?: CampanaDelAnuncio | null;
 };
+
+/** 157 — Lo que Zernio sabe del anuncio más allá de lo que manda Meta. */
+export type CampanaDelAnuncio = {
+  adName: string | null;
+  campaignId: string | null;
+  campaignName: string | null;
+  adSetId: string | null;
+  adSetName: string | null;
+};
+
+/**
+ * 157 — Normaliza el `adAttribution` de Zernio.
+ *
+ * `synced:false` significa que Zernio no tiene ese anuncio sincronizado: ahí
+ * `name` cae al titular de Meta y no hay campaña ni conjunto. Se devuelve
+ * `null` antes que guardar un nombre que en realidad es el titular repetido.
+ */
+export function campanaDeZernio(raw: unknown): CampanaDelAnuncio | null {
+  if (!raw || typeof raw !== "object") return null;
+  const a = raw as Record<string, unknown>;
+  const texto = (v: unknown, cota = 200): string | null => {
+    if (typeof v !== "string") return null;
+    const s = v.trim();
+    return s ? s.slice(0, cota) : null;
+  };
+  const sincronizado = a.synced === true;
+  const campana: CampanaDelAnuncio = {
+    adName: sincronizado ? texto(a.name) : null,
+    campaignId: texto(a.campaignId, 64),
+    campaignName: texto(a.campaignName),
+    adSetId: texto(a.adSetId, 64),
+    adSetName: texto(a.adSetName),
+  };
+  // Sin un solo dato útil no vale la pena una fila con cinco nulos.
+  return Object.values(campana).some((v) => v !== null) ? campana : null;
+}
 
 /**
  * Cotas de lo que se guarda. El payload de Meta es corto, pero nada impide que

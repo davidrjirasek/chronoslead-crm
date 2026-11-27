@@ -7,7 +7,11 @@ import { registrarAnuncioDeOrigen } from "@/server/attribution/store";
 import { ingestInboundMessage, ingestManualOutbound } from "@/server/inbox/ingest";
 import { applyStatusUpdate } from "@/server/inbox/status";
 import { getZernioWhatsappByAccountRef } from "@/server/whatsapp/credentials";
-import { anuncioDeWhatsapp, type AnuncioDeOrigen } from "@/server/attribution/referral";
+import {
+  anuncioDeWhatsapp,
+  campanaDeZernio,
+  type AnuncioDeOrigen,
+} from "@/server/attribution/referral";
 import { zernioSentAtSeconds, type ZernioEvent } from "@/server/zernio";
 
 /**
@@ -301,6 +305,9 @@ export function anuncioDeConversacionZernio(
 
   const anuncio = anuncioDeMetadata(meta as Record<string, unknown>);
   if (!anuncio) return null;
+  // 157 — Campaña y conjunto cuelgan aparte del `metadata`, ya resueltos por
+  // Zernio. El `referral` de Meta no los trae: por eso se leen de acá.
+  anuncio.campana = campanaDeZernio(conv?.adAttribution);
 
   // `participantId` es el teléfono sin «+»; `participantUsername` lo trae con él.
   const crudo =

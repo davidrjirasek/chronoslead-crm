@@ -60,6 +60,12 @@ export async function registrarAnuncioDeOrigen(input: {
       headline: a.headline,
       body: a.body,
       mediaType: a.mediaType,
+      // 157 — Solo las trae el camino de Zernio; por Cloud API quedan nulas.
+      adName: a.campana?.adName ?? null,
+      campaignId: a.campana?.campaignId ?? null,
+      campaignName: a.campana?.campaignName ?? null,
+      adSetId: a.campana?.adSetId ?? null,
+      adSetName: a.campana?.adSetName ?? null,
       raw: a.raw,
     })
     .onConflictDoNothing({
@@ -217,5 +223,8 @@ export function serializarAnuncio(
     imageAssetId: fila.imageAssetId,
     hasCtwaClid: atribuye && fila.ctwaClid !== null,
     capturedAt: fila.createdAt.toISOString(),
+    adName: fila.adName,
+    campaignName: fila.campaignName,
+    adSetName: fila.adSetName,
   };
 }

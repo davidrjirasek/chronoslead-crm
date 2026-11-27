@@ -3,6 +3,7 @@ import {
   COTAS,
   anuncioDeWhatsapp,
   sinIdentificadorDeClic,
+  campanaDeZernio,
 } from "@/server/attribution/referral";
 import {
   CREATIVO_MAX_BYTES,
@@ -168,6 +169,12 @@ describe("la bandera ATRIBUCION decide el identificador de clic, no el origen", 
     body: "Texto",
     mediaType: "video",
     imageAssetId: null,
+    // 157 — Por Cloud API no hay campaña: la fila nace con los cinco en nulo.
+    adName: null,
+    campaignId: null,
+    campaignName: null,
+    adSetId: null,
+    adSetName: null,
     raw: { ctwa_clid: "clid-secreto" },
     createdAt: new Date("2026-09-21T15:00:00Z"),
   };
@@ -400,5 +407,73 @@ describe("fuente y etiquetas", () => {
     expect(etiquetaDeOrigen("ad")).toBe("Anuncio");
     expect(titularDeOrigen(null, "ad")).toBe("Anuncio sin título");
     expect(titularDeOrigen("Promo", "post")).toBe("Promo");
+  });
+});
+
+/**
+ * 157 — Campaña y conjunto, que Meta no manda y Zernio sí.
+ *
+ * Las dos formas son reales: la de Cerritos llega con `synced:false` —Zernio
+ * no tiene ese anuncio sincronizado— y la sincronizada es la que el propio
+ * Zernio documenta y manda en su evento de prueba.
+ */
+describe("campanaDeZernio", () => {
+  const SIN_SINCRONIZAR = {
+    adId: "120252624713330435",
+    name: "¡No hace falta ser alumno! 🛼",
+    synced: false,
+  };
+  const SINCRONIZADO = {
+    adId: "120210000000000001",
+    name: "Spring sale carousel",
+    synced: true,
+    campaignId: "120210000000000100",
+    campaignName: "Spring leads",
+    adSetId: "120210000000000200",
+    adSetName: "Spain 25-44",
+  };
+
+  it("sin sincronizar no inventa campaña ni nombre de anuncio", () => {
+    // `name` ahí es el TITULAR repetido, no el nombre en el Administrador:
+    // guardarlo haría creer que se sabe algo que no se sabe.
+    expect(campanaDeZernio(SIN_SINCRONIZAR)).toBeNull();
+  });
+
+  it("sincronizado trae campaña, conjunto y el nombre del anuncio", () => {
+    expect(campanaDeZernio(SINCRONIZADO)).toEqual({
+      adName: "Spring sale carousel",
+      campaignId: "120210000000000100",
+      campaignName: "Spring leads",
+      adSetId: "120210000000000200",
+      adSetName: "Spain 25-44",
+    });
+  });
+
+  it("aguanta lo que no es un objeto", () => {
+    for (const basura of [null, undefined, "", 7, [], "texto"]) {
+      expect(campanaDeZernio(basura)).toBeNull();
+    }
+  });
+
+  it("recorta un nombre desmedido en vez de guardarlo entero", () => {
+    const r = campanaDeZernio({ ...SINCRONIZADO, campaignName: "x".repeat(5000) });
+    expect(r?.campaignName?.length).toBe(200);
+  });
+
+  it("descarta los vacíos y los que no son texto", () => {
+    const r = campanaDeZernio({
+      synced: true,
+      name: "   ",
+      campaignId: 123,
+      campaignName: "Solo esta",
+      adSetName: null,
+    });
+    expect(r).toEqual({
+      adName: null,
+      campaignId: null,
+      campaignName: "Solo esta",
+      adSetId: null,
+      adSetName: null,
+    });
   });
 });

@@ -100,6 +100,27 @@ export function AnuncioOrigen({ anuncio }: { anuncio: AnuncioDto }) {
           Primer mensaje · {fecha}
           {anuncio.mediaType === "video" ? " · con video" : ""}
         </p>
+        {/* 157 — Campaña y conjunto, cuando el canal los sabe. Van ANTES del
+            ID porque un nombre dice más que un número de dieciocho cifras, y
+            es por donde el dueño mira la pauta. Si no están, no hay hueco:
+            por Cloud API directa nunca llegan y no es un fallo. */}
+        {anuncio.campaignName && (
+          <p className="truncate" title={anuncio.campaignName}>
+            Campaña · {anuncio.campaignName}
+          </p>
+        )}
+        {anuncio.adSetName && (
+          <p className="truncate" title={anuncio.adSetName}>
+            Conjunto · {anuncio.adSetName}
+          </p>
+        )}
+        {/* El nombre con el que el anuncio figura en el Administrador, que no
+            es su titular: sirve para encontrarlo ahí. */}
+        {anuncio.adName && anuncio.adName !== anuncio.headline && (
+          <p className="truncate" title={anuncio.adName}>
+            Anuncio · {anuncio.adName}
+          </p>
+        )}
         {anuncio.sourceId && (
           <p className="truncate font-mono" title={anuncio.sourceId}>
             ID {anuncio.sourceId}

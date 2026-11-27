@@ -1272,6 +1272,21 @@ export const adAttribution = pgTable(
     body: text("body"),
     mediaType: text("media_type"),
     /**
+     * 157 — Campaña y conjunto, que el `referral` de Meta NUNCA manda.
+     *
+     * Los resuelve Zernio contra la API de Marketing y los adjunta como
+     * `adAttribution` en `conversation.started`. Anulables a propósito: por el
+     * camino de la Cloud API directa no existen, y tampoco cuando Zernio no
+     * tiene el anuncio sincronizado (`synced:false`). Que falten es normal;
+     * que estén es lo que deja agrupar por campaña en vez de por anuncio
+     * suelto, que es como se mira la pauta de verdad.
+     */
+    adName: text("ad_name"),
+    campaignId: text("campaign_id"),
+    campaignName: text("campaign_name"),
+    adSetId: text("ad_set_id"),
+    adSetName: text("ad_set_name"),
+    /**
      * 018 — La imagen del creativo, copiada del CDN de Meta (su URL caduca en
      * días). Compartida por todas las conversaciones del mismo `source_id`: se
      * descarga una vez por anuncio. Borrar el adjunto deja la fila sin imagen,

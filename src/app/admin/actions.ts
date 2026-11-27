@@ -1,5 +1,6 @@
 "use server";
 
+import { recuperarAnunciosDeOrganizacion } from "@/server/attribution/recuperar";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
@@ -425,6 +426,61 @@ export async function agendaDeRecursos(
   );
   revalidatePath("/admin");
   return VACIO;
+}
+
+/**
+ * 157 — Trae de Zernio los anuncios de las conversaciones que ya habían
+ * entrado sin atribución.
+ *
+ * Vive en el panel y no en un guion porque la base de producción no se expone
+ * a internet: desde fuera no hay forma de correrlo, y exponerla para esto
+ * sería cambiar la seguridad del servidor por una comodidad de una tarde.
+ *
+ * Se puede apretar dos veces sin miedo: no pisa un anuncio ya guardado.
+ */
+export async function recuperarAnuncios(
+  _prev: ResultadoAccion,
+  formData: FormData
+): Promise<ResultadoAccion> {
+  const guardia = await exigirSuperadmin();
+  if (!guardia.ok) return guardia.resultado;
+
+  const datos = idSchema.safeParse({
+    organizationId: formData.get("organizationId"),
+  });
+  if (!datos.success) return { error: "Cliente no indicado.", aviso: null };
+
+  try {
+    const r = await recuperarAnunciosDeOrganizacion(datos.data.organizationId);
+    registrar(
+      guardia.autor,
+      `anuncios recuperados (${r.atadas} de ${r.conAnuncio})`,
+      datos.data.organizationId
+    );
+    revalidatePath("/admin");
+
+    if (r.conAnuncio === 0) {
+      return {
+        error: null,
+        aviso: `Miré ${r.miradas} conversaciones en Zernio y ninguna venía de un anuncio.`,
+      };
+    }
+    const sobran = r.sinContacto > 0
+      ? ` ${r.sinContacto} no tienen contacto en el CRM y se saltaron.`
+      : "";
+    const mas = r.truncado ? " Quedaron más: volvé a apretar." : "";
+    return {
+      error: null,
+      aviso:
+        `Listo: ${r.atadas} conversaciones quedaron marcadas con su anuncio, ` +
+        `de ${r.conAnuncio} que Zernio tenía.${sobran}${mas}`,
+    };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "No se pudo recuperar.",
+      aviso: null,
+    };
+  }
 }
 
 /**
