@@ -3072,6 +3072,68 @@ Los teléfonos están en el brief del cliente, no acá.
 segundos en que la app no responde — se ve alternando las dos versiones en
 `/api/health` hasta que se estabiliza.
 
+### El anuncio de WhatsApp viaja en otro evento (2026-11-27, spec 144)
+
+La bandeja de Colegio Cerritos no marcaba **ninguna** conversación como
+venida de anuncio, con cuatro conjuntos Click-to-WhatsApp activos y 147.000
+impresiones en catorce días. El dueño lo notó: «no veo eso que me dijiste de
+anuncio, ni tampoco el filtro».
+
+**La cadena, medida eslabón por eslabón:**
+
+| Eslabón | |
+|---|---|
+| Los anuncios son Click-to-WhatsApp | ✅ verificado en Meta Ads |
+| Zernio captura el anuncio | ✅ las 6 conversaciones lo tenían completo |
+| Nuestro normalizador acepta ese formato | ✅ probado con los datos reales |
+| Aparecía en la bandeja | ❌ |
+
+**La causa, leyendo las entregas reales del webhook:** el `message.received`
+de Zernio llega **sin `metadata` ninguno** —ni `referral` ni `ctwa_*`— pese a
+que su documentación dice que lleva los dos. El dato viaja en
+`conversation.started`, colgando de la CONVERSACIÓN. Y ahí se encadenaban dos
+agujeros: **no estábamos suscritos a ese evento** (solo a los cinco de
+`message.*`) y **el código no sabía atenderlo**.
+
+Entregas de `conversation.started` hasta ese día: **cero**.
+
+**Y un tercer defecto, aparte:** leíamos `ctwa_image_url`; Zernio manda
+`ctwa_thumbnail_url` —y `ctwa_video_url` cuando el creativo es video—. La
+tarjeta habría salido siempre con el megáfono gris en vez de la imagen.
+
+**El arreglo, en dos despliegues.** El primero (`18c5029`) suscribió el evento
+y agregó el manejador — y **no alcanzó**: la bandeja seguía sin marcar. El
+orden era el problema: Zernio abre el hilo y DESPUÉS entrega el mensaje, así
+que al llegar `conversation.started` todavía no existen ni el contacto ni la
+conversación a la que atar el anuncio, y el primer intento se rendía en
+silencio. El segundo (`c041b5a`) reintenta diez veces de a segundo y medio,
+dentro de `after()` para no demorar la respuesta a Zernio.
+
+**Cómo se probó:** el dueño lo confirmó en vivo sobre producción —«ya vi un
+par de mensajes con etiqueta y preview de anuncio»—. Antes: tipos, lint,
+1.572 pruebas, build, y nueve comprobaciones contra la forma real del evento,
+incluidas las tres que NO deben guardar nada (el evento de prueba de Zernio,
+una conversación orgánica y un `message.received`).
+
+**Lo que enseñó, y vale más allá de esto:** la documentación de un proveedor
+no es el proveedor. Dos horas se fueron buscando el fallo en nuestro código
+porque la documentación afirmaba que el dato venía en el mensaje. Lo resolvió
+leer **la entrega real** (`webhooks_get_webhook_logs` trae el payload entero).
+Ante un dato que no llega: mirar el payload antes que el código.
+
+**Pendiente:** las conversaciones anteriores al arreglo siguen sin marcar —las
+25 de WhatsApp que Cerritos ya tenía—. `scripts/recuperar-anuncios.ts` las
+trae desde la API de Zernio, pero **no se puede correr desde fuera**: la base
+de producción no está expuesta (`is_public: false`), y así debe quedar. Hace
+falta dispararlo desde dentro, con un botón en el panel de superadmin.
+
+**Oportunidad anotada, no hecha:** el `adAttribution` de Zernio trae **nombre
+de campaña y de conjunto**, que el `referral` de Meta nunca manda. Hoy se
+descarta. Guardarlo dejaría agrupar Resultados por campaña y no solo por
+anuncio suelto. Lo mismo vale para Instagram, que manda `meta_ad_*` en el
+mismo evento: la spec 018 (D3) daba la atribución de Instagram por imposible,
+y por esta vía no lo es.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
@@ -3162,3 +3224,9 @@ segundos en que la app no responde — se ve alternando las dos versiones en
   (login y elegir contraseña): quien teclea su contraseña en el primer segundo
   la ve desaparecer. Detectado el 16-nov probando el ojito. Es anterior y no
   lo causó ese cambio; en producción la página carga rápido y no se nota
+- **Recuperar los anuncios de las conversaciones anteriores al 27-nov** —
+  `scripts/recuperar-anuncios.ts` está escrito y probado en tipos, pero la base
+  de producción no es accesible desde fuera. Falta el botón en el panel de
+  superadmin que lo dispare desde dentro. El dato no se vence: Zernio lo guarda
+- **Guardar campaña y conjunto** del `adAttribution` de Zernio, y evaluar la
+  atribución de Instagram por el mismo evento (ver la entrada del 27-nov)
