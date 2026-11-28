@@ -3134,6 +3134,72 @@ anuncio suelto. Lo mismo vale para Instagram, que manda `meta_ad_*` en el
 mismo evento: la spec 018 (D3) daba la atribución de Instagram por imposible,
 y por esta vía no lo es.
 
+### Campaña, conjunto, y una falsa alarma que costó tres despliegues (2026-11-27, spec 157)
+
+Dos cosas pedidas tras la 144, y una lección sobre diagnosticar.
+
+**Campaña y conjunto.** El `referral` de Meta nunca los manda; Zernio los
+resuelve contra la API de Marketing y los adjunta como `adAttribution` en
+`conversation.started`. Cinco columnas nuevas (migración 0037, aditiva), todas
+anulables: por Cloud API directa no existen. Con `synced:false` el `name` que
+manda Zernio es el TITULAR repetido, no el nombre en el Administrador: ahí no
+se guarda nada.
+
+**Recuperar lo anterior.** `recuperarAnunciosDeOrganizacion` trae de Zernio el
+anuncio de conversaciones ya entradas, con un botón en el panel de superadmin.
+Vive ahí y no en un guion porque la base de producción no se expone a internet.
+
+### La falsa alarma
+
+La primera corrida sobre Colegio Cerritos informó **255 conversaciones con
+anuncio y 47 marcadas**. Como el cliente tenía 47 conversaciones de WhatsApp,
+se concluyó que había marcado TODAS, orgánicas incluidas, y que la consulta
+—sin filtrar por cuenta, con una llave de API que es del equipo— había cruzado
+datos entre clientes.
+
+**Esa conclusión era falsa, y se le comunicó al dueño como un hecho.** Costó
+tres despliegues y su tarde.
+
+Lo que pasaba de verdad:
+
+- Zernio guarda historial de Cerritos **anterior** a nuestro CRM: 514
+  conversaciones, 260 de anuncios. Solo 54 tienen contacto en el CRM.
+- Cerritos concentra casi todo el tráfico de los 7 números conectados, así que
+  filtrar por cuenta o no filtrar daba casi el mismo número (510 contra 514).
+  Esa coincidencia fue lo que hizo parecer que el filtro no funcionaba.
+
+**Cómo se cerró:** el dueño mandó un mensaje desde su propio teléfono —una
+conversación que con certeza no viene de un anuncio— y **no quedó etiquetada**.
+Más el filtro «Anuncios 64» sobre 96: no marca todo, discrimina.
+
+### Lo que sí se arregló, y queda
+
+- **El filtro por cuenta va al leer, no en la consulta.** `?accountId=` no
+  filtra en `/inbox/conversations` (su documentación solo contempla
+  `profileId`, y los nueve clientes cuelgan del mismo perfil). Cada
+  conversación trae su `accountId` y se descarta ahí. No depende de que el
+  proveedor honre un parámetro.
+- **«Ver qué haría»**: la corrida en seco. El botón había salido con una sola
+  marcha, la que escribe, y por eso el número alarmante apareció DESPUÉS de
+  tocar los datos.
+- **«Borrar y rehacer»** y **«Deshacer la recuperación»**: las dos salidas,
+  por si alguna vez hace falta de verdad.
+
+### Las tres lecciones, que valen más que el código
+
+1. **`commitVerified: false`.** Se verificó «tres veces» que producción servía
+   el commit nuevo leyendo `/api/health` — pero ese campo sale de la variable
+   `SOURCE_COMMIT` que pone Coolify, y el propio health avisa que puede estar
+   desfasada. Para comprobar un despliegue de verdad: el **registro del build**
+   (`get_deployment` con `include_log_summary`), que dice si construyó imagen
+   nueva y si el contenedor se reemplazó.
+2. **Un número raro no es un diagnóstico.** «255 contra 47» disparó una
+   conclusión sobre cruce entre clientes que nunca se comprobó. La
+   comprobación costaba un clic: abrir una conversación orgánica y mirar.
+   Primero se mide, después se concluye — y lo que no se midió se dice como
+   sospecha, no como hecho.
+3. **La marcha en seco va antes que la que escribe.** No como opción: primero.
+
 ### Pendiente
 
 > **Limpiado el 2026-10-24.** Tres entradas seguían listadas estando hechas:
